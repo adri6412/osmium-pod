@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 #include "metadata.h"
-#include "skin_engine/skin_engine.h"
+#include "bmp.h"
 
 /* Look for albumart bitmap in the same dir as the track and in its parent dir.
  * Calls size_func to get the dimensions to look for
@@ -37,8 +37,6 @@ bool find_albumart(const struct mp3entry *id3, char *buf, int buflen,
 
 bool search_albumart_files(const struct mp3entry *id3, const char *size_string,
                            char *buf, int buflen);
-
-void get_albumart_size(struct bitmap *bmp);
 
 #endif /* HAVE_ALBUMART */
 

@@ -5,9 +5,12 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Daniel Stenberg
+ *
+ * Osmium Sound: the GUI-free part of Rockbox's apps/misc.c. Everything that
+ * used to draw something (splashes, yes/no screens, the USB screen) is now
+ * delegated to the Osmium UI through osmium.h.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,24 +30,15 @@
 #include "config.h"
 #include "misc.h"
 #include "system.h"
-#include "lcd.h"
-#include "language.h" /* is_lang_rtl() */
-
+#include "language.h"
 #ifdef HAVE_DIRCACHE
 #include "dircache.h"
 #endif
 #include "file.h"
-#ifndef __PCTOOL__
 #include "pathfuncs.h"
 #include "lang.h"
 #include "dir.h"
-#ifdef HAVE_REMOTE_LCD
-#include "lcd-remote.h"
-#endif
-#include "action.h"
 #include "timefuncs.h"
-#include "screens.h"
-#include "usb_screen.h"
 #include "talk.h"
 #include "audio.h"
 #include "settings.h"
@@ -54,58 +48,17 @@
 #include "power.h"
 #include "powermgmt.h"
 #include "backlight.h"
-#include "font.h"
-#include "splash.h"
 #include "tagcache.h"
 #include "sound.h"
 #include "playlist.h"
-#include "yesno.h"
-#include "viewport.h"
-#include "list.h"
 #include "fixedpoint.h"
-#include "open_plugin.h"
-
 #include "debug.h"
-
-#if CONFIG_TUNER
-#include "radio.h"
-#endif
-
-#ifdef IPOD_ACCESSORY_PROTOCOL
-#include "iap.h"
-#endif
-
-#if (CONFIG_STORAGE & STORAGE_MMC)
-#include "ata_mmc.h"
-#endif
-#include "tree.h"
-#include "eeprom_settings.h"
-#if defined(HAVE_RECORDING) && !defined(__PCTOOL__)
-#include "recording.h"
-#endif
-#if !defined(__PCTOOL__)
-#include "bmp.h"
-#include "icons.h"
-#endif /* !__PCTOOL__ */
-#include "bookmark.h"
-#include "wps.h"
 #include "playback.h"
 #include "voice_thread.h"
-
-#ifdef BOOTFILE
-#if !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF) \
-        || defined(HAVE_HOTSWAP_STORAGE_AS_MAIN)
+#include "dsp_core.h"
 #include "rolo.h"
-#endif
-#endif
-
-#ifndef PLUGIN
-#include "core_alloc.h" /*core_load_bmp()*/
-#endif
-
-#ifdef HAVE_HARDWARE_CLICK
-#include "piezo.h"
-#endif
+#include "splash.h"
+#include "osmium.h"
 
 /* units used with output_dyn_value */
 const unsigned char * const byte_units[] =
@@ -131,6 +84,12 @@ const unsigned char * const unit_strings_core[] =
     [UNIT_MB]  = "MB",  [UNIT_KBIT]  = "kb/s",
     [UNIT_PM_TICK] = "units/10ms",
 };
+
+/* Format a large-range value for output, using the appropriate unit so that
+ * the displayed value is in the range 1 <= display < 1000 (1024 for "binary"
+ * units) if possible, and 3 significant digits are shown. If a buffer is
+ * given, the result is snprintf()'d into that buffer, otherwise the result is
+ * voiced.*/
 
 /* Format a large-range value for output, using the appropriate unit so that
  * the displayed value is in the range 1 <= display < 1000 (1024 for "binary"
@@ -183,73 +142,6 @@ char *output_dyn_value(char *buf,
     return buf;
 }
 
-/* Ask the user if they really want to erase the current dynamic playlist
- * returns true if the playlist should be replaced */
-bool warn_on_pl_erase(void)
-{
-    if (global_status.resume_index != -1 &&
-        global_settings.warnon_erase_dynplaylist &&
-        !global_settings.party_mode &&
-        playlist_modified(NULL))
-    {
-        static const char *lines[] =
-            {ID2P(LANG_WARN_ERASEDYNPLAYLIST_PROMPT)};
-        static const struct text_message message={lines, 1};
-
-        if (gui_syncyesno_run(&message, NULL, NULL) == YESNO_YES)
-            return true;
-        else
-        {
-            splash(HZ, ID2P(LANG_CANCEL));
-            return false;
-        }
-    }
-    else
-        return true;
-}
-
-bool show_search_progress(bool init, int display_count, int current, int total)
-{
-    static long last_tick, talked_tick;
-
-    /* Don't show splashes for 1/2 second after starting search */
-    if (init)
-    {
-        last_tick = current_tick + HZ/2;
-        talked_tick = 0;
-        return true;
-    }
-
-    /* Update progress every 1/10 of a second */
-    if (TIME_AFTER(current_tick, last_tick + HZ/10))
-    {
-        if (total != current)
-            /* (voiced) */
-            splash_progress(current, total, str(LANG_PLAYLIST_SEARCH_MSG),
-                            display_count, str(LANG_OFF_ABORT));
-        else
-        {
-            if (global_settings.talk_menu &&
-                TIME_AFTER(current_tick, talked_tick + (HZ * 5)))
-            {
-                talked_tick = current_tick;
-                talk_number(display_count, false);
-                talk_id(LANG_PLAYLIST_SEARCH_MSG, true);
-            }
-            /* (voiced above) */
-            splashf(0, str(LANG_PLAYLIST_SEARCH_MSG),
-                    display_count, str(LANG_OFF_ABORT));
-        }
-
-        if (action_userabort(TIMEOUT_NOBLOCK))
-            return false;
-        last_tick = current_tick;
-        yield();
-    }
-
-    return true;
-}
-
 /* Performance optimized version of the read_line() (see below) function. */
 int fast_readline(int fd, char *buf, int buf_size, void *parameters,
                   int (*callback)(int n, char *buf, void *parameters))
@@ -296,16 +188,6 @@ int fast_readline(int fd, char *buf, int buf_size, void *parameters,
     return 0;
 }
 
-/* parse a line from a configuration file. the line format is:
-
-   name: value
-
-   Any whitespace before setting name or value (after ':') is ignored.
-   A # as first non-whitespace character discards the whole line.
-   Function sets pointers to null-terminated setting name and value.
-   Returns false if no valid config entry was found.
-*/
-
 bool settings_parseline(char* line, char** name, char** value)
 {
     char* ptr;
@@ -335,173 +217,6 @@ bool settings_parseline(char* line, char** name, char** value)
     }
 
     return true;
-}
-
-static void system_flush(void)
-{
-    playlist_shutdown();
-    tree_flush();
-    open_plugin_cache_flush();
-    call_storage_idle_notifys(true); /*doesnt work on usb and shutdown from ata thread */
-}
-
-static void system_restore(void)
-{
-    tree_restore();
-}
-
-static bool clean_shutdown(enum shutdown_type sd_type,
-                           void (*callback)(void *), void *parameter)
-{
-    long msg_id = -1;
-
-    if (!global_settings.show_shutdown_message && get_sleep_timer_active())
-    {
-        talk_force_shutup();
-        talk_disable(true);
-    }
-
-    status_save(true);
-
-#if CONFIG_CHARGING && !defined(HAVE_POWEROFF_WHILE_CHARGING)
-    if(!charger_inserted())
-#endif
-    {
-        bool batt_safe = battery_level_safe();
-#if defined(HAVE_RECORDING)
-        int audio_stat = audio_status();
-#endif
-
-        FOR_NB_SCREENS(i)
-        {
-            screens[i].clear_display();
-            screens[i].update();
-        }
-
-        if (batt_safe)
-        {
-            int level;
-#ifdef HAVE_TAGCACHE
-            if (!tagcache_prepare_shutdown())
-            {
-                cancel_shutdown();
-                splash(HZ, ID2P(LANG_TAGCACHE_BUSY));
-                return false;
-            }
-#endif
-            level = battery_level();
-            if (level > 10 || level < 0)
-            {
-                if (global_settings.show_shutdown_message)
-                    splash(0, str(LANG_SHUTTINGDOWN));
-            }
-            else
-            {
-                msg_id = LANG_WARNING_BATTERY_LOW;
-                splashf(0, "%s %s", str(LANG_WARNING_BATTERY_LOW),
-                                    str(LANG_SHUTTINGDOWN));
-            }
-        }
-        else
-        {
-            msg_id = LANG_WARNING_BATTERY_EMPTY;
-            splashf(0, "%s %s", str(LANG_WARNING_BATTERY_EMPTY),
-                                str(LANG_SHUTTINGDOWN));
-        }
-
-#ifdef HAVE_DISK_STORAGE
-        if (batt_safe) /* do not save on critical battery */
-#endif
-        {
-#if defined(HAVE_RECORDING)
-            if (audio_stat & AUDIO_STATUS_RECORD)
-            {
-                rec_command(RECORDING_CMD_STOP);
-                /* wait for stop to complete */
-                while (audio_status() & AUDIO_STATUS_RECORD)
-                    sleep(1);
-            }
-#endif
-            bookmark_autobookmark(false);
-
-            /* audio_stop_recording == audio_stop for HWCODEC */
-            audio_stop();
-
-            if (callback != NULL)
-                callback(parameter);
-
-#if defined(HAVE_RECORDING)
-            audio_close_recording();
-#endif
-
-            system_flush();
-#ifdef HAVE_EEPROM_SETTINGS
-            if (firmware_settings.initialized)
-            {
-                firmware_settings.disk_clean = true;
-                firmware_settings.bl_version = 0;
-                eeprom_settings_store();
-            }
-#endif
-        }
-#if defined(HAVE_DIRCACHE) && defined(HAVE_DISK_STORAGE)
-        else
-            dircache_disable();
-#endif
-
-        if(global_settings.talk_menu)
-        {
-            bool enqueue = false;
-            if(msg_id != -1)
-            {
-                talk_id(msg_id, enqueue);
-                enqueue = true;
-            }
-            talk_id(LANG_SHUTTINGDOWN, enqueue);
-            voice_wait();
-        }
-
-        shutdown_hw(sd_type);
-    }
-    return false;
-}
-
-bool list_stop_handler(void)
-{
-    bool ret = false;
-
-#if CONFIG_TUNER
-    radio_stop();
-#endif
-
-    /* Stop the music if it is playing */
-    if(audio_status())
-    {
-        if (!global_settings.party_mode)
-        {
-            bookmark_autobookmark(true);
-            audio_stop();
-            ret = true;  /* bookmarking can make a refresh necessary */
-        }
-    }
-#if CONFIG_CHARGING
-#ifndef HAVE_POWEROFF_WHILE_CHARGING
-    {
-        static long last_off = 0;
-
-        if (TIME_BEFORE(current_tick, last_off + HZ/2))
-        {
-            if (charger_inserted())
-            {
-                charging_splash();
-                ret = true;  /* screen is dirty, caller needs to refresh */
-            }
-        }
-        last_off = current_tick;
-    }
-#endif
-#endif /* CONFIG_CHARGING */
-    return ret;
 }
 
 #if CONFIG_CHARGING
@@ -565,7 +280,7 @@ void car_adapter_mode_init(void)
 {
     tick_add_task(car_adapter_tick);
 }
-#endif
+#endif /* CONFIG_CHARGING */
 
 #ifdef HAVE_HEADPHONE_DETECTION
 static void hp_unplug_change(bool inserted)
@@ -600,270 +315,8 @@ static void hp_unplug_change(bool inserted)
     audio_enable_speaker(global_settings.speaker_mode);
 #endif
 }
-#endif /*HAVE_HEADPHONE_DETECTION*/
+#endif /* HAVE_HEADPHONE_DETECTION */
 
-#ifdef HAVE_LINEOUT_DETECTION
-static void lo_unplug_change(bool inserted)
-{
-#ifdef HAVE_LINEOUT_POWEROFF
-    lineout_set(inserted);
-#else
-#ifdef AUDIOHW_HAVE_LINEOUT
-    audiohw_set_lineout_volume(0,0); /*hp vol re-set by this function as well*/
-#endif
-    static bool lineout_caused_pause = true;
-
-    if (global_settings.unplug_mode)
-    {
-        int audio_stat = audio_status();
-        if (inserted)
-        {
-            backlight_on();
-            if ((audio_stat & AUDIO_STATUS_PLAY) &&
-                    lineout_caused_pause &&
-                    global_settings.unplug_mode > 1 )
-                unpause_action(true);
-            lineout_caused_pause = false;
-        } else {
-            if ((audio_stat & AUDIO_STATUS_PLAY) &&
-                    !(audio_stat & AUDIO_STATUS_PAUSE))
-            {
-                lineout_caused_pause = true;
-                pause_action(false);
-            }
-        }
-    }
-#endif /*HAVE_LINEOUT_POWEROFF*/
-}
-#endif /*HAVE_LINEOUT_DETECTION*/
-
-long default_event_handler_ex(long event, void (*callback)(void *), void *parameter)
-{
-#if CONFIG_PLATFORM & (PLATFORM_ANDROID)
-    static bool resume = false;
-#endif
-
-    switch(event)
-    {
-        case SYS_BATTERY_UPDATE:
-            if(global_settings.talk_battery_level)
-            {
-                talk_ids(true, VOICE_PAUSE, VOICE_PAUSE,
-                         LANG_BATTERY_TIME,
-                         TALK_ID(battery_level(), UNIT_PERCENT),
-                         VOICE_PAUSE);
-                talk_force_enqueue_next();
-            }
-            break;
-        case SYS_USB_CONNECTED:
-            if (callback != NULL)
-                callback(parameter);
-            {
-                system_flush();
-#ifdef BOOTFILE
-#if !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
-                check_bootfile(false); /* gets initial size */
-#endif
-#endif
-                gui_usb_screen_run(false);
-#ifdef BOOTFILE
-#if !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
-                check_bootfile(true);
-#endif
-#endif
-                system_restore();
-            }
-            return SYS_USB_CONNECTED;
-
-        case SYS_POWEROFF:
-        case SYS_REBOOT:
-        {
-            enum shutdown_type sd_type;
-            if (event == SYS_POWEROFF)
-                sd_type = SHUTDOWN_POWER_OFF;
-            else
-                sd_type = SHUTDOWN_REBOOT;
-
-            if (!clean_shutdown(sd_type, callback, parameter))
-                return event;
-        }
-            break;
-#if CONFIG_CHARGING
-        case SYS_CHARGER_CONNECTED:
-            car_adapter_mode_processing(true);
-            return SYS_CHARGER_CONNECTED;
-
-        case SYS_CHARGER_DISCONNECTED:
-            car_adapter_mode_processing(false);
-            reset_runtime();
-            return SYS_CHARGER_DISCONNECTED;
-
-        case SYS_CAR_ADAPTER_RESUME:
-            unpause_action(true);
-            return SYS_CAR_ADAPTER_RESUME;
-#endif
-#ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-        case SYS_FS_CHANGED:
-        {
-            /* simple sanity: assume rockbox is on the first hotswappable
-             * driver, abort out if that one isn't inserted */
-            int i;
-            for (i = 0; i < NUM_DRIVES; i++)
-            {
-                if (storage_removable(i) && !storage_present(i))
-                    return SYS_FS_CHANGED;
-            }
-            system_flush();
-            check_bootfile(true); /* state gotten in main.c:init() */
-            system_restore();
-        }
-            return SYS_FS_CHANGED;
-#endif
-#ifdef HAVE_HEADPHONE_DETECTION
-        case SYS_PHONE_PLUGGED:
-            hp_unplug_change(true);
-            return SYS_PHONE_PLUGGED;
-
-        case SYS_PHONE_UNPLUGGED:
-            hp_unplug_change(false);
-            return SYS_PHONE_UNPLUGGED;
-#endif
-#ifdef HAVE_LINEOUT_DETECTION
-        case SYS_LINEOUT_PLUGGED:
-            lo_unplug_change(true);
-            return SYS_LINEOUT_PLUGGED;
-
-        case SYS_LINEOUT_UNPLUGGED:
-            lo_unplug_change(false);
-            return SYS_LINEOUT_UNPLUGGED;
-#endif
-#if CONFIG_PLATFORM & (PLATFORM_ANDROID)
-        /* stop playback if we receive a call */
-        case SYS_CALL_INCOMING:
-            resume = audio_status() == AUDIO_STATUS_PLAY;
-            list_stop_handler();
-            return SYS_CALL_INCOMING;
-        /* resume playback if needed */
-        case SYS_CALL_HUNG_UP:
-            if (resume && playlist_resume() != -1)
-            {
-                playlist_start(global_status.resume_index,
-                               global_status.resume_elapsed,
-                               global_status.resume_offset);
-            }
-            resume = false;
-            return SYS_CALL_HUNG_UP;
-#endif
-#if (CONFIG_PLATFORM & PLATFORM_HOSTED) && defined(PLATFORM_HAS_VOLUME_CHANGE)
-        case SYS_VOLUME_CHANGED:
-        {
-            static bool firstvolume = true;
-            /* kludge: since this events go to the button_queue,
-             * event data is available in the last button data */
-            int volume = button_get_data();
-            DEBUGF("SYS_VOLUME_CHANGED: %d\n", volume);
-            if (global_status.volume != volume) {
-                global_status.volume = volume;
-                if (firstvolume) {
-                    setvol();
-                    firstvolume = false;
-                }
-            }
-            return 0;
-        }
-#endif
-#ifdef HAVE_MULTIMEDIA_KEYS
-        /* multimedia keys on keyboards, headsets */
-        case BUTTON_MULTIMEDIA_PLAYPAUSE:
-        {
-            int status = audio_status();
-            if (status & AUDIO_STATUS_PLAY)
-            {
-                if (status & AUDIO_STATUS_PAUSE)
-                    unpause_action(true);
-                else
-                    pause_action(true);
-            }
-            else
-                if (playlist_resume() != -1)
-                {
-                    playlist_start(global_status.resume_index,
-                                   global_status.resume_elapsed,
-                                   global_status.resume_offset);
-                }
-            return event;
-        }
-        case BUTTON_MULTIMEDIA_NEXT:
-            audio_next();
-            return event;
-        case BUTTON_MULTIMEDIA_PREV:
-            audio_prev();
-            return event;
-        case BUTTON_MULTIMEDIA_STOP:
-            list_stop_handler();
-            return event;
-        case BUTTON_MULTIMEDIA_REW:
-        case BUTTON_MULTIMEDIA_FFWD:
-            /* not supported yet, needs to be done in the WPS */
-            return 0;
-#endif
-    }
-    return 0;
-}
-
-long default_event_handler(long event)
-{
-    return default_event_handler_ex(event, NULL, NULL);
-}
-
-#ifdef BOOTFILE
-#if !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF) || defined(HAVE_HOTSWAP_STORAGE_AS_MAIN)
-/*
-    memorize/compare details about the BOOTFILE
-    we don't use dircache because it may not be up to date after
-    USB disconnect (scanning in the background)
-*/
-void check_bootfile(bool do_rolo)
-{
-    static time_t mtime = 0;
-    DIR* dir = NULL;
-    struct dirent* entry = NULL;
-
-    /* 1. open BOOTDIR and find the BOOTFILE dir entry */
-    dir = opendir(BOOTDIR);
-
-    if(!dir) return; /* do we want an error splash? */
-
-    /* loop all files in BOOTDIR */
-    while(0 != (entry = readdir(dir)))
-    {
-        if(!strcasecmp(entry->d_name, BOOTFILE))
-        {
-            struct dirinfo info = dir_get_info(dir, entry);
-            /* found the bootfile */
-            if(mtime && do_rolo)
-            {
-                if(info.mtime != mtime)
-                {
-                    static const char *lines[] = { ID2P(LANG_BOOT_CHANGED),
-                                                   ID2P(LANG_REBOOT_NOW) };
-                    static const struct text_message message={ lines, 2 };
-                    button_clear_queue(); /* Empty the keyboard buffer */
-                    if(gui_syncyesno_run(&message, NULL, NULL) == YESNO_YES)
-                    {
-                        audio_hard_stop();
-                        rolo_load(BOOTDIR "/" BOOTFILE);
-                    }
-                }
-            }
-            mtime = info.mtime;
-            break;
-        }
-    }
-    closedir(dir);
-}
-#endif
-#endif
 
 /* check range, set volume and save settings */
 void setvol(void)
@@ -990,6 +443,7 @@ void adjust_volume_ex(int steps, enum volume_adjust_mode mode)
     setvol();
 }
 
+
 char* strrsplt(char* str, int c)
 {
     char* s = strrchr(str, c);
@@ -1025,119 +479,6 @@ char *strip_extension(char* buffer, int buffer_size, const char *filename)
     strmemccpy(buffer, filename, buffer_size);
 
     return buffer;
-}
-
-/* Play a standard sound */
-void system_sound_play(enum system_sound sound)
-{
-    static const struct beep_params
-    {
-        int *setting;
-        unsigned short frequency;
-        unsigned short duration;
-        unsigned short amplitude;
-    } beep_params[] =
-    {
-        [SOUND_KEYCLICK] =
-        { &global_settings.keyclick,
-          4000, KEYCLICK_DURATION, 2500 },
-        [SOUND_TRACK_SKIP] =
-        { &global_settings.beep,
-          2000, 100, 2500 },
-        [SOUND_TRACK_NO_MORE] =
-        { &global_settings.beep,
-          1000, 100, 1500 },
-        [SOUND_LIST_EDGE_BEEP_NOWRAP] =
-        { &global_settings.keyclick,
-          1000, 40, 1500 },
-        [SOUND_LIST_EDGE_BEEP_WRAP] =
-        { &global_settings.keyclick,
-          2000, 20, 1500 },
-
-    };
-
-    const struct beep_params *params = &beep_params[sound];
-
-    if (*params->setting)
-    {
-        beep_play(params->frequency, params->duration,
-                  params->amplitude * *params->setting);
-    }
-}
-
-static keyclick_callback keyclick_current_callback = NULL;
-static void* keyclick_data = NULL;
-void keyclick_set_callback(keyclick_callback cb, void* data)
-{
-    keyclick_current_callback = cb;
-    keyclick_data = data;
-}
-
-/* Produce keyclick based upon button and global settings */
-void keyclick_click(bool rawbutton, int action)
-{
-    int button = action;
-    static long last_button = BUTTON_NONE;
-    bool do_beep = false;
-
-    if (!rawbutton)
-        get_action_statuscode(&button);
-
-    /* Settings filters */
-    if (
-#ifdef HAVE_HARDWARE_CLICK
-        (global_settings.keyclick || global_settings.keyclick_hardware)
-#else
-        global_settings.keyclick
-#endif
-        )
-    {
-        if (global_settings.keyclick_repeats || !(button & BUTTON_REPEAT))
-        {
-            /* Button filters */
-            if (button != BUTTON_NONE && !(button & BUTTON_REL)
-                && !(button & (SYS_EVENT|BUTTON_MULTIMEDIA)) )
-            {
-                do_beep = true;
-            }
-        }
-        else if ((button & BUTTON_REPEAT) && (last_button == BUTTON_NONE))
-        {
-            do_beep = true;
-        }
-#ifdef HAVE_SCROLLWHEEL
-        else if (button & (BUTTON_SCROLL_BACK | BUTTON_SCROLL_FWD))
-        {
-            do_beep  = true;
-        }
-#endif
-    }
-    if (button&BUTTON_REPEAT)
-        last_button = button;
-    else
-        last_button = BUTTON_NONE;
-
-    if (do_beep && keyclick_current_callback)
-        do_beep = keyclick_current_callback(action, keyclick_data);
-    keyclick_current_callback = NULL;
-
-    if (do_beep)
-    {
-#ifdef HAVE_HARDWARE_CLICK
-        if (global_settings.keyclick)
-        {
-            system_sound_play(SOUND_KEYCLICK);
-        }
-        if (global_settings.keyclick_hardware)
-        {
-#if !defined(SIMULATOR)
-            piezo_button_beep(false, false);
-#endif
-        }
-#else
-        system_sound_play(SOUND_KEYCLICK);
-#endif
-    }
 }
 
 /* Return the ReplayGain mode adjusted by other relevant settings */
@@ -1204,8 +545,6 @@ void format_sound_value(char *buf, size_t buf_sz, int snd, int val)
 {
     format_sound_value_ex(buf, buf_sz, snd, val, false);
 }
-
-#endif /* !defined(__PCTOOL__) */
 
 /* Read (up to) a line of text from fd into buffer and return number of bytes
  * read (which may be larger than the number of bytes stored in buffer). If
@@ -1275,23 +614,6 @@ char* skip_whitespace(char* const str)
     return s;
 }
 
-#if !defined(CHECKWPS) && !defined(DBTOOL)
-
-int confirm_delete_yesno(const char *name)
-{
-    const char *lines[] = { ID2P(LANG_REALLY_DELETE), name };
-    const char *yes_lines[] = { ID2P(LANG_DELETING), name };
-    const struct text_message message = { lines, 2 };
-    const struct text_message yes_message = { yes_lines, 2 };
-    return gui_syncyesno_run(&message, &yes_message, NULL);
-}
-
-/*  time_split_units()
-    split time values depending on base unit
-    unit_idx: UNIT_HOUR, UNIT_MIN, UNIT_SEC, UNIT_MS
-    abs_value: absolute time value
-    units_in: array of unsigned ints with UNIT_IDX_TIME_COUNT fields
-*/
 unsigned int time_split_units(int unit_idx, unsigned long abs_val,
                               unsigned long (*units_in)[UNIT_IDX_TIME_COUNT])
 {
@@ -1336,23 +658,6 @@ unsigned int time_split_units(int unit_idx, unsigned long abs_val,
 
     return base_idx;
 }
-
-/* format_time_auto - return an auto ranged time string;
-   buffer:  needs to be at least 25 characters for full range
-
-   unit_idx: specifies lowest or base index of the value
-   add | UNIT_LOCK_ to keep place holder of units that would normally be
-   discarded.. For instance, UNIT_LOCK_HR would keep the hours place, ex: string
-   00:10:10 (0 HRS 10 MINS 10 SECONDS) normally it would return as 10:10
-   add | UNIT_TRIM_ZERO to supress leading zero on the largest unit
-
-   value: should be passed in the same form as unit_idx
-
-   supress_unit: may be set to true and in this case the
-   hr, min, sec, ms identifiers will be left off the resulting string but
-   since right to left languages are handled it is advisable to leave units
-   as an indication of the text direction
-*/
 
 const char *format_time_auto(char *buffer, int buf_len, long value,
                                   int unit_idx, bool supress_unit)
@@ -1512,84 +817,6 @@ void format_time(char* buf, int buf_size, long t)
              hashours+1, units_in[UNIT_IDX_MIN], units_in[UNIT_IDX_SEC]);
 }
 
-const char* format_sleeptimer(char* buffer, size_t buffer_size,
-                              int value, const char* unit)
-{
-    (void) unit;
-    int minutes, hours;
-
-    if (value) {
-        hours = value / 60;
-        minutes = value - (hours * 60);
-        snprintf(buffer, buffer_size, "%d:%02d", hours, minutes);
-        return buffer;
-    } else {
-        return str(LANG_OFF);
-    }
-}
-
-static int seconds_to_min(int secs)
-{
-    return (secs + 10) / 60;  /* round up for 50+ seconds */
-}
-
-char* string_sleeptimer(char *buffer, size_t buffer_len)
-{
-    int sec = get_sleep_timer();
-    char timer_buf[10];
-
-    snprintf(buffer, buffer_len, "%s (%s)",
-             str(sec ? LANG_SLEEP_TIMER_CANCEL_CURRENT
-                 : LANG_SLEEP_TIMER_START_CURRENT),
-             format_sleeptimer(timer_buf, sizeof(timer_buf),
-                sec ? seconds_to_min(sec)
-                    : global_settings.sleeptimer_duration, NULL));
-    return buffer;
-}
-
-/* If a sleep timer is running, cancel it, otherwise start one */
-int toggle_sleeptimer(void)
-{
-    set_sleeptimer_duration(get_sleep_timer() ? 0
-                    : global_settings.sleeptimer_duration);
-    return 0;
-}
-
-void talk_sleeptimer(int custom_duration)
-{
-    int seconds = custom_duration < 0 ? get_sleep_timer() : custom_duration*60;
-    long talk_ids[] = {
-        custom_duration >= 0 ? LANG_SLEEP_TIMER :
-        (seconds ? LANG_SLEEP_TIMER_CANCEL_CURRENT : LANG_SLEEP_TIMER_START_CURRENT),
-        VOICE_PAUSE,
-        custom_duration == 0 ? LANG_OFF :
-        (seconds ? seconds_to_min(seconds)
-            : global_settings.sleeptimer_duration) | UNIT_MIN << UNIT_SHIFT,
-        TALK_FINAL_ID
-    };
-    talk_idarray(talk_ids, true);
-}
-
-#if CONFIG_RTC
-void talk_timedate(void)
-{
-    struct tm *tm = get_time();
-    if (!global_settings.talk_menu)
-        return;
-    talk_id(LANG_CURRENT_TIME, false);
-    if (valid_time(tm))
-    {
-        talk_time(tm, true);
-        talk_date(get_time(), true);
-    }
-    else
-    {
-        talk_id(LANG_UNKNOWN, true);
-    }
-}
-#endif /* CONFIG_RTC */
-#endif /* !defined(CHECKWPS) && !defined(DBTOOL)*/
-
 /**
  * Splits str at each occurence of split_char and puts the substrings into vector,
  * but at most vector_lenght items. Empty substrings are ignored.
@@ -1674,12 +901,6 @@ int open_pathfmt(char *buf, size_t size, int oflag, const char *pathfmt, ...)
     return open(buf, oflag, 0666);
 }
 
-/** Open a UTF-8 file and set file descriptor to first byte after BOM.
- *  If no BOM is present this behaves like open().
- *  If the file is opened for writing and O_TRUNC is set, write a BOM to
- *  the opened file and leave the file pointer set after the BOM.
- */
-
 int open_utf8(const char* pathname, int flags)
 {
     ssize_t ret;
@@ -1711,226 +932,6 @@ int open_utf8(const char* pathname, int flags)
     return ret >= 0 ? fd : -1;
 }
 
-
-#ifdef HAVE_LCD_COLOR
-/*
- * Helper function to convert a string of 6 hex digits to a native colour
- */
-
-static int hex2dec(int c)
-{
-    return  (((c) >= '0' && ((c) <= '9')) ? (c) - '0' :
-                                            (toupper(c)) - 'A' + 10);
-}
-
-int hex_to_rgb(const char* hex, int* color)
-{
-    int red, green, blue;
-    int i = 0;
-
-    while ((i < 6) && (isxdigit(hex[i])))
-        i++;
-
-    if (i < 6)
-        return -1;
-
-    red = (hex2dec(hex[0]) << 4) | hex2dec(hex[1]);
-    green = (hex2dec(hex[2]) << 4) | hex2dec(hex[3]);
-    blue = (hex2dec(hex[4]) << 4) | hex2dec(hex[5]);
-
-    *color = LCD_RGBPACK(red,green,blue);
-
-    return 0;
-}
-#endif /* HAVE_LCD_COLOR */
-
-/* '0'-'3' are ASCII 0x30 to 0x33 */
-#define is0123(x) (((x) & 0xfc) == 0x30)
-#if !defined(__PCTOOL__) || defined(CHECKWPS)
-bool parse_color(enum screen_type screen, char *text, int *value)
-{
-    (void)text; (void)value; /* silence warnings on mono bitmap */
-    (void)screen;
-
-#ifdef HAVE_LCD_COLOR
-    if (screens[screen].depth > 2)
-    {
-        if (hex_to_rgb(text, value) < 0)
-            return false;
-        else
-            return true;
-    }
-#endif
-
-#if LCD_DEPTH == 2 || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH == 2)
-    if (screens[screen].depth == 2)
-    {
-        if (text[1] != '\0' || !is0123(*text))
-            return false;
-        *value = *text - '0';
-        return true;
-    }
-#endif
-    return false;
-}
-#endif /* !defined(__PCTOOL__) || defined(CHECKWPS) */
-
-/* only used in USB HID and set_time screen */
-#if defined(USB_ENABLE_HID) || (CONFIG_RTC != 0)
-int clamp_value_wrap(int value, int max, int min)
-{
-    if (value > max)
-        return min;
-    if (value < min)
-        return max;
-    return value;
-}
-#endif
-
-
-#ifndef __PCTOOL__
-
-#define MAX_ACTIVITY_DEPTH 12
-static enum current_activity
-        current_activity[MAX_ACTIVITY_DEPTH] = {ACTIVITY_UNKNOWN};
-static int current_activity_top = 0;
-
-static void push_current_activity_refresh(enum current_activity screen, bool refresh)
-{
-    current_activity[current_activity_top++] = screen;
-    FOR_NB_SCREENS(i)
-    {
-        skinlist_set_cfg(i, NULL);
-        if (refresh)
-            skin_update(CUSTOM_STATUSBAR, i, SKIN_REFRESH_ALL);
-    }
-}
-
-static void pop_current_activity_refresh(bool refresh)
-{
-    current_activity_top--;
-    FOR_NB_SCREENS(i)
-    {
-        skinlist_set_cfg(i, NULL);
-        if (refresh)
-            skin_update(CUSTOM_STATUSBAR, i, SKIN_REFRESH_ALL);
-    }
-}
-
-void push_current_activity(enum current_activity screen)
-{
-    push_current_activity_refresh(screen, true);
-}
-
-void push_activity_without_refresh(enum current_activity screen)
-{
-    push_current_activity_refresh(screen, false);
-}
-
-void pop_current_activity(void)
-{
-    pop_current_activity_refresh(true);
-#if 0
-    current_activity_top--;
-    FOR_NB_SCREENS(i)
-    {
-        skinlist_set_cfg(i, NULL);
-        if (ACTIVITY_REFRESH_NOW == refresh)
-            skin_update(CUSTOM_STATUSBAR, i, SKIN_REFRESH_ALL);
-    }
-#endif
-}
-
-void pop_current_activity_without_refresh(void)
-{
-    pop_current_activity_refresh(false);
-}
-
-enum current_activity get_current_activity(void)
-{
-    return current_activity[current_activity_top?current_activity_top-1:0];
-}
-
-/* core_load_bmp opens bitmp filename and allocates space for it
-*  you must set bm->data with the result from core_get_data(handle)
-*  you must also call core_free(handle) when finished with the bitmap
-*  returns handle, ALOC_ERR(0) on failure
-* ** Extended error info truth table **
-*  [ Handle ][buf_reqd]
-*  [  > 0   ][  > 0   ] buf_reqd indicates how many bytes were used
-*  [ALOC_ERR][  > 0   ] buf_reqd indicates how many bytes are needed
-*  [ALOC_ERR][READ_ERR] there was an error reading the file or it is empty
-*/
-int core_load_bmp(const char * filename, struct bitmap *bm, const int bmformat,
-                  ssize_t *buf_reqd, struct buflib_callbacks *ops)
-{
-    ssize_t buf_size;
-    ssize_t size_read = 0;
-    int handle = CLB_ALOC_ERR;
-
-    int fd = open(filename, O_RDONLY);
-    *buf_reqd = CLB_READ_ERR;
-
-    if (fd < 0) /* Exit if file opening failed */
-    {
-        DEBUGF("read_bmp_file: can't open '%s', rc: %d\n", filename, fd);
-        return CLB_ALOC_ERR;
-    }
-
-    buf_size = read_bmp_fd(fd, bm, 0, bmformat|FORMAT_RETURN_SIZE, NULL);
-
-    if (buf_size > 0)
-    {
-        handle = core_alloc_ex(buf_size, ops);
-        if (handle > 0)
-        {
-            bm->data = core_get_data_pinned(handle);
-            lseek(fd, 0, SEEK_SET); /* reset to beginning of file */
-            size_read = read_bmp_fd(fd, bm, buf_size, bmformat, NULL);
-
-            if (size_read > 0) /* free unused alpha channel, if any */
-            {
-                core_shrink(handle, bm->data, size_read);
-                *buf_reqd = size_read;
-            }
-
-            core_put_data_pinned(bm->data);
-            bm->data = NULL; /* do this to force a crash later if the
-                                    caller doesnt call core_get_data() */
-        }
-        else
-            *buf_reqd = buf_size; /* couldn't allocate pass bytes needed */
-
-        if (size_read <= 0)
-        {
-            /* error reading file */
-            core_free(handle); /* core_free() ignores free handles (<= 0) */
-            handle = CLB_ALOC_ERR;
-        }
-    }
-
-    close(fd);
-    return handle;
-}
-
-/*
- * Normalized volume routines adapted from alsamixer volume_mapping.c
- */
-/*
- * Copyright (c) 2010 Clemens Ladisch <clemens@ladisch.de>
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
 /*
  * "The mapping is designed so that the position in the interval is proportional
  * to the volume as a human ear would perceive it (i.e., the position is the
@@ -2015,21 +1016,219 @@ long from_normalized_volume(long norm, long min_vol, long max_vol, long max_norm
     return vol >> NVOL_FRACBITS;
 }
 
-void clear_screen_buffer(bool update)
+/* ── pausing (was in gui/wps.c) ─────────────────────────────────────── */
+
+void pause_action(bool updatewps)
 {
-    struct viewport vp;
-    struct viewport *last_vp;
-    FOR_NB_SCREENS(i)
+    (void)updatewps;
+    /* rewind a bit when pausing, if asked to */
+    int rewind = global_settings.pause_rewind;
+    audio_pause();
+    if (rewind > 0)
     {
-        struct screen * screen = &screens[i];
-        viewport_set_defaults(&vp, screen->screen_type);
-        last_vp = screen->set_viewport(&vp);
-        screen->clear_viewport();
-        if (update) {
-            screen->update_viewport();
+        struct mp3entry *id3 = audio_current_track();
+        if (id3)
+        {
+            long pos = (long)id3->elapsed - rewind * 1000L;
+            audio_ff_rewind(pos > 0 ? pos : 0);
         }
-        screen->set_viewport(last_vp);
     }
 }
 
-#endif /* ndef __PCTOOL__ */
+void unpause_action(bool updatewps)
+{
+    (void)updatewps;
+    audio_resume();
+}
+
+/* ── system sounds ──────────────────────────────────────────────────── */
+
+void system_sound_play(enum system_sound sound)
+{
+    static const struct { unsigned short freq, dur, amp; } beeps[] =
+    {
+        [SOUND_KEYCLICK]              = { 4000, KEYCLICK_DURATION, 2500 },
+        [SOUND_TRACK_SKIP]            = { 2000, 100, 2500 },
+        [SOUND_TRACK_NO_MORE]         = { 1000, 100, 1500 },
+        [SOUND_LIST_EDGE_BEEP_WRAP]   = { 2000,  20, 1500 },
+        [SOUND_LIST_EDGE_BEEP_NOWRAP] = { 1000,  40, 1500 },
+    };
+    if (sound == SOUND_TRACK_SKIP || sound == SOUND_TRACK_NO_MORE)
+    {
+        if (global_settings.beep)
+            beep_play(beeps[sound].freq, beeps[sound].dur,
+                      beeps[sound].amp * global_settings.beep);
+    }
+}
+
+/* ── shutdown, USB, events ──────────────────────────────────────────── */
+
+static void system_flush(void)
+{
+    playlist_shutdown();
+    call_storage_idle_notifys(true);
+}
+
+static bool clean_shutdown(enum shutdown_type sd_type,
+                           void (*callback)(void *), void *parameter)
+{
+    status_save(true);
+
+#if CONFIG_CHARGING && !defined(HAVE_POWEROFF_WHILE_CHARGING)
+    if (!charger_inserted())
+#endif
+    {
+        bool batt_safe = battery_level_safe();
+
+        if (batt_safe)
+        {
+#ifdef HAVE_TAGCACHE
+            if (!tagcache_prepare_shutdown())
+            {
+                cancel_shutdown();
+                splash(HZ, ID2P(LANG_TAGCACHE_BUSY));
+                return false;
+            }
+#endif
+            osm_shutdown_screen(sd_type == SHUTDOWN_REBOOT, battery_level() <= 10);
+        }
+        else
+            osm_shutdown_screen(false, true);
+
+#ifdef HAVE_DISK_STORAGE
+        if (batt_safe) /* do not save on critical battery */
+#endif
+        {
+            audio_stop();
+            if (callback != NULL)
+                callback(parameter);
+            system_flush();
+        }
+#if defined(HAVE_DIRCACHE) && defined(HAVE_DISK_STORAGE)
+        else
+            dircache_disable();
+#endif
+        shutdown_hw(sd_type);
+    }
+    return false;
+}
+
+#ifdef BOOTFILE
+#if !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF) || defined(HAVE_HOTSWAP_STORAGE_AS_MAIN)
+/* memorize/compare details about the BOOTFILE: when a new firmware was
+ * copied over USB, offer to start it right away */
+void check_bootfile(bool do_rolo)
+{
+    static time_t mtime = 0;
+    DIR* dir = opendir(BOOTDIR);
+    struct dirent* entry;
+
+    if (!dir)
+        return;
+
+    while ((entry = readdir(dir)))
+    {
+        if (!strcasecmp(entry->d_name, BOOTFILE))
+        {
+            struct dirinfo info = dir_get_info(dir, entry);
+            if (mtime && do_rolo && info.mtime != mtime)
+            {
+                button_clear_queue();
+                if (osm_confirm_reboot_new_firmware())
+                {
+                    audio_hard_stop();
+                    rolo_load(BOOTDIR "/" BOOTFILE);
+                }
+            }
+            mtime = info.mtime;
+            break;
+        }
+    }
+    closedir(dir);
+}
+#endif
+#endif
+
+long default_event_handler_ex(long event, void (*callback)(void *), void *parameter)
+{
+    switch(event)
+    {
+        case SYS_USB_CONNECTED:
+            if (callback != NULL)
+                callback(parameter);
+            system_flush();
+#if defined(BOOTFILE) && !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
+            check_bootfile(false); /* gets initial size */
+#endif
+            osm_usb_screen();
+#if defined(BOOTFILE) && !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
+            check_bootfile(true);
+#endif
+            osm_library_changed();
+            return SYS_USB_CONNECTED;
+
+        case SYS_POWEROFF:
+        case SYS_REBOOT:
+            if (!clean_shutdown(event == SYS_POWEROFF ? SHUTDOWN_POWER_OFF
+                                                      : SHUTDOWN_REBOOT,
+                                callback, parameter))
+                return event;
+            break;
+#if CONFIG_CHARGING
+        case SYS_CHARGER_CONNECTED:
+            car_adapter_mode_processing(true);
+            return SYS_CHARGER_CONNECTED;
+
+        case SYS_CHARGER_DISCONNECTED:
+            car_adapter_mode_processing(false);
+            reset_runtime();
+            return SYS_CHARGER_DISCONNECTED;
+
+        case SYS_CAR_ADAPTER_RESUME:
+            unpause_action(true);
+            return SYS_CAR_ADAPTER_RESUME;
+#endif
+#ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
+        case SYS_FS_CHANGED:
+        {
+            /* rockbox lives on the first hotswappable drive: give up if
+             * that one is gone */
+            for (int i = 0; i < NUM_DRIVES; i++)
+            {
+                if (storage_removable(i) && !storage_present(i))
+                    return SYS_FS_CHANGED;
+            }
+            system_flush();
+            check_bootfile(true); /* state gotten in main.c:init() */
+            osm_library_changed();
+        }
+            return SYS_FS_CHANGED;
+#endif
+#ifdef HAVE_HEADPHONE_DETECTION
+        case SYS_PHONE_PLUGGED:
+            hp_unplug_change(true);
+            return SYS_PHONE_PLUGGED;
+
+        case SYS_PHONE_UNPLUGGED:
+            hp_unplug_change(false);
+            return SYS_PHONE_UNPLUGGED;
+#endif
+    }
+    return 0;
+}
+
+/* .rockbox must exist for anything to work */
+bool check_rockboxdir(void)
+{
+    if (!dir_exists(ROCKBOX_DIR))
+    {
+        splash(HZ*2, "No .rockbox directory");
+        return false;
+    }
+    return true;
+}
+
+long default_event_handler(long event)
+{
+    return default_event_handler_ex(event, NULL, NULL);
+}

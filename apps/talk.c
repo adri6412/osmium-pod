@@ -29,8 +29,6 @@
 #include "system.h"
 #include "kernel.h"
 #include "settings.h"
-#include "settings_list.h"
-#include "splash.h"
 #include "voice_thread.h"
 #include "audio.h"
 #include "lang.h"
@@ -40,10 +38,15 @@
 /*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "bitswap.h"
-#include "plugin.h" /* plugin_get_buffer() */
 #include "debug.h"
 #include "panic.h"
-#include "misc.h" /* time_split_units() */
+#include "misc.h"
+#include "pathfuncs.h"
+#include "dir.h"
+#include "core_alloc.h"
+#include "rbpaths.h"
+#include "rbunicode.h"
+#include "splash.h" /* time_split_units() */
 #include "mv.h"
 
 /***************** Constants *****************/
@@ -1543,18 +1546,6 @@ void talk_disable(bool disable)
         talk_temp_disable_count++;
     else
         talk_temp_disable_count--;
-}
-
-void talk_setting(const void *global_settings_variable)
-{
-    const struct settings_list *setting;
-    if (!global_settings.talk_menu)
-        return;
-    setting = find_setting(global_settings_variable);
-    if (setting == NULL)
-        return;
-    if (setting->lang_id)
-        talk_id(setting->lang_id,false);
 }
 
 void talk_date(const struct tm *tm, bool enqueue)

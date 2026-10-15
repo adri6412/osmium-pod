@@ -44,6 +44,7 @@
 #include "playback.h"
 #include "storage.h"
 #include "misc.h"
+#include "timefuncs.h"
 #include "settings.h"
 #include "audiohw.h"
 #include "general.h"
@@ -67,7 +68,6 @@
 
 #ifdef USB_ENABLE_AUDIO
 #include "usbstack/usb_audio.h"
-#include "splash.h"
 #include "lang.h"
 #endif
 
@@ -177,7 +177,8 @@ struct audio_resume_info
 static struct mutex id3_mutex SHAREDBSS_ATTR; /* (A,O)*/
 
 /** For album art support **/
-#define MAX_MULTIPLE_AA SKINNABLE_SCREENS_COUNT
+/* the Osmium UI uses two: the cover and its blurred backdrop */
+#define MAX_MULTIPLE_AA 2
 #ifdef HAVE_ALBUMART
 
 static int albumart_mode = -1;

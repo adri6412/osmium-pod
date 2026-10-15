@@ -78,35 +78,32 @@
 #include "playlist.h"
 #include "ata_idle_notify.h"
 #include "file.h"
-#include "action.h"
 #include "mv.h"
 #include "debug.h"
 #include "audio.h"
 #include "lcd.h"
 #include "kernel.h"
 #include "settings.h"
-#include "status.h"
 #include "applimits.h"
-#include "screens.h"
 #include "core_alloc.h"
 #include "misc.h"
 #include "pathfuncs.h"
 #include "button.h"
-#include "filetree.h"
 #include "abrepeat.h"
 #include "thread.h"
 #include "usb.h"
-#include "filetypes.h"
-#include "icons.h"
+#include "dir.h"
+#include "metadata.h"
+#include "strnatcmp.h"
+#include "splash.h"
+#include "osmium.h"
+#include "crc32.h"
 #include "system.h"
 #include "misc.h"
 
 #include "lang.h"
 #include "talk.h"
-#include "splash.h"
 #include "rbunicode.h"
-#include "root_menu.h"
-#include "plugin.h" /* To borrow a temp buffer to rewrite a .m3u8 file */
 #include "logdiskf.h"
 #ifdef HAVE_DIRCACHE
 #include "dircache.h"
@@ -774,6 +771,85 @@ exit:
 }
 
 /*
+ * Directory scanning for "play the whole folder" and folder advance. This
+ * used to borrow the file browser's cache (tree.c), which no longer exists:
+ * a folder is read here into a small sorted list of sub-folders and audio
+ * files. There is one list, shared, guarded by pl_dir_mutex (recursive):
+ * whoever recurses reloads the parent folder afterwards, as before.
+ */
+#define PL_DIR_MAX_ENTRIES 2048
+#define PL_DIR_NAMES_SIZE  (48*1024)
+#define PL_ENTRY_DIR   1
+#define PL_ENTRY_AUDIO 2
+
+static struct pl_dir
+{
+    int count;
+    int names_used;
+    bool reverse;
+    struct { unsigned int name; unsigned char attr; } e[PL_DIR_MAX_ENTRIES];
+    char names[PL_DIR_NAMES_SIZE];
+} pl_dir;
+static struct mutex pl_dir_mutex SHAREDBSS_ATTR;
+
+static int pl_dir_cmp(const void *a, const void *b)
+{
+    const typeof(pl_dir.e[0]) *ea = a, *eb = b;
+    /* folders first, then files; natural order like the old browser */
+    if ((ea->attr & PL_ENTRY_DIR) != (eb->attr & PL_ENTRY_DIR))
+        return (ea->attr & PL_ENTRY_DIR) ? -1 : 1;
+    int r = strnatcasecmp(&pl_dir.names[ea->name], &pl_dir.names[eb->name]);
+    return pl_dir.reverse ? -r : r;
+}
+
+static inline const char *pl_dir_name(int i)
+{
+    return &pl_dir.names[pl_dir.e[i].name];
+}
+
+/* read `path` into pl_dir; returns the number of entries or -1 */
+static int pl_dir_load(const char *path, bool reverse)
+{
+    DIR *dir = opendir(path[0] ? path : PATH_ROOTSTR);
+    struct dirent *ent;
+
+    if (!dir)
+        return -1;
+
+    pl_dir.count = 0;
+    pl_dir.names_used = 0;
+    pl_dir.reverse = reverse;
+
+    while ((ent = readdir(dir)) && pl_dir.count < PL_DIR_MAX_ENTRIES)
+    {
+        if (ent->d_name[0] == '.')
+            continue;               /* hidden, ".", ".." */
+
+        struct dirinfo info = dir_get_info(dir, ent);
+        unsigned char attr;
+        if (info.attribute & ATTR_DIRECTORY)
+            attr = PL_ENTRY_DIR;
+        else if (probe_file_format(ent->d_name) != AFMT_UNKNOWN)
+            attr = PL_ENTRY_AUDIO;
+        else
+            continue;
+
+        size_t len = strlen(ent->d_name) + 1;
+        if (pl_dir.names_used + len > PL_DIR_NAMES_SIZE)
+            break;
+        memcpy(&pl_dir.names[pl_dir.names_used], ent->d_name, len);
+        pl_dir.e[pl_dir.count].name = pl_dir.names_used;
+        pl_dir.e[pl_dir.count].attr = attr;
+        pl_dir.names_used += len;
+        pl_dir.count++;
+    }
+    closedir(dir);
+
+    qsort(pl_dir.e, pl_dir.count, sizeof(pl_dir.e[0]), pl_dir_cmp);
+    return pl_dir.count;
+}
+
+/*
  * Checks if there are any music files in the dir or any of its
  * subdirectories.  May be called recursively.
  */
@@ -781,12 +857,8 @@ static int check_subdir_for_music(char *dir, const char *subdir, bool recurse)
 {
     int result = -1;
     size_t dirlen = strlen(dir);
-    int num_files = 0;
-    int i;
-    struct entry *files;
-    bool has_music = false;
     bool has_subdir = false;
-    struct tree_context* tc = tree_get_context();
+    char name[MAX_PATH];
 
     if (path_append(dir + dirlen, PA_SEP_HARD, subdir, MAX_PATH - dirlen) >=
             MAX_PATH - dirlen)
@@ -794,66 +866,56 @@ static int check_subdir_for_music(char *dir, const char *subdir, bool recurse)
         return 0;
     }
 
-    if (ft_load(tc, dir) < 0)
+    mutex_lock(&pl_dir_mutex);
+    if (pl_dir_load(dir, false) < 0)
     {
+        mutex_unlock(&pl_dir_mutex);
         return -2;
     }
 
-    tree_lock_cache(tc);
-    files = tree_get_entries(tc);
-    num_files = tc->filesindir;
-
-    for (i=0; i<num_files; i++)
+    for (int i = 0; i < pl_dir.count; i++)
     {
-        if (files[i].attr & ATTR_DIRECTORY)
+        if (pl_dir.e[i].attr & PL_ENTRY_DIR)
             has_subdir = true;
-        else if ((files[i].attr & FILE_ATTR_MASK) == FILE_ATTR_AUDIO)
+        else
         {
-            has_music = true;
-            break;
+            mutex_unlock(&pl_dir_mutex);
+            return 0;           /* has music */
         }
-    }
-
-    if (has_music)
-    {
-        tree_unlock_cache(tc);
-        return 0;
     }
 
     if (has_subdir && recurse)
     {
-        for (i=0; i<num_files; i++)
+        for (int i = 0; i < pl_dir.count; i++)
         {
-            if (action_userabort(TIMEOUT_NOBLOCK))
+            if (osm_user_abort())
             {
                 result = -2;
                 break;
             }
+            if (!(pl_dir.e[i].attr & PL_ENTRY_DIR))
+                continue;
 
-            if (files[i].attr & ATTR_DIRECTORY)
+            strmemccpy(name, pl_dir_name(i), sizeof(name));
+            result = check_subdir_for_music(dir, name, true);
+            if (!result)
+                break;
+            /* the recursion used the list: read this folder again */
+            if (pl_dir_load(dir, false) < 0)
             {
-                result = check_subdir_for_music(dir, files[i].name, true);
-                if (!result)
-                    break;
+                result = -2;
+                break;
             }
         }
     }
-    tree_unlock_cache(tc);
+    mutex_unlock(&pl_dir_mutex);
 
     if (result < 0)
     {
         if (dirlen)
-        {
             dir[dirlen] = '\0';
-        }
         else
-        {
             strcpy(dir, PATH_ROOTSTR);
-        }
-
-        /* we now need to reload our current directory */
-        if(ft_load(tc, dir) < 0)
-            splash(HZ*2, ID2P(LANG_PLAYLIST_DIRECTORY_ACCESS_ERROR));
     }
     return result;
 }
@@ -867,9 +929,9 @@ static int get_next_dir(char *dir, int direction)
     struct playlist_info* playlist = &current_playlist;
     int result = -1;
     char *start_dir = NULL;
+    char start_buf[MAX_PATH];
+    char name[MAX_PATH];
     bool exit = false;
-    struct tree_context* tc = tree_get_context();
-    int saved_dirfilter = *(tc->dirfilter);
     unsigned int base_len;
 
     if (global_settings.constrain_next_folder)
@@ -892,117 +954,51 @@ static int get_next_dir(char *dir, int direction)
         base_len = 0;
     }
 
-    /* process random folder advance */
-    if (global_settings.next_folder == FOLDER_ADVANCE_RANDOM)
-    {
-        int fd = open(ROCKBOX_DIR "/folder_advance_list.dat", O_RDONLY);
-        if (fd >= 0)
-        {
-            int folder_count = 0;
-            ssize_t nread = read(fd,&folder_count,sizeof(int));
-            if ((nread == sizeof(int)) && folder_count)
-            {
-                char buffer[MAX_PATH];
-                /* give up looking for a directory after we've had four
-                   times as many tries as there are directories. */
-                unsigned long allowed_tries = folder_count * 4;
-                int i;
-                srand(current_tick);
-                *(tc->dirfilter) = SHOW_MUSIC;
-                tc->sort_dir = global_settings.sort_dir;
-                while (!exit && allowed_tries--)
-                {
-                    i = rand() % folder_count;
-                    lseek(fd, sizeof(int) + (MAX_PATH * i), SEEK_SET);
-                    read(fd, buffer, MAX_PATH);
-                    /* is the current dir within our base dir and has music? */
-                    if ((base_len == 0 || !strncmp(buffer, dir, base_len))
-                        && check_subdir_for_music(buffer, "", false) == 0)
-                            exit = true;
-                }
-                close(fd);
-                *(tc->dirfilter) = saved_dirfilter;
-                tc->sort_dir = global_settings.sort_dir;
-                reload_directory();
-                if (exit)
-                {
-                    strcpy(dir,buffer);
-                    return 0;
-                }
-            }
-            else
-                close(fd);
-        }
-    }
-
     /* if the current file is within our base dir, use its dir instead */
     if (base_len == 0 || !strncmp(playlist->filename, dir, base_len))
         strmemccpy(dir, playlist->filename, playlist->dirlen);
 
-    /* use the tree browser dircache to load files */
-    *(tc->dirfilter) = SHOW_ALL;
-
-    /* set up sorting/direction */
-    tc->sort_dir = global_settings.sort_dir;
-    if (direction < 0)
-    {
-        static const char sortpairs[] =
-        {
-            [SORT_ALPHA] = SORT_ALPHA_REVERSED,
-            [SORT_DATE] = SORT_DATE_REVERSED,
-            [SORT_TYPE] = SORT_TYPE_REVERSED,
-            [SORT_ALPHA_REVERSED] = SORT_ALPHA,
-            [SORT_DATE_REVERSED] = SORT_DATE,
-            [SORT_TYPE_REVERSED] = SORT_TYPE,
-        };
-
-        if ((unsigned)tc->sort_dir < sizeof(sortpairs))
-            tc->sort_dir = sortpairs[tc->sort_dir];
-    }
-
+    mutex_lock(&pl_dir_mutex);
     while (!exit)
     {
-        struct entry *files;
-        int num_files = 0;
-        int i;
-
-        if (ft_load(tc, (dir[0]=='\0')?"/":dir) < 0)
+        if (pl_dir_load(dir, direction < 0) < 0)
         {
-            exit = true;
             result = -1;
             break;
         }
 
-        tree_lock_cache(tc);
-        files = tree_get_entries(tc);
-        num_files = tc->filesindir;
-
-        for (i=0; i<num_files; i++)
+        for (int i = 0; i < pl_dir.count; i++)
         {
-            /* user abort */
-            if (action_userabort(TIMEOUT_NOBLOCK))
+            if (osm_user_abort())
             {
                 result = -1;
                 exit = true;
                 break;
             }
 
-            if (files[i].attr & ATTR_DIRECTORY)
+            if (!(pl_dir.e[i].attr & PL_ENTRY_DIR))
+                continue;
+
+            if (!start_dir)
             {
-                if (!start_dir)
+                strmemccpy(name, pl_dir_name(i), sizeof(name));
+                result = check_subdir_for_music(dir, name, true);
+                if (result != -1)
                 {
-                    result = check_subdir_for_music(dir, files[i].name, true);
-                    if (result != -1)
-                    {
-                        exit = true;
-                        break;
-                    }
+                    exit = true;
+                    break;
                 }
-                else if (!strcmp(start_dir, files[i].name))
-                    start_dir = NULL;
+                /* the check reused the list */
+                if (pl_dir_load(dir, direction < 0) < 0)
+                {
+                    result = -1;
+                    exit = true;
+                    break;
+                }
             }
+            else if (!strcmp(start_dir, pl_dir_name(i)))
+                start_dir = NULL;
         }
-        tree_unlock_cache(tc);
 
         if (!exit)
         {
@@ -1021,21 +1017,16 @@ static int get_next_dir(char *dir, int direction)
             {
                 /* move down to parent directory.  current directory name is
                    stored as the starting point for the search in parent */
-                start_dir = strrchr(dir, '/');
-                if (start_dir)
-                {
-                    *start_dir = '\0';
-                    start_dir++;
-                }
-                else
+                char *slash = strrchr(dir, '/');
+                if (!slash)
                     break;
+                strmemccpy(start_buf, slash + 1, sizeof(start_buf));
+                start_dir = start_buf;
+                *slash = '\0';
             }
         }
     }
-
-    /* restore dirfilter */
-    *(tc->dirfilter) = saved_dirfilter;
-    tc->sort_dir = global_settings.sort_dir;
+    mutex_unlock(&pl_dir_mutex);
 
     return result;
 }
@@ -1152,7 +1143,21 @@ static int create_and_play_dir(int direction, bool play_last)
 
     if (playlist_create(dir, NULL) != -1)
     {
-        ft_build_playlist(tree_get_context(), 0);
+        struct playlist_insert_context pl_context;
+        mutex_lock(&pl_dir_mutex);
+        if (pl_dir_load(dir, false) >= 0 &&
+            playlist_insert_context_create(&current_playlist, &pl_context,
+                                           PLAYLIST_REPLACE, false, false) >= 0)
+        {
+            for (int i = 0; i < pl_dir.count; i++)
+            {
+                if ((pl_dir.e[i].attr & PL_ENTRY_AUDIO) &&
+                    playlist_insert_context_add(&pl_context, pl_dir_name(i)) < 0)
+                    break;
+            }
+            playlist_insert_context_release(&pl_context);
+        }
+        mutex_unlock(&pl_dir_mutex);
 
         if (global_settings.playlist_shuffle)
              playlist_shuffle(current_tick, -1);
@@ -1164,10 +1169,6 @@ static int create_and_play_dir(int direction, bool play_last)
 
         current_playlist.started = true;
     }
-
-    /* we've overwritten the dircache when getting the next/previous dir,
-       so the tree browser context will need to be reloaded */
-    reload_directory();
 
     return index;
 }
@@ -1942,6 +1943,7 @@ void playlist_init(void)
     struct playlist_info* playlist = &current_playlist;
     mutex_init(&current_playlist.mutex);
     mutex_init(&on_disk_playlist.mutex);
+    mutex_init(&pl_dir_mutex);
 
     strmemccpy(current_playlist.control_filename, PLAYLIST_CONTROL_FILE,
                sizeof(current_playlist.control_filename));
@@ -2191,82 +2193,51 @@ int playlist_directory_tracksearch(const char* dirname, bool recurse,
 {
     char buf[MAX_PATH+1];
     int result = 0;
-    int num_files = 0;
-    int i;;
-    struct tree_context* tc = tree_get_context();
-    struct tree_cache* cache = &tc->cache;
-    int old_dirfilter = *(tc->dirfilter);
 
     if (!callback)
         return -1;
 
-    /* use the tree browser dircache to load files */
-    *(tc->dirfilter) = SHOW_ALL;
-
-    if (ft_load(tc, dirname) < 0)
+    mutex_lock(&pl_dir_mutex);
+    if (pl_dir_load(dirname, false) < 0)
     {
+        mutex_unlock(&pl_dir_mutex);
         splash(HZ*2, ID2P(LANG_PLAYLIST_DIRECTORY_ACCESS_ERROR));
-        *(tc->dirfilter) = old_dirfilter;
         return -1;
     }
 
-    num_files = tc->filesindir;
-
-    /* we've overwritten the dircache so tree browser will need to be
-       reloaded */
-    reload_directory();
-
-    for (i=0; i<num_files; i++)
+    for (int i = 0; i < pl_dir.count; i++)
     {
         /* user abort */
-        if (action_userabort(TIMEOUT_NOBLOCK))
+        if (osm_user_abort())
         {
             result = -1;
             break;
         }
 
-        struct entry *files = core_get_data(cache->entries_handle);
-        if (files[i].attr & ATTR_DIRECTORY)
+        if (path_append(buf, dirname, pl_dir_name(i), sizeof(buf))
+                >= sizeof(buf))
+            continue;
+
+        if (pl_dir.e[i].attr & PL_ENTRY_DIR)
         {
-            if (recurse)
-            {
-                /* recursively add directories */
-                if (path_append(buf, dirname, files[i].name, sizeof(buf))
-                        >= sizeof(buf))
-                {
-                    continue;
-                }
-
-                result = playlist_directory_tracksearch(buf, recurse,
-                    callback, context);
-                if (result < 0)
-                    break;
-
-                /* we now need to reload our current directory */
-                if(ft_load(tc, dirname) < 0)
-                {
-                    result = -1;
-                    break;
-                }
-
-                num_files = tc->filesindir;
-                if (!num_files)
-                {
-                    result = -1;
-                    break;
-                }
-            }
-            else
+            if (!recurse)
                 continue;
+
+            /* recursively add directories */
+            result = playlist_directory_tracksearch(buf, recurse,
+                                                    callback, context);
+            if (result < 0)
+                break;
+
+            /* the recursion used the list: read this folder again */
+            if (pl_dir_load(dirname, false) <= 0)
+            {
+                result = -1;
+                break;
+            }
         }
-        else if ((files[i].attr & FILE_ATTR_MASK) == FILE_ATTR_AUDIO)
+        else
         {
-            if (path_append(buf, dirname, files[i].name, sizeof(buf))
-                    >= sizeof(buf))
-            {
-                continue;
-            }
-
             if (callback(buf, context) != 0)
             {
                 result = -1;
@@ -2277,9 +2248,7 @@ int playlist_directory_tracksearch(const char* dirname, bool recurse,
             yield();
         }
     }
-
-    /* restore dirfilter */
-    *(tc->dirfilter) = old_dirfilter;
+    mutex_unlock(&pl_dir_mutex);
 
     return result;
 }
@@ -2540,7 +2509,6 @@ bool playlist_entries_iterate(const char *filename,
     bool ret = false;
     int max;
     char *dir;
-    off_t filesize;
 
     char temp_buf[MAX_PATH+1];
     char trackname[MAX_PATH+1];
@@ -2555,21 +2523,15 @@ bool playlist_entries_iterate(const char *filename,
         notify_access_error();
         goto out;
     }
-    off_t start = lseek(fd, 0, SEEK_CUR);
-    filesize = lseek(fd, 0, SEEK_END);
-    lseek(fd, start, SEEK_SET);
     /* we need the directory name for formatting purposes */
     size_t dirlen = path_dirname(filename, (const char **)&dir);
     //dir = strmemdupa(dir, dirlen);
 
 
-    if (action_cb)
-        show_search_progress(true, 0, 0, 0);
-
     while ((max = read_line(fd, temp_buf, sizeof(temp_buf))) > 0)
     {
         /* user abort */
-        if (!action_cb && action_userabort(TIMEOUT_NOBLOCK))
+        if (!action_cb && osm_user_abort())
             break;
 
         if (temp_buf[0] != '#' && temp_buf[0] != '\0')
@@ -2590,13 +2552,10 @@ bool playlist_entries_iterate(const char *filename,
             {
                 goto out;
             }
-            start += max;
             if (action_cb)
             {
                 if (!action_cb(trackname))
                     goto out;
-                else if (!show_search_progress(false, i, start, filesize))
-                    break;
             }
             else if (playlist_insert_context_add(pl_context, trackname) < 0)
                 goto out;
@@ -3236,7 +3195,7 @@ int playlist_resume(void)
                          "%s (%s)", str(LANG_WAIT), str(LANG_OFF_ABORT));
             if (TIME_AFTER(current_tick, last_tick + HZ/4))
             {
-                if (action_userabort(TIMEOUT_NOBLOCK))
+                if (osm_user_abort())
                 {
                     useraborted = true;
                     exit_loop = true;
@@ -3844,7 +3803,7 @@ static int pl_save_playlist(struct playlist_info* playlist,
             index = 0;
 
         /* TODO: Disabled for now, as we can't restore the playlist state yet */
-        if (false && action_userabort(TIMEOUT_NOBLOCK))
+        if (false && osm_user_abort())
         {
             err = 1;
             goto error;
@@ -4093,7 +4052,7 @@ int playlist_save(struct playlist_info* playlist, char *filename)
         if (playlist->indices[i] & PLAYLIST_QUEUED)
         {
             if (reload_tracks || (reload_tracks =
-                (yesno_pop(ID2P(LANG_REMOVE_QUEUED_TRACKS)))))
+                (osm_confirm(str(LANG_REMOVE_QUEUED_TRACKS)))))
                 remove_track_unlocked(playlist, i, false);
             else
                 break;
