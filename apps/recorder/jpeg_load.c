@@ -26,7 +26,13 @@
 * KIND, either express or implied.
 *
 ****************************************************************************/
+#include "config.h"
+#include "system.h"
+#include "lcd.h"
 #include "metadata_common.h"
+#ifndef alloca
+#define alloca __builtin_alloca
+#endif
 #include "debug.h"
 #include <string.h>
 #include "jpeg_load.h"

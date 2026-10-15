@@ -858,7 +858,6 @@ static int check_subdir_for_music(char *dir, const char *subdir, bool recurse)
     int result = -1;
     size_t dirlen = strlen(dir);
     bool has_subdir = false;
-    char name[MAX_PATH];
 
     if (path_append(dir + dirlen, PA_SEP_HARD, subdir, MAX_PATH - dirlen) >=
             MAX_PATH - dirlen)
@@ -896,8 +895,9 @@ static int check_subdir_for_music(char *dir, const char *subdir, bool recurse)
             if (!(pl_dir.e[i].attr & PL_ENTRY_DIR))
                 continue;
 
-            strmemccpy(name, pl_dir_name(i), sizeof(name));
-            result = check_subdir_for_music(dir, name, true);
+            /* the callee appends the name to dir before it reads
+             * another folder into the list */
+            result = check_subdir_for_music(dir, pl_dir_name(i), true);
             if (!result)
                 break;
             /* the recursion used the list: read this folder again */

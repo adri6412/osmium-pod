@@ -3413,8 +3413,16 @@ static bool commit(void)
         return false;
     }
 
-    if (tch.entry_count == 0)
+    if (tch.entry_count == 0 && tc_stat.ready)
+    {
+        /* Nothing new and the database is in place: keep it (and the
+         * ramcache) as it is. Committing anyway would unload the ramcache,
+         * whose reload scans the disk again, and so on forever. */
         logf("nothing to commit");
+        close(tmpfd);
+        remove_db_file(TAGCACHE_FILE_TEMP);
+        return true;
+    }
 
     /* Fully initialize existing headers (if any) before going further. */
     tc_stat.ready = check_all_headers();

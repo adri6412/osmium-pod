@@ -430,12 +430,17 @@ sub buildzip {
         glob_copy("rockbox.3dsx", "$temp_dir/");
     }
 
+    # Osmium Sound builds have no plugins, themes or WPS any more
+    my $have_plugins = -d "$ROOT/apps/plugins";
+
     glob_mkdir("$temp_dir/langs");
+    if ($have_plugins) {
     glob_mkdir("$temp_dir/rocks");
     glob_mkdir("$temp_dir/rocks/games");
     glob_mkdir("$temp_dir/rocks/apps");
     glob_mkdir("$temp_dir/rocks/demos");
     glob_mkdir("$temp_dir/rocks/viewers");
+    }
 
     if ($recording) {
         glob_mkdir("$temp_dir/recpresets");
@@ -444,9 +449,11 @@ sub buildzip {
     glob_mkdir("$temp_dir/eqs");
     glob_copy("$ROOT/lib/rbcodec/dsp/eqs/*.cfg", "$temp_dir/eqs/"); # equalizer presets
 
+    if ($have_plugins) {
     glob_mkdir("$temp_dir/wps");
     glob_mkdir("$temp_dir/icons");
     glob_mkdir("$temp_dir/themes");
+    }
     glob_mkdir("$temp_dir/codepages");
 
     if($bitmap) {
@@ -458,7 +465,7 @@ sub buildzip {
 
     glob_move('*.cp', "$temp_dir/codepages/");
 
-    if($bitmap && $depth > 1) {
+    if($bitmap && $depth > 1 && $have_plugins) {
         glob_mkdir("$temp_dir/backdrops");
     }
 
@@ -473,6 +480,7 @@ sub buildzip {
     # remove directory again if no codec was copied
     rmdir("$temp_dir/codecs");
 
+    if ($have_plugins) {
     find(find_copyfile(qr/\.(rock|ovl|lua)/, abs_path("$temp_dir/rocks/")), 'apps/plugins');
 
     #lua include scripts
@@ -594,6 +602,8 @@ sub buildzip {
              "$temp_dir/rocks/games/picross_numbers.bmp");
     }
 
+    } # $have_plugins
+
     if(-e "$temp_dir/rocks/demos/pictureflow.rock") {
         copy("$ROOT/apps/plugins/bitmaps/native/pictureflow_emptyslide.100x100x16.bmp",
              "$temp_dir/rocks/demos/pictureflow_emptyslide.bmp");
@@ -653,10 +663,8 @@ sub buildzip {
         system("$wps_build_cmd");
         print "wps_build_cmd: done\n" if $verbose;
     }
-    else {
-        print STDERR "No wps module present, can't do the WPS magic!\n";
-    }
 
+    if(-d "$ROOT/wps") {
     # until buildwps.pl is fixed, manually copy the classic_statusbar theme across
     mkdir "$temp_dir/wps/classic_statusbar", 0777;
     glob_copy("$ROOT/wps/classic_statusbar/*.bmp", "$temp_dir/wps/classic_statusbar");
@@ -675,6 +683,7 @@ sub buildzip {
         copy("$temp_dir/wps/classic_statusbar.sbs", "$temp_dir/wps/classic_statusbar.rsbs");
     }
     copy("$temp_dir/wps/rockbox_none.sbs", "$temp_dir/wps/rockbox_none.rsbs");
+    } # wps
 
     # and the info file
     copy("rockbox-info.txt", "$temp_dir/rockbox-info.txt");
@@ -691,8 +700,10 @@ sub buildzip {
     glob_copy('*.voice', "$temp_dir/langs/");
 
     # copy the .lua files
+    if ($have_plugins) {
     glob_mkdir("$temp_dir/rocks/viewers/lua/");
     glob_copy('apps/plugins/lua/*.lua', "$temp_dir/rocks/viewers/lua/");
+    }
 }
 
 my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =

@@ -7,8 +7,8 @@ on:
       - 'bootloader/**'
       - 'firmware/**'
       - 'tools/**'
-      - 'wps/**'
-      - 'backdrops/**'
+      - 'lib/**'
+      - 'fonts/**'
       - '.github/workflows/rockbox.yml'
     tags:
       - 'v*'
@@ -67,50 +67,22 @@ jobs:
 
     - name: Assemble Release
       run: |
-        mkdir -p release/.rockbox
-        
-        # 1. Copy Firmware
-        cp build/rockbox.m3k release/
-        cp build/rockbox-info.txt release/.rockbox/
-        
-        # 2. Copy Codecs, Plugins, etc. (from build output)
-        mkdir -p release/.rockbox/codecs
-        find build -name "*.codec" -exec cp {} release/.rockbox/codecs/ \;
-        
-        mkdir -p release/.rockbox/rocks/apps
-        cp -r build/apps/plugins/*.rock release/.rockbox/rocks/apps/ || true
-        
+        # Firmware, codecs, languages and the rest of .rockbox, as packaged
+        # by the build system. The Osmium Sound interface is built into the
+        # firmware: there are no themes, WPS or plugins to copy.
+        (cd build && make zip)
+        mkdir -p release
+        (cd release && unzip -q ../build/rockbox.zip)
+
+        # Fallback font for the scripts the built-in fonts do not cover
+        # (CJK, ...): Osmium Sound picks it up from .rockbox/fonts.
+        make -C tools convbdf
         mkdir -p release/.rockbox/fonts
-        cp build/fonts/* release/.rockbox/fonts/
-        
-        mkdir -p release/.rockbox/langs
-        cp build/apps/lang/*.lng release/.rockbox/langs/
-        
-        # 3. Merge iPodLike Theme (Base)
-        if [ -d "iPodLike_Fixed/.rockbox" ]; then
-          cp -r iPodLike_Fixed/.rockbox/* release/.rockbox/
-        else
-          echo "Warning: iPodLike_Fixed directory not found"
-        fi
-        
-        # 4. Copy WPS/Themes (Source overlays)
-        mkdir -p release/.rockbox/backdrops
-        cp backdrops/*.bmp release/.rockbox/backdrops/ || true
-        
-        mkdir -p release/.rockbox/wps/iPodLike
-        cp wps/*.wps release/.rockbox/wps/ || true
-        cp wps/*.sbs release/.rockbox/wps/ || true
-        cp wps/iPodLike/*.bmp release/.rockbox/wps/iPodLike/ || true
-        
-        mkdir -p release/.rockbox/themes
-        cp -r apps/themes/* release/.rockbox/themes/ || true
-        
-        # 5. Set default theme config
-        cp apps/themes/iPodLike.cfg release/.rockbox/config.cfg || true
+        ./tools/convbdf -f -o release/.rockbox/fonts/16-GNU-Unifont.fnt fonts/16-GNU-Unifont.bdf
 
         # Create Zip for Release
         cd release
-        zip -r ../rockbox-fiiom3k.zip . rockbox.m3k
+        zip -r ../rockbox-fiiom3k.zip .
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

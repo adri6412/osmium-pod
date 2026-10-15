@@ -48,5 +48,17 @@ recorder/albumart.c
 
 /* ── Osmium UI ─────────────────────────────────────────────────────── */
 osmium/main.c
-osmium/core_glue.c
 osmium/osm_settings.c
+osmium/osm_strings.c
+osmium/osm_gfx.c
+osmium/osm_ui.c
+osmium/osm_player.c
+osmium/osm_library.c
+osmium/osm_system.c
+osmium/scr_home.c
+osmium/scr_browse.c
+osmium/scr_nowplaying.c
+osmium/scr_settings.c
+osmium/assets/osm_fonts.c
+osmium/assets/osm_icons.c
+osmium/assets/osm_images.c

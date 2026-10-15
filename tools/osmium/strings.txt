@@ -1,0 +1,200 @@
+# id | English | Italiano
+BOOT_SCANNING|Scanning the disk…|Analisi del disco…
+BOOT_DATABASE|Preparing the library|Preparazione della libreria
+BOOT_NO_PARTITION|No usable partition. Connect USB to fix the card.|Nessuna partizione utilizzabile. Collega l'USB per sistemare la scheda.
+TAB_MUSIC|Music|Musica
+TAB_DISCOVER|Discover|Scopri
+TAB_SETTINGS|Settings|Impostazioni
+HOME|Home|Home
+FAVORITES|Favorites|Preferiti
+ARTISTS|Artists|Artisti
+ALBUMS|Albums|Album
+GENRES|Genres|Generi
+YEARS|Years|Anni
+COMPOSERS|Composers|Compositori
+NEW_MUSIC|New music|Novità
+FOLDERS|Folders|Cartelle
+PLAYLISTS|Playlists|Playlist
+TRACKS|Tracks|Brani
+ALL_TRACKS|All tracks|Tutti i brani
+ALL_ALBUMS|All albums|Tutti gli album
+NOW_PLAYING|Now playing|In riproduzione
+NOTHING_PLAYING|Nothing playing|Niente in riproduzione
+NO_TRACK|No track|Nessun brano
+UNKNOWN_ARTIST|Unknown artist|Artista sconosciuto
+UNKNOWN_ALBUM|Unknown album|Album sconosciuto
+QUEUE|Queue|Coda
+UP_NEXT|Up next|A seguire
+EMPTY_QUEUE|The queue is empty|La coda è vuota
+EMPTY|Nothing here|Non c'è niente qui
+LIBRARY_EMPTY|Your library is empty. Copy music to the card over USB.|La libreria è vuota. Copia la musica sulla scheda via USB.
+LIBRARY_NOT_READY|The library is being prepared…|La libreria è in preparazione…
+TRACK_COUNT|%d tracks|%d brani
+ALBUM_COUNT|%d albums|%d album
+ONE_TRACK|1 track|1 brano
+ONE_ALBUM|1 album|1 album
+PLAY|Play|Riproduci
+SHUFFLE|Shuffle|Casuale
+PLAY_NEXT|Play next|Riproduci dopo
+ADD_TO_QUEUE|Add to queue|Aggiungi alla coda
+ADD_TO_FAVORITES|Add to favorites|Aggiungi ai preferiti
+REMOVE_FROM_FAVORITES|Remove from favorites|Rimuovi dai preferiti
+ADDED_TO_FAVORITES|Added to favorites|Aggiunto ai preferiti
+REMOVED_FROM_FAVORITES|Removed from favorites|Rimosso dai preferiti
+GO_TO_ALBUM|Go to album|Vai all'album
+GO_TO_ARTIST|Go to artist|Vai all'artista
+REMOVE_FROM_QUEUE|Remove from queue|Togli dalla coda
+CLEAR_QUEUE|Clear the queue|Svuota la coda
+QUEUED|Added to the queue|Aggiunto alla coda
+PLAYING_NEXT|Will play next|Sarà il prossimo
+SLEEP_TIMER|Sleep timer|Timer di spegnimento
+SLEEP_OFF|Off|Spento
+SLEEP_IN|Stops in %d min|Si ferma tra %d min
+MINUTES|%d min|%d min
+CANCEL|Cancel|Annulla
+OK|OK|OK
+YES|Yes|Sì
+NO|No|No
+BACK|Back|Indietro
+ON|On|Attivo
+OFF|Off|Spento
+SETTINGS_TITLE|Settings|Impostazioni
+SETTINGS_SUB|Configure your Osmium Sound|Configura il tuo Osmium Sound
+SET_LANGUAGE|Language|Lingua
+SET_PLAYBACK|Playback|Riproduzione
+SET_AUDIO|Audio output|Uscita audio
+SET_EQUALIZER|Equalizer|Equalizzatore
+SET_NOWPLAYING|Now Playing|Now Playing
+SET_DISPLAY|Display and keys|Schermo e tasti
+SET_LIBRARY|Library|Libreria
+SET_POWER|Power and sleep|Alimentazione
+SET_ABOUT|About this player|Informazioni
+LANG_ENGLISH|English|English
+LANG_ITALIAN|Italiano|Italiano
+REPEAT|Repeat|Ripeti
+REPEAT_OFF|Off|Spento
+REPEAT_ALL|All|Tutto
+REPEAT_ONE|One|Uno
+REPLAYGAIN|ReplayGain|ReplayGain
+RG_TRACK|Track|Brano
+RG_ALBUM|Album|Album
+RG_SHUFFLE|Track in shuffle|Brano se casuale
+RG_OFF|Off|Spento
+RG_NOCLIP|Prevent clipping|Evita il clipping
+RG_PREAMP|ReplayGain pre-amp|Preamplificazione ReplayGain
+CROSSFADE|Crossfade|Dissolvenza incrociata
+XF_OFF|Off|Spenta
+XF_AUTO|Automatic track change|Cambio brano automatico
+XF_MANUAL|Manual skip|Salto manuale
+XF_SHUFFLE|Shuffle|Casuale
+XF_ALWAYS|Always|Sempre
+FADE_ON_STOP|Fade on pause|Dissolvenza in pausa
+RESUME_REWIND|Rewind when resuming|Riavvolgi alla ripresa
+CUESHEET|Cue sheets|Cue sheet
+UNPLUG|When headphones are unplugged|Se si staccano le cuffie
+UNPLUG_NOTHING|Keep playing|Continua
+UNPLUG_PAUSE|Pause|Pausa
+UNPLUG_PAUSE_RESUME|Pause, resume on plug|Pausa, riprendi
+SECONDS|%d s|%d s
+VOLUME_LIMIT|Volume limit|Limite del volume
+BALANCE|Balance|Bilanciamento
+BASS|Bass|Bassi
+TREBLE|Treble|Alti
+FILTER|Digital filter|Filtro digitale
+POWER_MODE|DAC power mode|Modalità del DAC
+CHANNELS|Channels|Canali
+CH_STEREO|Stereo|Stereo
+CH_MONO|Mono|Mono
+CH_LEFT|Left only|Solo sinistro
+CH_RIGHT|Right only|Solo destro
+CH_KARAOKE|Karaoke|Karaoke
+CROSSFEED|Crossfeed|Crossfeed
+CF_MEIER|Meier|Meier
+DITHERING|Dithering|Dithering
+AFR|Listening fatigue reduction|Riduzione dell'affaticamento
+AFR_WEAK|Weak|Debole
+AFR_MODERATE|Moderate|Moderata
+AFR_STRONG|Strong|Forte
+PBE|Perceptual bass|Bassi percettivi
+EQ_ENABLED|Equalizer|Equalizzatore
+EQ_PRECUT|Pre-cut|Pre-attenuazione
+EQ_RESET|Reset to flat|Riporta a piatto
+NP_VIEW|Show|Mostra
+NP_VIEW_COVER|Cover|Copertina
+NP_VIEW_VU|VU meters|VU meter
+VU_LOOK|VU meter look|Aspetto dei VU meter
+AUTOEXPAND|Open when music starts|Apri quando parte la musica
+WHEEL_VOLUME|Wheel changes volume|La rotella cambia il volume
+BRIGHTNESS|Brightness|Luminosità
+BACKLIGHT|Screen off after|Spegni lo schermo dopo
+BACKLIGHT_ALWAYS|Never|Mai
+BUTTONLIGHT|Button light|Luce dei tasti
+TOUCHPAD_SENS|Touchpad sensitivity|Sensibilità del touchpad
+TIME_FORMAT|Time format|Formato dell'ora
+TF_24|24 hours|24 ore
+TF_12|12 hours|12 ore
+LIB_UPDATE|Look for new music|Cerca nuova musica
+LIB_REBUILD|Rebuild the library|Ricostruisci la libreria
+LIB_AUTOUPDATE|Keep up to date by itself|Aggiorna da sola
+LIB_RAM|Load in memory|Carica in memoria
+LIB_STATS|In the library|Nella libreria
+LIB_UPDATING|Looking for new music…|Ricerca di nuova musica…
+LIB_REBUILDING|Rebuilding: restart when it is done|Ricostruzione: riavvia quando ha finito
+LIB_RESTART|Restart to finish|Riavvia per completare
+RUNTIMEDB|Count plays|Conta gli ascolti
+IDLE_POWEROFF|Power off when idle|Spegni se inattivo
+BATTERY|Battery|Batteria
+CHARGING|Charging|In carica
+STORAGE|Storage|Memoria
+FREE_OF|%s free of %s|%s liberi su %s
+VERSION|Version|Versione
+MODEL|Model|Modello
+RESTART|Restart|Riavvia
+POWER_OFF|Power off|Spegni
+POWER_OFF_Q|Turn the player off?|Spegnere il lettore?
+SHUTTING_DOWN|Shutting down…|Spegnimento…
+RESTARTING|Restarting…|Riavvio…
+BATTERY_LOW|Battery low|Batteria scarica
+LOCKED|Keys locked|Tasti bloccati
+UNLOCKED|Keys unlocked|Tasti sbloccati
+UNLOCK_HINT|Press Power to unlock|Premi Power per sbloccare
+USB_TITLE|Connected to a computer|Collegato a un computer
+USB_SUB|Copy your music, then eject the player to keep listening.|Copia la tua musica, poi espelli il lettore per continuare ad ascoltare.
+USB_CHARGING|Charging over USB|In carica via USB
+NEW_FIRMWARE|New firmware|Nuovo firmware
+NEW_FIRMWARE_Q|A new version was copied. Restart now?|È stata copiata una nuova versione. Riavviare ora?
+DISCOVER_TITLE|Discover|Scopri
+DISCOVER_SUB|Let the library choose|Lascia scegliere alla libreria
+MIX_RANDOM|Shuffle everything|Tutto in ordine casuale
+MIX_RANDOM_SUB|Every track, endlessly|Tutti i brani, senza fine
+MIX_ALBUM|A random album|Un album a caso
+MIX_ALBUM_SUB|Start one from the top|Dall'inizio alla fine
+MIX_MOST|Most played|I più ascoltati
+MIX_MOST_SUB|Your favourites, by the numbers|I tuoi preferiti, numeri alla mano
+MIX_RECENT|Recently played|Ascoltati di recente
+MIX_RECENT_SUB|Back to what you were into|Torna a quello che ascoltavi
+MIX_NEW|Recently added|Aggiunti di recente
+MIX_NEW_SUB|The newest on the card|Le ultime novità sulla scheda
+MIX_NEVER|Never played|Mai ascoltati
+MIX_NEVER_SUB|Tracks waiting for you|Brani che ti aspettano
+NOT_ENOUGH|Not enough plays yet|Non ci sono ancora abbastanza ascolti
+CODEC|Format|Formato
+BITRATE|Bitrate|Bitrate
+SAMPLERATE|Sample rate|Frequenza
+HP_DAC|Headphones (AK4376)|Cuffie (AK4376)
+FILTER_SHARP|Sharp roll-off|Taglio netto
+FILTER_SLOW|Slow roll-off|Taglio dolce
+FILTER_SHORT_SHARP|Short delay, sharp|Ritardo breve, netto
+FILTER_SHORT_SLOW|Short delay, slow|Ritardo breve, dolce
+DAC_POWER_HIGH|High performance|Alte prestazioni
+DAC_POWER_LOW|Battery saving|Risparmio batteria
+ALBUM_VIEW|Albums as|Album come
+AV_GRID|Covers|Copertine
+AV_LIST|List|Elenco
+OUTPUT|Output|Uscita
+UPTIME|Playing time on battery|Ascolto con questa carica
+RESTART_Q|Restart the player?|Riavviare il lettore?
+REBUILD_Q|The whole card will be read again. It can take a while.|Tutta la scheda verrà letta di nuovo. Può richiedere un po'.
+EQ_BAND|%s band|Banda %s
+SETTINGS_SAVED|Saved|Salvato
+NEEDS_RESTART|Takes effect after a restart|Ha effetto dopo il riavvio
