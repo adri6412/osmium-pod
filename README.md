@@ -96,9 +96,6 @@ make zip            # rockbox.zip: unzip it to the root of the SD card
 Optionally copy a fallback font for scripts the built-in fonts do not cover
 (CJK…): `tools/convbdf -f -o .rockbox/fonts/16-GNU-Unifont.fnt fonts/16-GNU-Unifont.bdf`.
 
-The GitHub workflow (`.github/workflows/rockbox.yml`) builds the same
-package (`rockbox-fiiom3k.zip`) on every push.
-
 ### Simulator
 ```bash
 mkdir sim && cd sim
@@ -108,6 +105,19 @@ make -j$(nproc) && make install
 ```
 Keys: arrows, Enter (Select), Backspace (Back), Insert (Menu), Space (Play),
 `+` / `-` (volume), Page Up / Page Down (wheel), Esc (Power).
+
+## Releases
+
+The GitHub workflow (`.github/workflows/rockbox.yml`) builds the firmware and
+the bootloader on every push (package in the run's artifacts) and publishes
+a **GitHub release** with `rockipod-osmium-fiiom3k-<version>.zip`:
+
+* push a tag: `git tag v1.0.0 && git push origin v1.0.0`, or
+* *Actions → Build Rockbox for FiiO M3K → Run workflow*, entering the version.
+
+To install, unzip the release archive to the root of the M3K's microSD card
+(overwriting the files in `.rockbox`) and restart the player; `INSTALL.txt`
+in the archive explains the first installation of the bootloader.
 
 ## PC Music Manager
 The desktop application is located in the `pc_app` directory.
