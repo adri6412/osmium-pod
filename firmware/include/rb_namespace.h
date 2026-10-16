@@ -52,6 +52,14 @@ int ns_open_stream(const char *path, unsigned int callflags,
                    struct filestr_base *stream, struct ns_scan_info *scanp);
 bool ns_volume_is_visible(IF_MV_NONVOID(int volume));
 
+#ifdef HAVE_ROCKBOX_DIR_REDIRECT
+/* "/.rockbox" lives on this drive (-1: on the root contents, as usual);
+ * volume is its volume if mounted, else -1 */
+void ns_set_rockbox_dir(int drive, int volume);
+/* called by disk.c for each volume it mounts */
+void ns_volume_mounted(int volume, int drive);
+#endif
+
 /* closes the namespace stream */
 static inline int ns_close_stream(struct filestr_base *stream)
 {

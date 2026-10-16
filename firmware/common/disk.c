@@ -107,6 +107,9 @@ static void init_volume(struct volumeinfo *vi, int drive, int part)
 {
     vi->drive = drive;
     vi->partition = part;
+#ifdef HAVE_ROCKBOX_DIR_REDIRECT
+    ns_volume_mounted(vi - volumes, drive);
+#endif
 }
 
 #ifdef MAX_VIRT_SECTOR_SIZE

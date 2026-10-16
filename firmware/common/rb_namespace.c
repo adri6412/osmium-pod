@@ -33,6 +33,36 @@
 #endif
 
 
+#ifdef HAVE_ROCKBOX_DIR_REDIRECT
+#include <string.h>
+
+/* "/.rockbox" can live on another volume than the root contents: the
+ * system on the internal storage while the card holds the root. The drive
+ * is chosen once; the volume follows mounts and unmounts. */
+static int rbdir_drive = -1;
+static int rbdir_volume = -1;
+
+void ns_set_rockbox_dir(int drive, int volume)
+{
+    rbdir_drive = drive;
+    rbdir_volume = drive < 0 ? -1 : volume;
+}
+
+void ns_volume_mounted(int volume, int drive)
+{
+    if (drive == rbdir_drive && rbdir_volume < 0)
+        rbdir_volume = volume;
+}
+
+/* does the path (after the root's separator) start with ".rockbox"? */
+static bool is_rockbox_dir(const char *p)
+{
+    const size_t len = sizeof (ROCKBOX_DIR) - 2;
+    return !strncasecmp(p, ROCKBOX_DIR + 1, len) &&
+           (p[len] == '\0' || p[len] == PATH_SEPCH);
+}
+#endif /* HAVE_ROCKBOX_DIR_REDIRECT */
+
 #define ROOT_CONTENTS_INDEX  (NUM_VOLUMES)
 #define NUM_ROOT_ITEMS   (NUM_VOLUMES+1)
 
@@ -173,6 +203,10 @@ bool ns_volume_is_visible(IF_MV_NONVOID(int volume))
 void root_unmount_volume(IF_MV_NONVOID(int volume))
 {
     logf("%s: vol: %d", __func__, volume);
+#ifdef HAVE_ROCKBOX_DIR_REDIRECT
+    if (volume < 0 || volume == rbdir_volume)
+        rbdir_volume = -1;
+#endif
     FOR_EACH_VOLUME(volume, item)
     {
     #ifdef HAVE_MULTIVOLUME
@@ -216,6 +250,12 @@ int ns_parse_root(const char *path, const char **pathp, uint16_t *lenp)
      * be returned as "/", volume specifiers as "/<fooN>" */
     *pathp = GOBBLE_PATH_SEPCH(path) - 1;
     *lenp  = IF_MV( volume < NUM_VOLUMES ? p - *pathp : ) 1;
+#ifdef HAVE_ROCKBOX_DIR_REDIRECT
+    /* walk "/.rockbox" from the root of its own volume */
+    if (volume == ROOT_VOLUME && rbdir_volume >= 0 &&
+        is_rockbox_dir(*pathp + *lenp))
+        volume = rbdir_volume;
+#endif
 #ifdef LOGF_ENABLE
     if (volume == INT_MAX)
         logf("vol: ROOT(%d) %s", volume, *pathp);

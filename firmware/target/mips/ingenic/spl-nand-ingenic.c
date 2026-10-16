@@ -35,12 +35,12 @@ int spl_storage_open(void)
     ndrv->scratch_buf = spl_alloc(NAND_DRV_SCRATCHSIZE);
     ndrv->refcount = 0;
 
-    return nand_open(ndrv);
+    return nand_drv_open(ndrv);
 }
 
 void spl_storage_close(void)
 {
-    nand_close(ndrv);
+    nand_drv_close(ndrv);
 }
 
 int spl_storage_read(uint32_t addr, uint32_t length, void* buffer)

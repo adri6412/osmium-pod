@@ -266,10 +266,10 @@ void x1000_dualboot_init_uart2(void)
 
 int x1000_dualboot_load_pdma_fw(void)
 {
-    struct nand_drv* n = nand_init();
+    struct nand_drv* n = nand_drv_init();
     nand_lock(n);
 
-    int ret = nand_open(n);
+    int ret = nand_drv_open(n);
     if(ret != NAND_SUCCESS)
         goto err_unlock;
 
@@ -277,7 +277,7 @@ int x1000_dualboot_load_pdma_fw(void)
     jz_writef(CPM_CLKGR, PDMA(0));
     ret = nand_read_bytes(n, 0x4000, 0x2000, (void*)0xb3422000);
 
-    nand_close(n);
+    nand_drv_close(n);
   err_unlock:
     nand_unlock(n);
     return ret;

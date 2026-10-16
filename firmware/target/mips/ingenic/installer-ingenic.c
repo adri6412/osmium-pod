@@ -138,9 +138,9 @@ static int updater_init(struct updater* u)
     u->ndrv = NULL;
 
     /* open NAND */
-    u->ndrv = nand_init();
+    u->ndrv = nand_drv_init();
     nand_lock(u->ndrv);
-    rc = nand_open(u->ndrv);
+    rc = nand_drv_open(u->ndrv);
     if(rc != NAND_SUCCESS) {
         nand_unlock(u->ndrv);
         u->ndrv = NULL;
@@ -185,7 +185,7 @@ static void updater_cleanup(struct updater* u)
     core_free(u->buf_hnd);
 
     if(u->ndrv) {
-        nand_close(u->ndrv);
+        nand_drv_close(u->ndrv);
         nand_unlock(u->ndrv);
     }
 }

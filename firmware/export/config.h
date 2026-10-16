@@ -325,6 +325,7 @@ Lyre prototype 1 */
 #define NAND_CC      4 /* ChinaChip */
 #define NAND_RK27XX  5
 #define NAND_IMX233  6
+#define NAND_INGENIC 7 /* SPI NAND with the Dhara FTL */
 
 /* CONFIG_RK27XX_FTL: the on-flash format of an rk27xx target's NAND. A
  * target that does not define it builds only the FTL scheme finder. */

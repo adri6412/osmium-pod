@@ -42,10 +42,9 @@ struct uimage_header;
 # define BL_QUIT_NAME       "POWER"
 # define BL_SCREENSHOT_NAME "MENU"
 # define BOOTBACKUP_FILE    "/fiiom3k-boot.bin"
-/* Rockbox lives in NAND in place of the FiiO player kernel, so the original
- * firmware is gone and can no longer be booted. See flashrb.c. */
-# define ROCKBOX_FLASH_ADDR   0x20000
-# define ROCKBOX_FLASH_LENGTH (4 * 1024 * 1024)
+/* Rockbox lives in NAND in place of the FiiO player kernel
+ * (ROCKBOX_FLASH_ADDR in fiiom3k.h), so the original firmware is gone and
+ * can no longer be booted. See flashrb.c. */
 #elif defined(SHANLING_Q1)
 # define BL_RECOVERY        BUTTON_NEXT
 # define BL_UP              BUTTON_PREV

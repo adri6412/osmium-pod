@@ -1016,7 +1016,8 @@ int sd_event(long id, intptr_t data)
     {
         bool present = (id == Q_STORAGE_MEDIUM_INSERTED);
 
-        sdmmc_host_hotswap_event(sdmmc_sd_hosts[IF_MD_DRV(drive)], present);
+        /* data: the drive, numbered within the SD driver */
+        sdmmc_host_hotswap_event(sdmmc_sd_hosts[IF_MD_DRV((int)data)], present);
         return 0;
     }
 #endif

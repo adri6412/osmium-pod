@@ -163,7 +163,7 @@ struct nand_drv {
     unsigned refcount;
 
     /* Scratch and page buffers. Both need to be cacheline-aligned and are
-     * provided externally by the caller prior to nand_open().
+     * provided externally by the caller prior to nand_drv_open().
      *
      * - The scratch buffer is NAND_DRV_SCRATCHSIZE bytes long and is used
      *   for small data transfers associated with commands. It must not be
@@ -194,7 +194,7 @@ extern const size_t nr_supported_nand_chips;
  * ALL normal Rockbox code should use this instance. The SPL does not
  * use it, because it needs to manually place buffers in external RAM.
  */
-extern struct nand_drv* nand_init(void);
+extern struct nand_drv* nand_drv_init(void);
 
 static inline void nand_lock(struct nand_drv* drv)
 {
@@ -215,8 +215,8 @@ static inline void nand_unlock(struct nand_drv* drv)
  *
  * These functions require the lock to be held.
  */
-extern int nand_open(struct nand_drv* drv);
-extern void nand_close(struct nand_drv* drv);
+extern int nand_drv_open(struct nand_drv* drv);
+extern void nand_drv_close(struct nand_drv* drv);
 
 /* Enable/disable OTP access. OTP data pages are usually vendor-specific. */
 void nand_enable_otp(struct nand_drv* drv, bool enable);

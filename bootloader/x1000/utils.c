@@ -233,9 +233,9 @@ static ssize_t uimage_nand_reader(void* buf, size_t count, void* rctx)
 int load_uimage_flash(uint32_t addr, uint32_t length,
                       struct uimage_header* uh, size_t* sizep)
 {
-    struct nand_drv* ndrv = nand_init();
+    struct nand_drv* ndrv = nand_drv_init();
     nand_lock(ndrv);
-    if(nand_open(ndrv) != NAND_SUCCESS) {
+    if(nand_drv_open(ndrv) != NAND_SUCCESS) {
         splashf(5*HZ, "NAND open failed");
         nand_unlock(ndrv);
         return -1;
@@ -259,7 +259,7 @@ int load_uimage_flash(uint32_t addr, uint32_t length,
     ret = handle;
 
   out:
-    nand_close(ndrv);
+    nand_drv_close(ndrv);
     nand_unlock(ndrv);
     return ret;
 }
@@ -269,10 +269,10 @@ int dump_flash(int fd, uint32_t addr, uint32_t length)
     static char buf[8192];
     int ret = 0;
 
-    struct nand_drv* ndrv = nand_init();
+    struct nand_drv* ndrv = nand_drv_init();
     nand_lock(ndrv);
 
-    ret = nand_open(ndrv);
+    ret = nand_drv_open(ndrv);
     if(ret != NAND_SUCCESS) {
         splashf(5*HZ, "NAND open failed\n");
         nand_unlock(ndrv);
@@ -298,7 +298,7 @@ int dump_flash(int fd, uint32_t addr, uint32_t length)
     }
 
   out:
-    nand_close(ndrv);
+    nand_drv_close(ndrv);
     nand_unlock(ndrv);
     return ret;
 }
@@ -425,10 +425,10 @@ void show_flash_info(void)
 
 static int dump_flash_onfi_info(int fd)
 {
-    struct nand_drv* ndrv = nand_init();
+    struct nand_drv* ndrv = nand_drv_init();
     nand_lock(ndrv);
 
-    int ret = nand_open(ndrv);
+    int ret = nand_drv_open(ndrv);
     if(ret != NAND_SUCCESS) {
         splashf(5*HZ, "NAND open failed\n");
         nand_unlock(ndrv);
@@ -489,7 +489,7 @@ static int dump_flash_onfi_info(int fd)
 
   out:
     nand_enable_otp(ndrv, false);
-    nand_close(ndrv);
+    nand_drv_close(ndrv);
     nand_unlock(ndrv);
     return ret;
 }

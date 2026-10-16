@@ -135,7 +135,7 @@ static struct nand_drv static_nand_drv;
 static uint8_t static_scratch_buf[NAND_DRV_SCRATCHSIZE] CACHEALIGN_ATTR;
 static uint8_t static_page_buf[NAND_DRV_MAXPAGESIZE] CACHEALIGN_ATTR;
 
-struct nand_drv* nand_init(void)
+struct nand_drv* nand_drv_init(void)
 {
     static bool inited = false;
     if(!inited) {
@@ -237,7 +237,7 @@ static void setup_chip_registers(struct nand_drv* drv)
         drv->chip->setup_chip(drv);
 }
 
-int nand_open(struct nand_drv* drv)
+int nand_drv_open(struct nand_drv* drv)
 {
     if(drv->refcount > 0) {
         drv->refcount++;
@@ -275,7 +275,7 @@ int nand_open(struct nand_drv* drv)
     return NAND_SUCCESS;
 }
 
-void nand_close(struct nand_drv* drv)
+void nand_drv_close(struct nand_drv* drv)
 {
     --drv->refcount;
     if(drv->refcount > 0)

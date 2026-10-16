@@ -76,8 +76,26 @@
 /* #define WHEEL_ACCELERATION */
 /* #define WHEEL_ACCEL_START */
 
+/* NAND layout: block 0 holds the SPL and the bootloader, then the Rockbox
+ * image (rbflash-x1000.c), then the internal storage (nand-ftl-ingenic.c) */
+#define ROCKBOX_FLASH_ADDR   0x20000
+#define ROCKBOX_FLASH_LENGTH (4 * 1024 * 1024)
+
 /* Storage defines */
+#if defined(BOOTLOADER) || defined(SIMULATOR)
 #define CONFIG_STORAGE STORAGE_SD
+#else
+/* microSD card, plus the internal storage: a Dhara FTL on the NAND after
+ * the bootloader and the Rockbox image (nand-ftl-ingenic.c) */
+#define CONFIG_STORAGE (STORAGE_SD | STORAGE_NAND)
+#define NUM_DRIVES 2
+#define CONFIG_NAND NAND_INGENIC
+/* the card stays the root; /.rockbox can live on the internal storage */
+#define HAVE_ROCKBOX_DIR_REDIRECT
+/* the FTL's map becomes durable on storage_flush() */
+#define HAVE_STORAGE_FLUSH
+#define NAND_FTL_START (ROCKBOX_FLASH_ADDR + ROCKBOX_FLASH_LENGTH)
+#endif
 #define HAVE_HOTSWAP
 #define HAVE_HOTSWAP_STORAGE_AS_MAIN
 #define HAVE_MULTIVOLUME
