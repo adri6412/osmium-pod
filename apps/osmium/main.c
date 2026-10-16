@@ -48,6 +48,9 @@
 #include "pathfuncs.h"
 #include "dsp_core.h"
 #include "osmium.h"
+#ifdef OSM_BOOT_TRACE
+#include "backlight-target.h"
+#endif
 
 #if (CONFIG_PLATFORM & PLATFORM_SDL)
 #ifdef SIMULATOR
@@ -215,6 +218,15 @@ static void INIT_ATTR init(void)
 
     unicode_init();
     lcd_init();
+#ifdef OSM_BOOT_TRACE
+    /* the earliest sign of life: a red screen, the backlight forced on */
+    backlight_hw_init();
+    backlight_hw_on();
+    lcd_set_foreground(LCD_RGBPACK(255, 0, 0));
+    lcd_fillrect(0, 0, LCD_WIDTH, LCD_HEIGHT);
+    lcd_update();
+    sleep(HZ);
+#endif
     global_status.font_id[SCREEN_MAIN] = FONT_SYSFIXED;
     font_init();
     settings_reset();
