@@ -36,9 +36,10 @@
 #include "osm_player.h"
 #include "osm_settings.h"
 #include "osm_library.h"
+#include "osm_storage.h"
 
 enum { PG_ROOT, PG_PLAYBACK, PG_AUDIO, PG_EQ, PG_NP, PG_DISPLAY, PG_LIBRARY,
-       PG_POWER, PG_ABOUT, PG_COUNT };
+       PG_POWER, PG_STORAGE, PG_ABOUT, PG_COUNT };
 
 enum item_type { T_PAGE, T_CHOICE, T_INT, T_BOOL, T_ACTION, T_INFO };
 
@@ -173,6 +174,29 @@ static void act_poweroff(void)
         sys_poweroff();
 }
 
+static void info_system(char *b, int l)
+{
+    strmemccpy(b, osm_str(osm_storage_system_internal() ? S_ON_INTERNAL : S_ON_CARD), l);
+}
+static void info_internal(char *b, int l) { osm_storage_info(b, l); }
+static void move_label(char *b, int l)
+{
+    strmemccpy(b, osm_str(osm_storage_system_internal() ? S_MOVE_TO_CARD
+                                                        : S_MOVE_TO_INTERNAL), l);
+}
+static void act_move(void)
+{
+    bool to_internal = !osm_storage_system_internal();
+    if (!osm_storage_available())
+        osm_toast(ICON_HARD_DRIVE, osm_str(S_NOT_AVAILABLE));
+    else if (!osm_storage_card_present())
+        osm_toast(ICON_HARD_DRIVE, osm_str(S_INSERT_CARD));
+    else if (osm_dialog_wait(osm_str(to_internal ? S_MOVE_TO_INTERNAL : S_MOVE_TO_CARD),
+                             osm_str(to_internal ? S_MOVE_TO_INTERNAL_Q : S_MOVE_TO_CARD_Q),
+                             osm_str(S_MOVE), osm_str(S_CANCEL)))
+        osm_storage_request_move(to_internal);
+}
+
 static void info_tracks(char *b, int l)
 {
     snprintf(b, l, osm_str(S_TRACK_COUNT), lib_track_total());
@@ -288,6 +312,9 @@ static struct item root_items[] = {
     PAGE(S_SET_DISPLAY, ICON_MONITOR, PG_DISPLAY),
     PAGE(S_SET_LIBRARY, ICON_LIBRARY, PG_LIBRARY),
     PAGE(S_SET_POWER, ICON_POWER, PG_POWER),
+#if (CONFIG_STORAGE & STORAGE_NAND)
+    PAGE(S_SET_INTERNAL, ICON_HARD_DRIVE, PG_STORAGE),
+#endif
     PAGE(S_SET_ABOUT, ICON_INFO, PG_ABOUT),
 };
 
@@ -378,6 +405,13 @@ static struct item power_items[] = {
     ACTION(S_POWER_OFF, ICON_POWER, act_poweroff),
 };
 
+static struct item storage_items[] = {
+    INFO(S_SYSTEM_LOCATION, info_system),
+    INFO(S_SET_INTERNAL, info_internal),
+    { .type = T_ACTION, .label = S_MOVE_TO_INTERNAL, .icon = ICON_HARD_DRIVE,
+      .apply = act_move, .label_fn = move_label },
+};
+
 static struct item about_items[] = {
     INFO(S_MODEL, info_model),
     INFO(S_VERSION, info_version),
@@ -395,6 +429,7 @@ static const struct { struct item *items; int count; enum osm_str_id title; } pa
     [PG_DISPLAY]  = { display_items, ARRAYLEN(display_items), S_SET_DISPLAY },
     [PG_LIBRARY]  = { library_items, ARRAYLEN(library_items), S_SET_LIBRARY },
     [PG_POWER]    = { power_items, ARRAYLEN(power_items), S_SET_POWER },
+    [PG_STORAGE]  = { storage_items, ARRAYLEN(storage_items), S_SET_INTERNAL },
     [PG_ABOUT]    = { about_items, ARRAYLEN(about_items), S_SET_ABOUT },
 };
 

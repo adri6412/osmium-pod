@@ -152,7 +152,7 @@ NAND layout:
 |----------|----------|-----------------------------------------------|
 | 0x0      | 128 KiB  | SPL + bootloader (unchanged)                  |
 | 0x20000  | 4 MiB    | Rockbox (was the FiiO kernel)                 |
-| 0x420000 | …        | FiiO recovery kernel and UBI, left unused     |
+| 0x420000 | ~124 MiB | Internal storage (see below); was the FiiO recovery kernel and UBI |
 
 At every boot the bootloader:
 1. compares `.rockbox/rockbox.m3k` on the card with the copy in flash, and
@@ -185,8 +185,36 @@ USB boot is in mask ROM, so it is always available. Keep `flash.img`:
 it is the only copy of the FiiO firmware. This tree has no tool to write
 it back to the NAND.
 
+## Internal storage (experimental)
+
+The rest of the NAND, from 0x420000 to the end, becomes an **internal
+drive** of about 89 MiB, so that the whole `.rockbox` folder (codecs,
+settings, database, resume, favorites) can live in the player and the card
+holds only music. Wear leveling, bad blocks and power loss are handled by
+[Dhara](https://github.com/dlbeer/dhara), a NAND flash translation layer;
+the drive is FAT16 and shows up on the computer next to the card.
+
+Nothing changes until you ask for it: *Settings → Internal storage →
+Move the system to the internal storage*. The player restarts, formats
+the internal drive and copies `.rockbox` there, then renames the card's
+copy to `.rockbox.bak`. *Move the system back to the card* does the
+opposite and erases the internal drive. If a copy fails, the system stays
+where it was.
+
+The card is still the root of the file system: music paths, playlists,
+favorites and the database do not change, and the firmware sends
+`/.rockbox` to the internal drive. Without a card the player still starts,
+with an empty library; insert the card and it restarts to use it.
+
+Updates work as before: copy a new release to the card (or use the web
+installer). At the next start the player copies it into the internal
+drive, keeping settings and database, renames it to `.rockbox.bak`, and
+updates the copy of `rockbox.m3k` in flash.
+
 ## Credits
 * [Rockbox](https://www.rockbox.org/) (GPL v2 or later).
 * Interface design from [Osmium Sound](https://github.com/adri6412/osmium-sound).
 * [DejaVu fonts](https://dejavu-fonts.github.io/) (Bitstream Vera / DejaVu license).
 * [Lucide](https://lucide.dev/) icons (ISC license).
+* [Dhara](https://github.com/dlbeer/dhara) NAND flash translation layer, by
+  Daniel Beer (ISC license), in `firmware/target/mips/ingenic/dhara/`.

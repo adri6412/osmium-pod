@@ -205,3 +205,21 @@ REBUILD_Q|The whole card will be read again. It can take a while.|Tutta la sched
 EQ_BAND|%s band|Banda %s
 SETTINGS_SAVED|Saved|Salvato
 NEEDS_RESTART|Takes effect after a restart|Ha effetto dopo il riavvio
+SET_INTERNAL|Internal storage|Memoria interna
+SYSTEM_LOCATION|System|Sistema
+ON_INTERNAL|Internal storage|Memoria interna
+ON_CARD|Card|Scheda
+MOVE_TO_INTERNAL|Move the system to the internal storage|Sposta il sistema nella memoria interna
+MOVE_TO_INTERNAL_Q|Rockbox, settings and library move into the player; the card keeps only the music. The player restarts to copy the files.|Rockbox, impostazioni e libreria passano nel lettore; sulla scheda resta solo la musica. Il lettore si riavvia per copiare i file.
+MOVE_TO_CARD|Move the system back to the card|Riporta il sistema sulla scheda
+MOVE_TO_CARD_Q|Rockbox, settings and library go back to the card, and the internal storage is erased. The player restarts to copy the files.|Rockbox, impostazioni e libreria tornano sulla scheda e la memoria interna viene cancellata. Il lettore si riavvia per copiare i file.
+MOVE|Move|Sposta
+MOVING_TO_INTERNAL|Moving the system to the internal storage…|Spostamento del sistema nella memoria interna…
+MOVING_TO_CARD|Moving the system to the card…|Spostamento del sistema sulla scheda…
+UPDATING_FROM_CARD|Updating the system from the card…|Aggiornamento del sistema dalla scheda…
+UPDATING_FIRMWARE|Updating the firmware…|Aggiornamento del firmware…
+MOVE_FAILED|The move failed: the system stays where it was.|Spostamento non riuscito: il sistema resta dov'era.
+UPDATE_FAILED|The update failed: the system stays as it was.|Aggiornamento non riuscito: il sistema resta com'era.
+NOT_AVAILABLE|Not available|Non disponibile
+NOT_IN_USE|Not in use|Non usata
+INSERT_CARD|Insert the card first|Inserisci prima la scheda

@@ -94,7 +94,49 @@ both when writing and when reading, as the uImage reader does.
 A file is checked before it is written, the free space before anything
 is erased, and the written data is read back. The main firmware is
 unchanged: after a USB copy, `check_bootfile()` still restarts from the
-card's file (ROLO), and the next cold boot copies it to flash.
+card's file (ROLO), and the next cold boot copies it to flash. The format
+and the I/O of the region are shared with the firmware in
+`firmware/target/mips/ingenic_x1000/rbflash-x1000.c`.
+
+### Internal storage
+
+The NAND after the Rockbox image (`NAND_FTL_START`, 0x420000, to the end
+minus 4 blocks) is a second drive: `STORAGE_SD | STORAGE_NAND`, with the
+card as drive 0 and the NAND as drive 1 (the bootloader stays SD only).
+
+* `firmware/target/mips/ingenic/nand-ftl-ingenic.c` is the storage driver.
+  [Dhara](https://github.com/dlbeer/dhara) (vendored in `dhara/`, unchanged)
+  maps 2 KiB sectors to NAND pages; Rockbox sees 512-byte sectors, and
+  partial pages are read, patched and written back. Writes are durable
+  after `dhara_map_sync()`: on `storage_flush()` (shutdown, ROLO, USB) and
+  after a second without disk activity (`nand_event()`). The drive size is
+  fixed, computed as if 24 blocks were bad, so it never shrinks under the
+  file system. `nand_ftl_format()` writes an MBR and a FAT16 with 2 KiB
+  clusters aligned to pages; `nand_ftl_wipe()` erases the area.
+* The X1000 NAND driver's `nand_init/open/close` are now `nand_drv_*`, so
+  they do not clash with the storage API's `nand_init()`.
+* `firmware/drivers/sdmmc_host.c`: `sd_event()` used an undeclared `drive`
+  with more than one drive; it is the event's data.
+* `HAVE_ROCKBOX_DIR_REDIRECT` (`rb_namespace.c`): `ns_parse_root()` sends
+  any path that starts at the root with `/.rockbox` to the root of another
+  volume. Every file call goes through `open_stream_internal()`, so open,
+  opendir, mkdir, rename and remove all follow; explicit volume paths
+  (`/<1>/.rockbox`) do not. `ns_set_rockbox_dir()` chooses the drive, and
+  `disk.c` reports each mount so the volume follows USB and card changes.
+* `apps/osmium/osm_storage.c` decides at boot. `osm_storage_mount()` runs
+  before `settings_load()`: if the internal drive has a `.rockbox`, it
+  turns the redirect on (unless the internal drive is the root because no
+  card is in). `osm_storage_boot()` runs after it, so its messages are in
+  the user's language: it carries out a move asked for in the settings
+  (a request file in `.rockbox`), takes a release found in the card's
+  `.rockbox` (all but the user's state: `*.cfg`, `*.tcd`, bookmarks,
+  playlists, resume), then writes `rockbox.m3k` to flash if it changed and
+  restarts. The bootloader cannot read the internal drive.
+
+Host tests (not in the tree) ran the driver and Dhara on a simulated NAND
+with bad blocks, through random writes, two full fills, 40 power cuts in
+the middle of writes and a block failing to erase, and checked the FAT16
+with an independent implementation.
 
 The boot screen is the appliance's animation (its Plymouth theme), drawn
 in code at the same 25 fps (`osm_system.c`):

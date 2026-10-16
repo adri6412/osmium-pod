@@ -60,6 +60,7 @@
 #include "rolo.h"
 #include "splash.h"
 #include "osmium.h"
+#include "osm_storage.h"
 
 /* units used with output_dyn_value */
 const unsigned char * const byte_units[] =
@@ -1182,6 +1183,9 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
         case SYS_FS_CHANGED:
         {
+            /* started without a card, with the system on the internal
+             * storage: a card must be the root, so start again */
+            osm_storage_fs_changed();
             /* rockbox lives on the first hotswappable drive: give up if
              * that one is gone */
             for (int i = 0; i < NUM_DRIVES; i++)

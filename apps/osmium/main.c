@@ -49,6 +49,7 @@
 #include "pathfuncs.h"
 #include "dsp_core.h"
 #include "osmium.h"
+#include "osm_storage.h"
 #ifdef OSM_BOOT_TRACE
 #include "backlight-target.h"
 #endif
@@ -71,6 +72,24 @@
 #endif
 
 static void init(void);
+
+#if defined(HAVE_HOTSWAP_STORAGE_AS_MAIN) && !(CONFIG_PLATFORM & PLATFORM_HOSTED)
+/* every card in a slot has a volume */
+static bool card_mounted(void)
+{
+    for (int d = 0; d < NUM_DRIVES; d++)
+    {
+        if (!storage_removable(d) || !storage_present(d))
+            continue;
+        bool found = false;
+        for (int v = 0; v < NUM_VOLUMES && !found; v++)
+            found = volume_drive(v) == d;
+        if (!found)
+            return false;
+    }
+    return true;
+}
+#endif
 
 #ifdef HAVE_ARGV_MAIN
 int main(int argc, char *argv[]) INIT_ATTR MAIN_NORETURN_ATTR;
@@ -263,16 +282,18 @@ static void INIT_ATTR init(void)
     OSM_TRACE("storage_init");
 
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-    /* the card may still be settling */
-    for (int tries = 0; tries < 5 && !mounted; tries++)
+    /* the card may still be settling: with the internal storage mounted,
+     * something is up before the card is */
+    for (int tries = 0; tries < 5; tries++)
     {
 #endif
         rc = disk_mount_all();
         if (rc > 0)
             mounted = true;
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
-        else
-            sleep(HZ/2);
+        if (mounted && card_mounted())
+            break;
+        sleep(HZ/2);
     }
 #endif
 
@@ -293,10 +314,15 @@ static void INIT_ATTR init(void)
     OSM_TRACE("pcm_init");
     dsp_init();
 
+    osm_storage_mount();
+
     CHART(">settings_load");
     settings_load();
     CHART("<settings_load");
     OSM_TRACE("settings_load");
+
+    osm_storage_boot();
+    OSM_TRACE("storage");
 
     init_battery_tables();
     OSM_TRACE("battery tables");

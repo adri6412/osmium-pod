@@ -55,6 +55,7 @@ osmium/osm_ui.c
 osmium/osm_player.c
 osmium/osm_library.c
 osmium/osm_system.c
+osmium/osm_storage.c
 osmium/scr_home.c
 osmium/scr_browse.c
 osmium/scr_nowplaying.c
