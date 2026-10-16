@@ -15,7 +15,10 @@ const cache = new Map();
 
 async function fetchBytes(url) {
   if (!cache.has(url)) {
-    cache.set(url, fetch(url).then(async (r) => {
+    // the files keep their names from one release to the next and Pages
+    // lets browsers keep them for 10 minutes: always ask the server, or a
+    // fresh release would install the previous one
+    cache.set(url, fetch(url, { cache: "no-cache" }).then(async (r) => {
       if (!r.ok) throw new Error(`cannot download ${url} (${r.status})`);
       return new Uint8Array(await r.arrayBuffer());
     }));
@@ -111,7 +114,7 @@ async function installPlayer() {
       fetchBytes(manifest.bootloader),
       fetchBytes(manifest.installer),
     ]);
-    parseBootloader(bl); /* refuse a broken download */
+    say(`Bootloader ${parseBootloader(bl).version}`); /* refuses a broken download */
     const installer = parseBootloader(inst);
     say(`Installer ${installer.version}`);
 
