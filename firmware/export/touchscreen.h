@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Maurus Cuelenaere
  *
@@ -71,5 +70,7 @@ void touchscreen_enable(bool en);
 void touchscreen_enable_device(bool en);
 bool touchscreen_is_enabled(void);
 #endif
+
+void touchscreen_last_state(int *x, int *y, int *state);
 
 #endif /* __TOUCHSCREEN_INCLUDE_H_ */

@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -992,10 +991,10 @@
   desc: in the equalizer settings menu
   user: core
   <source>
-    *: "Peak Filter %d"
+    *: "Peak Filter"
   </source>
   <dest>
-    *: "Csúcsszűrő %d"
+    *: "Csúcsszűrő"
   </dest>
   <voice>
     *: "Csúcsszűrő"
@@ -8922,15 +8921,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Bass Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Bass Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Alsó határfrekvencia"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Alsó határfrekvencia"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Alsó határfrekvencia"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Alsó határfrekvencia"
   </voice>
 </phrase>
 <phrase>
@@ -9599,15 +9598,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Treble Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Treble Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Magas határfrekvencia"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Magas határfrekvencia"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Magas határfrekvencia"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Magas határfrekvencia"
   </voice>
 </phrase>
 <phrase>
@@ -10437,7 +10436,7 @@
 </phrase>
 <phrase>
   id: LANG_USB_MODE
-  desc: in Settings -> General -> System -> USB Mode
+  desc: in Settings -> General -> System -> USB
   user: core
   <source>
     *: "USB Mode"
@@ -14709,11 +14708,11 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_HIDE_ALBUM_TITLE_NEW
-  desc: in the pictureflow settings
+  id: LANG_HIDE_INFO
+  desc: Hide Information
   user: core
   <source>
-    *: "Hide information"
+    *: "Hide Information"
   </source>
   <dest>
     *: "Információ elrejtése"
@@ -14784,7 +14783,7 @@
   user: core
   <source>
     *: "Press LEFT to cancel."
-    android,hifietma*,zenvision: "Press BACK to cancel."
+    android,hifietma*: "Press BACK to cancel."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Press POWER to cancel."
     ihifi760,ihifi960: "Double tap RETURN to cancel."
     ihifi770,ihifi770c,ihifi800: "Press HOME to cancel."
@@ -14799,7 +14798,7 @@
   </source>
   <dest>
     *: "Nyomja meg a LEFT gombot a megszakításhoz."
-    android,hifietma*,zenvision: "Nyomja meg a BACK gombot a megszakításhoz."
+    android,hifietma*: "Nyomja meg a BACK gombot a megszakításhoz."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Nyomja meg a POWER gombot a megszakításhoz."
     ihifi760,ihifi960: "Duplán koppintson a RETURN-re megszakításhoz."
     ihifi770,ihifi770c,ihifi800: "Nyomja meg a HOME gombot a megszakításhoz."
@@ -14814,7 +14813,7 @@
   </dest>
   <voice>
     *: "Nyomja meg a LEFT gombot a megszakításhoz."
-    android,hifietma*,zenvision: "Nyomja meg a BACK gombot a megszakításhoz."
+    android,hifietma*: "Nyomja meg a BACK gombot a megszakításhoz."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Nyomja meg a POWER gombot a megszakításhoz."
     ihifi760,ihifi960: "Duplán koppintson a RETURN-re megszakításhoz."
     ihifi770,ihifi770c,ihifi800: "Nyomja meg a HOME gombot a megszakításhoz."
@@ -15053,20 +15052,6 @@
   </dest>
   <voice>
     *: "Nem bővítmény"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_OPEN_PLUGIN_SET_WPS_CONTEXT_PLUGIN
-  desc: open plugin module
-  user: core
-  <source>
-    *: "Set WPS Context Plugin"
-  </source>
-  <dest>
-    *: "WPS Context Plugin beállítása"
-  </dest>
-  <voice>
-    *: "WPS Context Plugin beállítása"
   </voice>
 </phrase>
 <phrase>
@@ -15309,13 +15294,13 @@
 </phrase>
 <phrase>
   id: LANG_VOICED_DATE_FORMAT
-  desc: format string for how dates will be read back. Y == 4-digit year, A == month name, m == numeric month, d == numeric day. For example, "AdY" will read "January 21 2021"
+  desc: format string for how dates will be read back. Y == 4-digit year (grouped), y == 4-digit year (numeric), A == month name, m == numeric month, d == numeric day. For example, for 2021-01-05, "AdY" will be voiced as "January 5 twenty twenty-one" and "dmy" will be voiced as "5 1 two thousand twenty one
   user: core
   <source>
     *: "dAY"
   </source>
   <dest>
-    *: "dAY"
+    *: "~dAY"
   </dest>
   <voice>
     *: ""
@@ -15918,16 +15903,16 @@
 </phrase>
 <phrase>
   id: LANG_DEFAULT_BROWSER
-  desc: in Settings
+  desc: deprecated
   user: core
   <source>
-    *: "Default Browser"
+    *: ""
   </source>
   <dest>
-    *: "Alapértelmezett böngésző"
+    *: ""
   </dest>
   <voice>
-    *: "Alapértelmezett böngésző"
+    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -16946,5 +16931,201 @@
   <voice>
     *: none
     general_purpose_led: "LED jelzőfények használata"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ANNOUNCE_STATUS
+  desc: announnnce_status plugin
+  user: core
+  <source>
+    *: "Announce Status"
+  </source>
+  <dest>
+    *: "Állapot bejelentése"
+  </dest>
+  <voice>
+    *: "Állapot bejelentése"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_MENU
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "USB"
+  </source>
+  <dest>
+    *: "~USB"
+  </dest>
+  <voice>
+    *: "~U S B"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_CONTEXT_ITEM
+  desc: WPS context item
+  user: core
+  <source>
+    *: "Set Context Item"
+  </source>
+  <dest>
+    *: "Kontextus elem beállítása"
+  </dest>
+  <voice>
+    *: "Kontextus elem beállítása"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEEP_DIRECTORY
+  desc: file browser setting
+  user: core
+  <source>
+    *: "Always remember last folder"
+  </source>
+  <dest>
+    *: "Mindig emlékezzen a legutóbbi mappára"
+  </dest>
+  <voice>
+    *: "Mindig emlékezzen a legutóbbi mappára"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILE_NOT_FOUND
+  desc: When file does not exist
+  user: core
+  <source>
+    *: "File not found"
+  </source>
+  <dest>
+    *: "Fájl nem található"
+  </dest>
+  <voice>
+    *: "Fájl nem található"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SHOW_IN_FILES
+  desc: Reveal item in File Browser
+  user: core
+  <source>
+    *: "Show in Files"
+  </source>
+  <dest>
+    *: "Mutatás a Fájlokban"
+  </dest>
+  <voice>
+    *: "Mutatás a Fájlokban"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CHANNEL_SWAP
+  desc: in sound_settings
+  user: core
+  <source>
+    *: "Swap Left & Right"
+  </source>
+  <dest>
+    *: "Bal & Jobb megcserélése"
+  </dest>
+  <voice>
+    *: "Bal & Jobb megcserélése"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_SET
+  desc: countdown_timer plugin - header shown on the setup screen where the user enters the countdown duration
+  user: core
+  <source>
+    *: "SET TIMER"
+  </source>
+  <dest>
+    *: "IDŐZÍTŐ BEÁLLÍTÁSA"
+  </dest>
+  <voice>
+    *: "Időzítő beállítása"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_RUNNING
+  desc: countdown_timer plugin - status label shown while the countdown is active
+  user: core
+  <source>
+    *: "RUNNING"
+  </source>
+  <dest>
+    *: "FUT"
+  </dest>
+  <voice>
+    *: "Fut"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_PAUSED
+  desc: countdown_timer plugin - status label shown while the countdown is paused
+  user: core
+  <source>
+    *: "PAUSED"
+  </source>
+  <dest>
+    *: "MEGÁLLÍTVA"
+  </dest>
+  <voice>
+    *: "Megállítva"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_OVERTIME
+  desc: countdown_timer plugin - status label shown when the countdown has passed zero and is counting up
+  user: core
+  <source>
+    *: "OVERTIME"
+  </source>
+  <dest>
+    *: "TÚLÓRA"
+  </dest>
+  <voice>
+    *: "Túlóra"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_FINISHED
+  desc: countdown_timer plugin - status label shown at the moment the countdown expires
+  user: core
+  <source>
+    *: "FINISHED"
+  </source>
+  <dest>
+    *: "KÉSZ"
+  </dest>
+  <voice>
+    *: "Kész"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_BAND
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter %d"
+  </source>
+  <dest>
+    *: "Szűrő %d"
+  </dest>
+  <voice>
+    *: "Szűrő"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_FILTER_TYPE
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter Type"
+  </source>
+  <dest>
+    *: "Szűrő típusa"
+  </dest>
+  <voice>
+    *: "Szűrő típusa"
   </voice>
 </phrase>

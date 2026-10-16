@@ -199,26 +199,6 @@ $releasenotes="/wiki/ReleaseNotes400";
         name => 'iriver H320/340',
         status => 3,
     },
-    'lyreproto1' => {
-        name => 'Lyre Prototype 1',
-        status => 1,
-    },
-    'mini2440' => {
-        name => 'Mini 2440',
-        status => 1,
-    },
-    'meizum3' => {
-        name => 'Meizu M3',
-        status => 1,
-    },
-    'meizum6sl' => {
-        name => 'Meizu M6SL',
-        status => 1,
-    },
-    'meizum6sp' => {
-        name => 'Meizu M6SP',
-        status => 1,
-    },
     'mrobe100' => {
         name => 'Olympus M-Robe 100',
         status => 3,
@@ -255,6 +235,10 @@ $releasenotes="/wiki/ReleaseNotes400";
         name => 'Rockchip rk27xx',
         status => 1,
     },
+    'samsungypcp3' => {
+        name => 'Samsung YP-CP3',
+        status => 1,
+    },
     'samsungyh820' => {
         name => 'Samsung YH-820',
         status => 3,
@@ -275,10 +259,6 @@ $releasenotes="/wiki/ReleaseNotes400";
         name => 'Samsung YP-R1',
 	sim => 0,
         status => 2,
-    },
-    'samsungyps3' => {
-        name => 'Samsung YP-S3',
-        status => 1,
     },
     'sansac200' => {
         name => 'SanDisk Sansa c200',
@@ -338,28 +318,9 @@ $releasenotes="/wiki/ReleaseNotes400";
         status => 1,
 	sim => 1,
     },
-    'sansaview' => {
-        name => 'SanDisk Sansa View',
-        status => 1,
-    },
     'vibe500' => {
         name => 'Packard Bell Vibe 500',
         status => 3,
-    },
-    'zenvision' => {
-        name => 'Creative Zen Vision',
-        status => 1,
-	sim => 1,
-    },
-    'zenvisionm30gb' => {
-        name => 'Creative Zen Vision:M 30GB',
-        status => 1,
-	sim => 1,
-    },
-    'zenvisionm60gb' => {
-        name => 'Creative Zen Vision:M 60GB',
-        status => 1,
-	sim => 1,
     },
     'mpiohd200' => {
         name => 'MPIO HD200',
@@ -459,6 +420,11 @@ $releasenotes="/wiki/ReleaseNotes400";
         name => 'Agptek Rocker',
         status => 3,
     },
+    'agptekrockernative' => {
+        name => 'Agptek Rocker (native)',
+        status => 1,
+        manualok => 0,
+    },
     'xduoox3' => {
         name => 'xDuoo X3',
         status => 3,
@@ -512,6 +478,10 @@ $releasenotes="/wiki/ReleaseNotes400";
     },
     'hibyr3proii' => {
         name => 'Hiby R3Pro II',
+        status => 2,
+    },
+    'hidizsap80max' => {
+        name => 'Hidizs AP80 Pro Max',
         status => 2,
     },
 );
@@ -613,7 +583,7 @@ sub simbuilds {
 	    'festival' => '--language english',
 	    'espeak' => '-ven-gb -k 5',
 	    'gtts' => '-l en -t co.uk',
-	    'piper' => 'en_GB-semaine-medium.onnx',
+	    'piper' => 'en_GB-alba-medium.onnx',
 	},
         'enabled' => 1,
     },
@@ -825,7 +795,7 @@ sub simbuilds {
     'norsk' => {
 	'lang' => 'norsk',
 	'name' => 'Norsk (Norwegian)',
-        'short' => 'no',
+        'short' => 'nb',
         'defengine' => 'piper',
 	'engines' => {
 	    'espeak' => '-vno',
@@ -833,6 +803,18 @@ sub simbuilds {
             'piper' => 'no_NO-talesyntese-medium.onnx',
 	},
         'enabled' => 0,
+    },
+    'norsk-nynorsk' => {
+	'lang' => 'norsk-nynorsk',
+	'name' => 'Nynorsk (Norwegian Nynorsk)',
+        'short' => 'nn',
+        'defengine' => 'piper',
+	'engines' => {
+	    'espeak' => '-vno',
+	    'gtts' => '-l no',
+            'piper' => 'no_NO-talesyntese-medium.onnx',
+	},
+        'enabled' => 1,
     },
     'moldoveneste' => {
 	'lang' => 'moldoveneste',

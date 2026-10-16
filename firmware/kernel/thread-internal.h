@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Ulf Ralberg
  *
@@ -32,7 +31,7 @@
  *
  * simulator (possibly) doesn't simulate stack usage anyway but well ... */
 
-#if defined(HAVE_SDL_THREADS) || defined(__PCTOOL__) || defined(CTRU)
+#if defined(HAVE_SDL_THREADS) || defined(__PCTOOL__) || defined(N3DS)
 struct regs
 {
     void *t;             /* OS thread */
@@ -322,7 +321,7 @@ static inline void rtr_queue_remove(struct __rtr_queue *rtrp,
     lldc_remove(rtrp, &thread->rtr);
 }
 
-#define TMO_NOT_QUEUED (NULL + 1)
+#define TMO_NOT_QUEUED ((struct __tmo_queue_node *)1)
 
 static inline bool tmo_is_queued(struct thread_entry *thread)
 {

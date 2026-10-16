@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Miika Pekkarinen
  *
@@ -80,7 +79,5 @@ void pcmbuf_sync_position_update(void);
 /* Misc */
 bool pcmbuf_is_lowdata(void);
 void pcmbuf_set_low_latency(bool state);
-void pcmbuf_update_frequency(void);
-unsigned int pcmbuf_get_frequency(void);
 
 #endif /* PCMBUF_H */

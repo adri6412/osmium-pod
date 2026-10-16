@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id: Makefile 12058 2007-01-18 00:46:52Z dave $
 #
 
 # http://daniel.haxx.se/blog/2007/11/18/free-to-use-compiler-from-ti/
@@ -16,18 +15,12 @@ LDFLAGS = -w
 
 OBJDIR=./build
 
-OBJS = arm.obj main.obj vectors.obj dma.obj
-
-ifeq ($(findstring -DCREATIVE_ZV,$(TARGET)), -DCREATIVE_ZV)
-OBJS += aic23.obj
-else
-OBJS += tsc2100.obj
-endif
+OBJS = arm.obj main.obj vectors.obj dma.obj tsc2100.obj
 
 OBJS := $(patsubst %.obj, $(OBJDIR)/%.obj, $(OBJS))
 
 all: dsp-image.h
-	
+
 clean:
 	$(call PRINTS,cleaning DSP firmware)rm -f $(OBJS) $(OBJDIR)/dsp-image.out $(OBJDIR)/dsp-image.xml
 	rmdir $(OBJDIR)

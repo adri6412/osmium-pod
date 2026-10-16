@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by wavey@wavey.org
  *
@@ -86,6 +85,7 @@ struct playlist_info
     int last_shuffled_start; /* number of tracks when insert last
                                     shuffled command start */
     int  seed;           /* shuffle seed                            */
+    unsigned long created_tick;
     struct mutex mutex; /* mutex for control file access    */
 #ifdef HAVE_DIRCACHE
     int dcfrefs_handle;
@@ -157,7 +157,7 @@ int playlist_insert_context_add(struct playlist_insert_context *context,
 void playlist_insert_context_release(struct playlist_insert_context *context);
 int playlist_insert_directory(struct playlist_info* playlist,
                               const char *dirname, int position, bool queue,
-                              bool recurse);
+                              bool recurse, struct playlist_insert_context *context);
 int playlist_insert_playlist(struct playlist_info* playlist, const char *filename,
                              int position, bool queue);
 bool playlist_entries_iterate(const char *filename,

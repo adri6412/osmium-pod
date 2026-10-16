@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Alan Korr
  * Copyright (C) 2008 by Frank Gevaerts
@@ -30,7 +29,6 @@ struct storage_info;
 
 void ramdisk_enable(bool on);
 void ramdisk_spindown(int seconds);
-void ramdisk_sleep(void);
 bool ramdisk_disk_is_active(void);
 int ramdisk_soft_reset(void);
 int ramdisk_init(void) STORAGE_INIT_ATTR;

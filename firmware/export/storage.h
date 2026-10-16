@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Alan Korr
  * Copyright (C) 2008 by Frank Gevaerts
@@ -267,6 +266,9 @@ static inline void storage_sleep(void) {};
             #define storage_removable(drive) nand_removable(IF_MD(drive))
             #define storage_present(drive) nand_present(IF_MD(drive))
         #endif
+        #ifdef HAVE_STORAGE_READONLY
+            #define storage_readonly(drive) nand_readonly(IF_MD(drive))
+        #endif
         #define storage_driver_type(drive) (STORAGE_NAND_NUM)
     #elif (CONFIG_STORAGE & STORAGE_RAMDISK)
         #define STORAGE_FUNCTION(NAME) (ramdisk_## NAME)
@@ -318,9 +320,6 @@ void storage_get_info(int drive, struct storage_info *info);
 #ifdef HAVE_HOTSWAP
 bool storage_removable(int drive);
 bool storage_present(int drive);
-#else
-#define storage_removable(x) 0
-#define storage_present(x) 1
 #endif
 int storage_driver_type(int drive);
 
@@ -328,4 +327,10 @@ int storage_driver_type(int drive);
 
 int storage_read_sectors(IF_MD(int drive,) sector_t start, int count, void* buf);
 int storage_write_sectors(IF_MD(int drive,) sector_t start, int count, const void* buf);
+
+#ifndef HAVE_HOTSWAP
+# define storage_removable(x) 0
+# define storage_present(x) 1
 #endif
+
+#endif /* __STORAGE_H__ */

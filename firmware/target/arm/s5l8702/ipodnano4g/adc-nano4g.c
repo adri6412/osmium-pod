@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: adc-s5l8700.c 21775 2009-07-11 14:12:02Z bertrik $
  *
  * Copyright (C) 2009 by Bertrik Sikken
  *
@@ -39,6 +38,23 @@ unsigned short adc_read(int channel)
 {
     (void) channel;
     return 0;
+}
+
+int adc_read_accessory_resistor(void)
+{
+    return 0;
+}
+
+unsigned int adc_read_usbdata_voltage(bool dp)
+{
+    (void)dp;
+    return 0;
+}
+
+const char *adc_name(int channel)
+{
+    (void) channel;
+    return "";
 }
 
 void adc_init(void)

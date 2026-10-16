@@ -4,13 +4,12 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 all: flashsplit
 
 flashsplit: flashsplit.c
-	gcc -W -Wall -o flashsplit flashsplit.c
+	$(CC) -W -Wall -o flashsplit flashsplit.c
 
 clean:
 	rm -f flashsplit

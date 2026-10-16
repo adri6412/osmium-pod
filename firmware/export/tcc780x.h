@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 Rob Purchase
  *
@@ -22,6 +21,7 @@
 #define __TCC780X_H__
 
 #define CACHEALIGN_BITS (5)
+#define CACHEALIGN_SIZE (32)
 
 #define TTB_SIZE      (0x4000)
 /* must be 16Kb (0x4000) aligned */

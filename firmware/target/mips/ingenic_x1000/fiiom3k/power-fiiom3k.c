@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -27,7 +26,7 @@
 # include "usb_core.h"
 #endif
 #include "axp-pmu.h"
-#include "i2c-x1000.h"
+#include "i2c-ingenic.h"
 
 unsigned short battery_level_disksafe = 3470;
 

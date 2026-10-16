@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 Dave Chapman
  *
@@ -29,7 +28,7 @@
 
 #include "config.h"
 
-#if (CONFIG_PLATFORM&PLATFORM_HOSTED)
+#if !defined(USE_IRAM)
 #define ICODE_SECTION_MPA_ARM .text
 #define IBSS_SECTION_MPA_ARM .bss
 #define ICODE_ATTR_MPA_SYNTH

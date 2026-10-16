@@ -587,7 +587,7 @@ bool player_play_folder_from(const char *path)
     if (playlist_create(dir, NULL) < 0)
         return false;
     int pos = 0;
-    playlist_insert_directory(NULL, dir, PLAYLIST_INSERT_LAST, false, false);
+    playlist_insert_directory(NULL, dir, PLAYLIST_INSERT_LAST, false, false, NULL);
     /* find the file in the new playlist */
     struct playlist_track_info info;
     int amount = playlist_amount();

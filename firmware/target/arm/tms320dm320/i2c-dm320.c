@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Tomasz Moń
  * Copyright (C) 2008 by Maurus Cuelenaere
@@ -156,13 +155,6 @@ void i2c_init(void)
 {
     mutex_init(&i2c_mtx);
 
-#ifdef CREATIVE_ZVx //TODO: mimic OF I2C clock settings; currently this is done by the bootloader
-    IO_CLK_MOD2 &= ~CLK_MOD2_I2C; // turn I²C clock off (just to be sure)
-    IO_CLK_LPCTL1 &= ~1; // set Powerdown mode to off
-    IO_CLK_SEL0 &= ~0x800; // set I²C clock to PLLA
-    IO_CLK_DIV4 &= ~0x1F; // I²C clock division = 1
-    IO_CLK_MOD2 |= CLK_MOD2_I2C; // enable I²C clock
-#endif
     IO_I2C_SCS &= ~0x8; //set clock to 100 kHz
     IO_INTC_EINT2 &= ~INTR_EINT2_I2C; // disable I²C interrupt
 }

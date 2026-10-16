@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -24,16 +23,16 @@
 #include "config.h"
 
 /* Hsync pulse width in units of dot clocks */
-#define LCD_HSW 10
+#define LCD_HSW 14
 
 /* Hsync back porch in units of dot clocks */
-#define LCD_HBP 20
+#define LCD_HBP 7
 
 /* Horizontal active width in units of dot clocks */
 #define LCD_HAW LCD_WIDTH
 
 /* Hsync front porch in units of dot clocks */
-#define LCD_HFP 10
+#define LCD_HFP 7
 
 /* Vsync pulse height in units of horizontal lines */
 #define LCD_VSH 2

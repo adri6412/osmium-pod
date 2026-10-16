@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Nick Lanham
  * Copyright (C) 2010 by Thomas Martitz
@@ -44,6 +43,7 @@
 #include "pcm-internal.h"
 #include "pcm_sampr.h"
 #include "pcm_mixer.h"
+#include "pcm_sink.h"
 
 /*#define LOGF_ENABLE*/
 #include "logf.h"
@@ -56,6 +56,8 @@ extern const char      *audiodev;
 
 
 static int cvt_status = -1;
+
+static unsigned long pcm_sampr;
 
 static const void *pcm_data;
 static size_t pcm_data_size;
@@ -80,13 +82,13 @@ static SDL_AudioCVT cvt;
 static int audio_locked = 0;
 static SDL_mutex *audio_lock;
 
-void pcm_play_lock(void)
+static void sink_lock(void)
 {
     if (++audio_locked == 1)
         SDL_LockMutex(audio_lock);
 }
 
-void pcm_play_unlock(void)
+static void sink_unlock(void)
 {
     if (--audio_locked == 0)
         SDL_UnlockMutex(audio_lock);
@@ -97,8 +99,11 @@ void pcm_play_unlock(void)
 #endif
 
 static void sdl_audio_callback(void *handle, Uint8 *stream, int len);
-static void pcm_dma_apply_settings_nolock(void)
+
+static void sink_set_freq_nolock(uint16_t freq)
 {
+    pcm_sampr = hw_freq_sampr[freq];
+
     SDL_AudioSpec wanted_spec;
     wanted_spec.freq = pcm_sampr;
     wanted_spec.format = AUDIO_S16SYS;
@@ -161,14 +166,14 @@ static void pcm_dma_apply_settings_nolock(void)
     }
 }
 
-void pcm_dma_apply_settings(void)
+static void sink_set_freq(uint16_t freq)
 {
-    pcm_play_lock();
-    pcm_dma_apply_settings_nolock();
-    pcm_play_unlock();
+    sink_lock();
+    sink_set_freq_nolock(freq);
+    sink_unlock();
 }
 
-void pcm_play_dma_start(const void *addr, size_t size)
+static void sink_dma_start(const void *addr, size_t size)
 {
     pcm_data = addr;
     pcm_data_size = size;
@@ -180,7 +185,7 @@ void pcm_play_dma_start(const void *addr, size_t size)
 #endif
 }
 
-void pcm_play_dma_stop(void)
+static void sink_dma_stop(void)
 {
 #if SDL_MAJOR_VERSION > 1
     SDL_PauseAudioDevice(pcm_devid, 1);
@@ -397,7 +402,7 @@ unsigned long spdif_measure_frequency(void)
 
 #endif /* HAVE_RECORDING */
 
-void pcm_play_dma_init(void)
+static void sink_dma_init(void)
 {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO))
     {
@@ -435,6 +440,24 @@ void pcm_play_dma_init(void)
 #endif
 }
 
-void pcm_play_dma_postinit(void)
+static void sink_dma_postinit(void)
 {
 }
+
+struct pcm_sink builtin_pcm_sink = {
+    .caps = {
+        .samprs       = hw_freq_sampr,
+        .num_samprs   = HW_NUM_FREQ,
+        .default_freq = HW_FREQ_DEFAULT,
+        .volume_type  = PCM_NATIVE_VOLUME_TYPE,
+    },
+    .ops = {
+        .init     = sink_dma_init,
+        .postinit = sink_dma_postinit,
+        .set_freq = sink_set_freq,
+        .lock     = sink_lock,
+        .unlock   = sink_unlock,
+        .play     = sink_dma_start,
+        .stop     = sink_dma_stop,
+    },
+};

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2013 by Amaury Pouly
  *
@@ -119,5 +118,5 @@ int main(int argc, char *argv[])
 
     enum zen_error_t err = mkzenboot(infile, bootfile, outfile, opt);
     printf("Result: %d\n", err);
-    return 0;
+    return err == ZEN_SUCCESS ? 0 : 1;
 }

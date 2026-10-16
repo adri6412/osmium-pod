@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 Amaury Pouly
  *
@@ -556,6 +555,8 @@ struct cmd_file_t *db_parse_file(const char *file)
     {
         if(g_debug)
             perror("Cannot read db file");
+        fclose(f);
+        free(buf);
         return NULL;
     }
     fclose(f);

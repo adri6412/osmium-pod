@@ -21,6 +21,7 @@
  ****************************************************************************/
 #include <poll.h>
 #include <errno.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <linux/input.h>
@@ -49,42 +50,60 @@
    * Compute to angular velocity (degrees per second)
 
  */
-#define NR_POLL_DESC    4
+#define NR_POLL_DESC    5
 
 static int num_devices = 0;
 static struct pollfd poll_fds[NR_POLL_DESC];
 
+void button_add_input_device(int i)
+{
+    int fd = poll_fds[i].fd;
+    if (fd >= 0)
+        close(fd);
+
+    char path[32];
+    snprintf(path, sizeof(path), "/dev/input/event%d", i);
+    fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+    poll_fds[i].fd = fd >= 0 ? fd : -1;
+    if(fd >= 0)
+    {
+        poll_fds[i].events = POLLIN;
+        poll_fds[i].revents = 0;
+        if (num_devices <= i)
+            num_devices = i + 1;
+    }
+}
+
 void button_init_device(void)
 {
-    const char * const input_devs[NR_POLL_DESC] = {
-        "/dev/input/event0",
-        "/dev/input/event1",
-        "/dev/input/event2",
-        "/dev/input/event3",
-    };
-
     for(int i = 0; i < NR_POLL_DESC; i++)
     {
-        int fd = open(input_devs[i], O_RDONLY | O_CLOEXEC);
-
-        if(fd >= 0)
-        {
-            poll_fds[num_devices].fd = fd;
-            poll_fds[num_devices].events = POLLIN;
-            poll_fds[num_devices].revents = 0;
-            num_devices++;
-        }
+        poll_fds[i].fd = -1;
+        button_add_input_device(i);
     }
+}
+
+void button_remove_input_device(int i)
+{
+    int fd = poll_fds[i].fd;
+    if (fd < 0)
+        return;
+
+    if (i == num_devices - 1)
+        num_devices = i;
+
+    close(fd);
+    poll_fds[i].fd = -1;
 }
 
 void button_close_device(void)
 {
-    /* close descriptors */
-    for(int i = 0; i < num_devices; i++)
-    {
-        close(poll_fds[i].fd);
-    }
     num_devices = 0;
+    /* close descriptors */
+    for(int i = 0; i < NR_POLL_DESC; i++)
+    {
+        button_remove_input_device(i);
+    }
 }
 
 #ifdef BUTTON_DELAY_RELEASE
@@ -105,11 +124,19 @@ static enum
     TOUCHSCREEN_STATE_DOWN
 } _last_touch_state = TOUCHSCREEN_STATE_UNKNOWN;
 
-// XXX ... figure out what is standard.
+/* Do _NOT_ change this.  Unofficial Linux API */
+#define EVENT_VALUE_TOUCHSCREEN_RELEASE  -1
+/* This is only used as an arbitrary placeholder */
 #define EVENT_VALUE_TOUCHSCREEN_PRESS    1
-#define EVENT_VALUE_TOUCHSCREEN_RELEASE -1
 
 static int ts_enabled = 1;
+
+void touchscreen_last_state(int *x, int *y, int *state)
+{
+    *x = _last_x;
+    *y = _last_y;
+    *state = _last_touch_state;
+}
 
 void touchscreen_enable_device(bool en)
 {
@@ -252,6 +279,10 @@ int button_read_device(BDATA)
                         break;
                     }
                 }
+            }
+            /* device was removed/disconnected — close it to stop poll returning POLLHUP forever */
+            else if (poll_fds[i].revents & (POLLERR | POLLHUP)) {
+                button_remove_input_device(i);
             }
         }
     }

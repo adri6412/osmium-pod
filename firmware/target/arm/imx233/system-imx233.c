@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Amaury Pouly
  *
@@ -153,12 +152,6 @@ void system_exception_wait(void)
     while(imx233_power_read_pswitch() != 0) {}
     while(imx233_power_read_pswitch() == 0) {}
     while(imx233_power_read_pswitch() != 0) {}
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 static void set_page_tables(void)

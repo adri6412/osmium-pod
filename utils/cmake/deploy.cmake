@@ -25,19 +25,19 @@ endif()
 
 # Linux: Build AppImage
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(LINUXDEPLOY ${CMAKE_BINARY_DIR}/linuxdeploy-x86_64.AppImage)
-    set(LINUXDEPLOYQT ${CMAKE_BINARY_DIR}/linuxdeploy-plugin-qt-x86_64.AppImage)
+    set(LINUXDEPLOY ${CMAKE_BINARY_DIR}/linuxdeploy-${CMAKE_SYSTEM_PROCESSOR}.AppImage)
+    set(LINUXDEPLOYQT ${CMAKE_BINARY_DIR}/linuxdeploy-plugin-qt-${CMAKE_SYSTEM_PROCESSOR}.AppImage)
     add_custom_command(
         COMMENT "Downloading linuxdeploy"
         OUTPUT ${LINUXDEPLOY}
                ${LINUXDEPLOYQT}
         COMMAND ${CMAKE_COMMAND}
             -DOUTDIR=${CMAKE_BINARY_DIR}
-            -DURL=https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+            -DURL=https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${CMAKE_SYSTEM_PROCESSOR}.AppImage
             -P ${CMAKE_CURRENT_LIST_DIR}/download.cmake
         COMMAND ${CMAKE_COMMAND}
             -DOUTDIR=${CMAKE_BINARY_DIR}
-            -DURL=https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+            -DURL=https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${CMAKE_SYSTEM_PROCESSOR}.AppImage
             -P ${CMAKE_CURRENT_LIST_DIR}/download.cmake
     )
     # intermediate target needed to be able to get back to the actual file dependency.
@@ -94,6 +94,16 @@ endif()
 
 # MacOS: Build dmg
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(DMGBUILD_STAMP ${CMAKE_BINARY_DIR}/dmgbuild.stamp)
+    add_custom_command(
+            COMMENT "Setting up dmgbuild virtualenv"
+            OUTPUT ${DMGBUILD_STAMP}
+            COMMAND python3 -m venv ${CMAKE_BINARY_DIR}/venv
+            COMMAND ${CMAKE_BINARY_DIR}/venv/bin/python -m pip install -q --upgrade pip
+            COMMAND ${CMAKE_BINARY_DIR}/venv/bin/python -m pip install -q dmgbuild
+    )
+    add_custom_target(dmgbuild_venv DEPENDS ${DMGBUILD_STAMP})
+
     function(deploy_qt)
         cmake_parse_arguments(deploy ""
             "TARGET;DESKTOPFILE;ICONFILE;QTBINDIR;DMGBUILDCFG"
@@ -103,11 +113,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             message(WARNING "Deploying a Debug build.")
         endif()
         set(DMGBUILD ${CMAKE_BINARY_DIR}/venv/bin/python3 -m dmgbuild)
-        set(DMGBUILD_STAMP ${CMAKE_BINARY_DIR}/dmgbuild.stamp)
         find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${QTBINDIR}")
 
         # need extra rules so we can use generator expressions
-        # (using get_target_property() doesn't know neede values during generation)
+        # (using get_target_property() doesn't know needed values during generation)
         set(_deploy_deps "")
         foreach(_deploy_exe_tgt ${deploy_EXECUTABLES})
             add_custom_command(
@@ -118,34 +127,58 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
                                             $<TARGET_BUNDLE_CONTENT_DIR:${deploy_TARGET}>/bin
                 COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/${_deploy_exe_tgt}.app.stamp
                 DEPENDS ${_deploy_exe_tgt}
-                )
+            )
             add_custom_target(deploy_${deploy_TARGET}_${_deploy_exe_tgt}
                 DEPENDS ${CMAKE_BINARY_DIR}/${_deploy_exe_tgt}.app.stamp)
 
             set(_deploy_deps "${_deploy_deps};deploy_${deploy_TARGET}_${_deploy_exe_tgt}")
         endforeach()
 
-        add_custom_command(
-            COMMENT "Setting up dmgbuild virtualenv"
-            OUTPUT ${DMGBUILD_STAMP}
-            COMMAND python3 -m venv ${CMAKE_BINARY_DIR}/venv
-            COMMAND ${CMAKE_BINARY_DIR}/venv/bin/python -m pip install -q dmgbuild
-        )
+        set(_dmg "${CMAKE_BINARY_DIR}/${deploy_TARGET}.dmg")
 
         add_custom_command(
             # TODO: find a better way to figure the app bundle name.
-            OUTPUT ${CMAKE_BINARY_DIR}/${deploy_TARGET}.dmg
-            COMMENT "Running macdeployqt and creating dmg ${deploy_TARGET}"
-            COMMAND ${MACDEPLOYQT_EXECUTABLE} ${deploy_TARGET}.app
-            COMMAND ${DMGBUILD} -s ${deploy_DMGBUILDCFG}
-                    -Dappbundle=${deploy_TARGET}.app
-                    ${deploy_TARGET} ${CMAKE_BINARY_DIR}/${deploy_TARGET}.dmg
+            OUTPUT "${_dmg}"
+            COMMENT "Running macdeployqt and creating ${deploy_TARGET}.dmg"
+            COMMAND "${MACDEPLOYQT_EXECUTABLE}" "${deploy_TARGET}.app"
+
+            COMMAND codesign --force --options runtime --deep
+                    --sign "${CODESIGN_IDENTITY}" "${deploy_TARGET}.app"
+
+            COMMAND ${DMGBUILD} -s "${deploy_DMGBUILDCFG}"
+                    -Dappbundle="${deploy_TARGET}.app"
+                    "${deploy_TARGET}" "${_dmg}"
             DEPENDS ${deploy_TARGET}
-                    ${DMGBUILD_STAMP}
+                    dmgbuild_venv
                     ${_deploy_deps}
+        )
+
+        if("${KEYCHAIN_PROFILE}" STREQUAL "")
+            add_custom_target(deploy_${deploy_TARGET}
+                DEPENDS "${_dmg}")
+        else()
+            set(_notarized_stamp "${_dmg}.notarized")
+
+            add_custom_command(
+                OUTPUT "${_notarized_stamp}"
+                COMMENT "Submitting ${deploy_TARGET}.dmg for notarization"
+
+                COMMAND xcrun notarytool submit "${_dmg}"
+                        --keychain-profile "${KEYCHAIN_PROFILE}"
+                        --wait
+
+                COMMAND xcrun stapler staple "${_dmg}"
+
+                COMMAND "${CMAKE_COMMAND}" -E touch "${_notarized_stamp}"
+
+                DEPENDS "${_dmg}"
+                VERBATIM
             )
-        add_custom_target(deploy_${deploy_TARGET}
-            DEPENDS ${CMAKE_BINARY_DIR}/${deploy_TARGET}.dmg)
+
+            add_custom_target(deploy_${deploy_TARGET}
+                DEPENDS "${_notarized_stamp}")
+        endif()
+
         add_dependencies(deploy deploy_${deploy_TARGET})
     endfunction()
 endif()
@@ -216,4 +249,3 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         add_dependencies(deploy deploy_${deploy_TARGET})
     endfunction()
 endif()
-

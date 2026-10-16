@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2004 by Jens Arnold
  *
@@ -35,6 +34,7 @@ typedef struct
     unsigned long ocr;              /* OCR register */
     unsigned long csd[4];           /* CSD register, 16 bytes */
     unsigned long cid[4];           /* CID register, 16 bytes */
+    unsigned long scr[2];           /* SCR register, 8 bytes */
     unsigned long speed;            /* bit/s */
     unsigned int nsac;              /* clock cycles */
     unsigned long taac;             /* n * 0.1 ns */
@@ -51,7 +51,7 @@ typedef struct
     unsigned int current_bank;
 #endif
 
-     unsigned int sd2plus;  /* SD 2.0 or better */
+    unsigned int sd2plus;  /* SD 2.0 or better */
 } tCardInfo;
 
 #if (CONFIG_STORAGE & STORAGE_SD)

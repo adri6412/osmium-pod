@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Linus Nielsen Feltzing
  *
@@ -179,8 +178,6 @@ copied_start:
     mcr     p15, 0, r0, c7, c6, 0  /* Invalidate Dcache */
     mcr     p15, 0, r1, c8, c7, 0  /* Invalidate TLB */
 
-#ifndef STUB
-    
     /* Copy exception handler code to address 0 */
     mov    r2, #0x0
     ldr    r3, =vectors_start
@@ -231,7 +228,6 @@ copied_start:
     strhi  r5, [r3], #4
     bhi    1b
 #endif /* !BOOTLOADER */
-#endif /* !STUB */
 
     /* Initialise bss section to zero */
     ldr    r2, =_edata

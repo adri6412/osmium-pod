@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Jens Arnold
  *
@@ -36,9 +35,6 @@
     /* Untested */
     .text
     .equ    .ata_port, 0x18000000
-#elif defined(CREATIVE_ZVx) /* Zen Vision could have an other address */
-    .text
-    .equ    .ata_port, 0x50FEE000
 #elif defined(MROBE_500)
     .text
     .equ    .ata_port, 0x50400000

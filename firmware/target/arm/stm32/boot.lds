@@ -7,26 +7,29 @@ STARTUP(target/arm/stm32/crt0-stm32h7.o)
 
 MEMORY
 {
-    SRAM_AXI (rwx) : ORIGIN = STM32_SRAM_AXI_BASE,    LENGTH = STM32_SRAM_AXI_SIZE
-    DTCM     (rwx) : ORIGIN = STM32_DTCM_BASE,        LENGTH = STM32_DTCM_SIZE
-    FLASH1   (rx)  : ORIGIN = STM32_FLASH_BANK1_BASE, LENGTH = STM32_FLASH_BANK1_SIZE
+    SRAM_AXI (rw) : ORIGIN = STM32_SRAM_AXI_BASE,    LENGTH = STM32_SRAM_AXI_SIZE
+    FLASH1   (rx) : ORIGIN = STM32_FLASH_BANK1_BASE, LENGTH = STM32_FLASH_BANK1_SIZE
 }
 
 SECTIONS
 {
     .text :
     {
-        KEEP(*(.vectors.arm))
-        KEEP(*(.vectors.platform))
-        *(.init.text*)
-        *(.text*)
-        *(.rodata*)
+        KEEP(*(.vectors.arm));
+        KEEP(*(.vectors.platform));
+        *(.init*);
+        *(.text*);
+    } > FLASH1
+
+    .rodata :
+    {
+        *(.rodata*);
     } > FLASH1
 
     .data :
     {
         _databegin = .;
-        *(.data*)
+        *(.data*);
         _dataend = .;
     } > SRAM_AXI AT> FLASH1
     _datacopy = LOADADDR(.data);
@@ -39,7 +42,7 @@ SECTIONS
         _bssend = .;
     } > SRAM_AXI
 
-    .stack (NOLOAD) : ALIGN(4)
+    .stack (NOLOAD) : ALIGN(8)
     {
         irqstackbegin = .;
         . += 0x400;
@@ -48,9 +51,12 @@ SECTIONS
         stackbegin = .;
         . += 0x2000;
         stackend = .;
+    } > SRAM_AXI
 
-        *(.stack);
-    } > DTCM
+    .framebuffer (NOLOAD) :
+    {
+        *(.framebuffer);
+    } > SRAM_AXI
 }
 
 EXTERN(__vectors_arm);

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Dave Chapman
  *
@@ -313,5 +312,8 @@ void audiohw_enable_lineout(bool enable);
 #define WM8975_48000HZ     0x41
 #define WM8975_88200HZ     0x7f
 #define WM8975_96000HZ     0x5d
+
+/* The WM1870 (HAVE_WM1870) answers these registers and a few above them */
+#define WM1870_R67         0x43
 
 #endif /* _WM8975_H */

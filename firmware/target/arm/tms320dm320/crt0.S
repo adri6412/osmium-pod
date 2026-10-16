@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2010 by Karl Kurbjun
  *
@@ -111,7 +110,7 @@ _start:
     mov     r0, #0x20
     bl      _delay_cycles
 
-#if defined(BOOTLOADER) && !defined(CREATIVE_ZVx)
+#if defined(BOOTLOADER)
     bl      _init_board
 #endif
 

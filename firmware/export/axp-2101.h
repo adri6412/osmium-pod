@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -25,6 +24,7 @@
 #include "config.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <limits.h>
 
 /* ADC channels */
 #define AXP2101_ADC_VBAT_VOLTAGE    0

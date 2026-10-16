@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 Frank Gevaerts
  *
@@ -72,10 +71,6 @@ int ramdisk_init(void)
 long ramdisk_last_disk_activity(void)
 {
     return last_disk_activity;
-}
-
-void ramdisk_sleep(void)
-{
 }
 
 void ramdisk_spin(void)

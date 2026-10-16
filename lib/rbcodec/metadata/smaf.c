@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2010 Yoshihisa Uchida
  *
@@ -446,7 +445,7 @@ bool get_smaf_metadata(int fd, struct mp3entry* id3)
     id3->composer = NULL;
 
     id3->vbr      = false;   /* All SMAF files are CBR */
-    id3->filesize = filesize(fd);
+    id3->filesize = ffilesize(fd);
 
     /* check File Chunk and Contents Info Chunk */
     lseek(fd, 0, SEEK_SET);

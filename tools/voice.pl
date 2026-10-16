@@ -5,7 +5,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # Copyright (C) 2007 Jonas Häggqvist
 # Copyright (C) 2020 Solomon Peachy
@@ -158,7 +157,7 @@ my %espeak_lang_map = (
     );
 
 my %piper_lang_map = (
-    'english' => 'en_GB-semaine-medium.onnx',  # Always first, it's the golden master
+    'english' => 'en_GB-alba-medium.onnx',  # Always first, it's the golden master
     'bulgarian' => 'bg_BG-dimitar-medium.onnx',
     'chinese-simp' => 'zh_CN-huayan-medium.onnx',
     'czech' => 'cs_CZ-jirka-medium.onnx',
@@ -715,6 +714,8 @@ sub generatevstringclips {
     close(VOICEFONTIDS);
 
     print("\n");
+
+    return $targetid;
 }
 
 
@@ -753,6 +754,37 @@ sub panic_cleanup {
     die "moo";
 }
 
+sub gensingleclip {
+    our $verbose;
+    my ($enc, $voice, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts) = @_;
+
+    my $format = $tts_object->{'format'};
+    my $wav = sprintf("%s.talk.wav", $enc);
+
+    #Apply corrections
+    $voice = correct_string($voice, $language, $tts_object);
+
+    printf("Talkclip %s: %s\n", $enc, $voice) if $verbose;
+    # Don't generate encoded file if it already exists
+    return if (-f $enc && !$force);
+
+    voicestring($voice, $wav, $tts_engine_opts, $tts_object);
+    wavtrim($wav, $trim_thresh, $tts_object);
+
+    if ($format eq "mp3") {
+	system("ffmpeg -loglevel 0 -i $wav $voice$wav");
+	rename("$voice$wav","$wav");
+	$format = "wav";
+    }
+    if ($format eq "wav") {
+	encodewav($wav, $enc, $encoder, $encoder_opts, $tts_object);
+    } else {
+	copy($wav, $enc);
+    }
+    synchronize($tts_object);
+    unlink($wav);
+}
+
 # Generate .talk clips
 sub gentalkclips {
     our $verbose;
@@ -761,8 +793,7 @@ sub gentalkclips {
 
     while (my $file = $d->read) {
 	$file = Encode::decode( locale_fs => $file);
-        my ($voice, $wav, $enc);
-	my $format = $tts_object->{'format'};
+        my ($voice, $enc);
 
         # Ignore dot-dirs and talk files
         if ($file eq '.' || $file eq '..' || $file =~ /\.talk$/) {
@@ -782,40 +813,38 @@ sub gentalkclips {
         # Convert to a complete path
         my $path = sprintf("%s/%s", $dir, $file);
 
-        $wav = sprintf("%s.talk.wav", $path);
-
         if ( -d $path) { # Element is a dir
 	    $enc = sprintf("%s/_dirname.talk", $path);
             if (! -e "$path/talkclips.ignore") { # Skip directories containing "talkclips.ignore"
                 gentalkclips($path, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts, $i);
             }
+	    gensingleclip($enc, $voice, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts);
+	} elsif ($path =~ /\.cue$/i) {
+	    # Cuesheet.  Generate a clip for the cuesheet itself...
+            $enc = sprintf("%s.talk", $path);
+            $voice =~ s/\.[^\.]*$//; # Trim extension
+	    gensingleclip($enc, $voice, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts);
+
+	    # Parse the cuesheet
+	    open(CUE, "<$path");
+
+	    while(<CUE>) {
+		chomp;
+		if (/PERFORMER/ || /TITLE/) {
+		    /^\s*(TITLE|PERFORMER)\s+["'](.*)["']/;
+		    $voice = $2;
+		    $enc = dirname($path) . "/$voice.talk";
+		    #print ("\V: ``$voice''\n -> $enc\n");
+		    gensingleclip($enc, $voice, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts);
+		}
+	    }
+
+	    close(CUE);
         } else { # Element is a file
             $enc = sprintf("%s.talk", $path);
             $voice =~ s/\.[^\.]*$//; # Trim extension
+	    gensingleclip($enc, $voice, $tts_object, $language, $encoder, $encoder_opts, $tts_engine_opts);
         }
-
-	# Apply corrections
-	$voice = correct_string($voice, $language, $tts_object);
-
-        printf("Talkclip %s: %s\n", $enc, $voice) if $verbose;
-	# Don't generate encoded file if it already exists
-	next if (-f $enc && !$force);
-
-	voicestring($voice, $wav, $tts_engine_opts, $tts_object);
-	wavtrim($wav, $trim_thresh, $tts_object);
-
-	if ($format eq "mp3") {
-	    system("ffmpeg -loglevel 0 -i $wav $voice$wav");
-	    rename("$voice$wav","$wav");
-	    $format = "wav";
-	}
-	if ($format eq "wav") {
-	    encodewav($wav, $enc, $encoder, $encoder_opts, $tts_object);
-	} else {
-	    copy($wav, $enc);
-	}
-	synchronize($tts_object);
-	unlink($wav);
     }
 }
 
@@ -867,7 +896,7 @@ if (defined($B) && $B) {
     printf("Generating voice\n  Target: %s\n  Language: %s\n  Encoder (options): %s (%s)\n  TTS Engine (options): %s (%s)\n  Pool directory: %s\n",
            defined($t) ? $t : "unknown",
            $l, $e, $E, $s, "$S $tts_object->{ttsoptions}", defined($ENV{'POOL'}) ? $ENV{'POOL'} : "<none>");
-    generatevstringclips($l, $t, $e, $E, $tts_object, $S, $B);
+    $i = generatevstringclips($l, $t, $e, $E, $tts_object, $S, $B);
     shutdown_tts($tts_object);
     createvoice($l, $i, $f);
     deleteencs();

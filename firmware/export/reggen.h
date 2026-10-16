@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  * Based on headergen_v2 macro.h (see utils/regtools)
@@ -22,7 +21,9 @@
 #ifndef __REGGEN_H__
 #define __REGGEN_H__
 
+#ifndef __ASSEMBLER__
 #include <stdint.h>
+#endif
 
 #define __REGGEN_VAR_OR1(p, s1) \
     ((p ## s1))

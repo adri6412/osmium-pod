@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2009 by Karl Kurbjun
  * Portions Copyright (C) 2007 by Catalin Patulea
@@ -92,6 +91,17 @@ static volatile unsigned short * pipe_ctrl_addr(int pipe) {
     } else {
         return &M66591_PIPECTRL1 + (pipe-1);
     }
+}
+
+static bool address_status;
+static bool handle_set_address(struct usb_ctrlrequest *req);
+
+/* SET_ADDRESS status belongs to this driver, not the core EP0 machine. */
+static void complete_transfer(int ep, int dir, int status, int length)
+{
+    if(ep == EP_CONTROL && address_status)
+        return;
+    usb_core_transfer_complete(ep, dir, status, length);
 }
 
 static void pipe_init(int pipe) {
@@ -210,7 +220,8 @@ static void control_received(void) {
     /* acknowledge packet recieved (clear valid) */
     M66591_INTSTAT_MAIN &= ~(1<<3);
 
-    usb_core_legacy_control_request(&temp);
+    if(!handle_set_address(&temp))
+        usb_core_setup_received(&temp);
 }
 
 /* This is a helper function, it is used to notife the stack that a transfer is
@@ -220,7 +231,7 @@ static void transfer_complete(int endpoint) {
     M66591_INTCFG_EMP &= ~(1 << endpoint);
     logf("mxx: ep %d transfer complete", endpoint);
     int temp=M66591_eps[endpoint].dir ? USB_DIR_IN : USB_DIR_OUT;
-    usb_core_transfer_complete(endpoint, temp, 0,
+    complete_transfer(endpoint, temp, 0,
         M66591_eps[endpoint].count);
 }
 
@@ -627,9 +638,7 @@ void USB_DEVICE(void) {
  ******************************************************************************/
 
 /* The M55691 handles this automatically, nothing to do */
-void usb_drv_set_address(int address) {
-    (void) address;
-}
+
 
 /* This function sets the standard test modes, it is not required, but might as
  *  well implement it since the hardware supports it
@@ -640,8 +649,11 @@ void usb_drv_set_test_mode(int mode) {
     M66591_TESTMODE |= mode;
 }
 
-int usb_drv_init_endpoint(int endpoint, int type, int max_packet_size) {
-    (void)max_packet_size; /* FIXME: support max packet size override */
+void usb_drv_ep_init(const struct usb_drv_ep_alloc_ctx* ctx, int ep) {
+    /* FIXME: support max packet size override */
+    const int epnum = EP_NUM(ep);
+    const int epdir = EP_DIR(ep);
+    const int type = ctx->type[epnum][epdir];
 
     int pipecfg = 0;
 
@@ -651,41 +663,38 @@ int usb_drv_init_endpoint(int endpoint, int type, int max_packet_size) {
     } else if(type == USB_ENDPOINT_XFER_BULK) {
         pipecfg |= 1<<13;
     } else {
-        /* Not a supported type */
-        return -1;
+        panicf("mxx: unsupported type %d", type);
     }
 
-    int num = endpoint & USB_ENDPOINT_NUMBER_MASK;
-    int dir = endpoint & USB_ENDPOINT_DIR_MASK;
-    if (dir == USB_DIR_IN) {
+    if (epdir == DIR_IN) {
         pipecfg |= (1<<4);
     }
 
-    M66591_eps[num].dir = dir;
+    M66591_eps[epnum].dir = epdir == DIR_IN ? USB_DIR_IN : USB_DIR_OUT;
 
-    M66591_PIPE_CFGSEL=num;
+    M66591_PIPE_CFGSEL = epnum;
 
     /* Enable pipe (15) */
     pipecfg |= 1<<15;
 
-    pipe_handshake(num, PIPE_SHAKE_NAK);
+    pipe_handshake(epnum, PIPE_SHAKE_NAK);
 
     /* Setup the flags */
     M66591_PIPE_CFGWND=pipecfg;
 
-    pipe_init(num);
+    pipe_init(epnum);
 
-    logf("mxx: ep req ep#: %d config: 0x%04x", num, M66591_PIPE_CFGWND);
-
-    return 0;
+    logf("mxx: ep req ep#: %d config: 0x%04x", epnum, M66591_PIPE_CFGWND);
 }
 
 /* Used by stack to tell the helper functions that the pipe is not in use */
-int usb_drv_deinit_endpoint(int endpoint) {
-    int num = endpoint & USB_ENDPOINT_NUMBER_MASK;
+void usb_drv_ep_deinit(const struct usb_drv_ep_alloc_ctx* ctx, int ep) {
+    (void)ctx;
+
+    int num = ep & USB_ENDPOINT_NUMBER_MASK;
 
     if (num < 1 || num > USB_NUM_ENDPOINTS) {
-        return -1;
+        return;
     }
 
     int flags = disable_irq_save();
@@ -695,8 +704,6 @@ int usb_drv_deinit_endpoint(int endpoint) {
     M66591_eps[num].dir = -1;
 
     restore_irq(flags);
-
-    return 0;
 }
 
 /* Periodically called to check if a cable was plugged into the device */
@@ -937,4 +944,18 @@ void usb_drv_cancel_all_transfers(void)
     }
 
     restore_irq(flags);
+}
+
+static bool handle_set_address(struct usb_ctrlrequest *req)
+{
+    address_status = false;
+    if(!usb_drv_is_set_address(req))
+        return false;
+
+    const uint8_t address = req->wValue & 0x7f;
+    address_status = true;
+    usb_drv_cancel_all_transfers();
+    usb_drv_send_nonblocking(EP_CONTROL, NULL, 0);
+    usb_core_notify_set_address(address);
+    return true;
 }

@@ -31,6 +31,7 @@ class TTSSapi : public TTSBase
         eLANGUAGE,
         eVOICE,
         eSPEED,
+        eVOLUME,
         eOPTIONS
     };
 
@@ -64,11 +65,12 @@ class TTSSapi : public TTSBase
         QString m_TTSLanguage;
         QString m_TTSVoice;
         QString m_TTSSpeed;
+        QString m_TTSVolume;
         bool m_started;
 
     protected:
-        QString m_TTSTemplate;
-        QString m_TTSVoiceTemplate;
+        QStringList m_TTSTemplate;
+        QStringList m_TTSVoiceTemplate;
         QString m_TTSType;
 };
 

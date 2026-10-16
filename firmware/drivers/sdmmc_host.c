@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -22,6 +21,7 @@
 #include "system.h"
 #include "storage.h"
 #include "disk_cache.h"
+#include "led.h"
 #include "debug.h"
 #include "panic.h"
 #include "logf.h"
@@ -48,6 +48,29 @@ static struct sdmmc_host *sdmmc_mmc_hosts[SDMMC_HOST_NUM_MMC_CONTROLLERS];
 DECLARE_FIRST_DRIVE(int sdmmc_mmc_first_drive);
 static volatile long sdmmc_mmc_last_activity;
 #endif
+
+static bool sdmmc_host_any_active(void)
+{
+#if CONFIG_STORAGE & STORAGE_SD
+    for (size_t i = 0; i < ARRAYLEN(sdmmc_sd_hosts); ++i)
+        if (sdmmc_sd_hosts[i]->led_active)
+            return true;
+#endif
+
+#if CONFIG_STORAGE & STORAGE_MMC
+    for (size_t i = 0; i < ARRAYLEN(sdmmc_mmc_hosts); ++i)
+        if (sdmmc_mmc_hosts[i]->led_active)
+            return true;
+#endif
+
+    return false;
+}
+
+static void sdmmc_host_set_led(struct sdmmc_host *host, bool on)
+{
+    host->led_active = on;
+    led(sdmmc_host_any_active());
+}
 
 static int sdmmc_host_get_logical_drive(struct sdmmc_host *host)
 {
@@ -114,6 +137,7 @@ void sdmmc_host_init(struct sdmmc_host *host,
             host->ops = ops;
             host->controller = controller;
             host->present = !config->is_removable;
+            host->enabled = true;
             mutex_init(&host->lock);
 
             array[i] = host;
@@ -143,6 +167,17 @@ void sdmmc_host_set_medium_present(struct sdmmc_host *host, bool present)
     storage_post_event(event, sdmmc_host_get_logical_drive(host));
 }
 #endif
+
+size_t sdmmc_host_get_bus_freq(uint32_t clock)
+{
+    switch (clock)
+    {
+    case SDMMC_BUS_CLOCK_400KHZ: return 400000;
+    case SDMMC_BUS_CLOCK_25MHZ:  return 25000000;
+    case SDMMC_BUS_CLOCK_50MHZ:  return 50000000;
+    default:                     return 0;
+    }
+}
 
 #ifdef CONFIG_STORAGE_MULTI
 static int sdmmc_host_count_drives(struct sdmmc_host **array,
@@ -185,7 +220,29 @@ static void sdmmc_host_bus_reset(struct sdmmc_host *host)
     host->need_reset = false;
     host->initialized = false;
     host->is_hcs_card = false;
+    host->use_cmd23 = false;
+    host->quirk_rdwrsingleblock_delay = false;
     memset(&host->cardinfo, 0, sizeof(host->cardinfo));
+}
+
+/*
+ * Call to enable/disable the host controller. If disabled then the
+ * controller and device are powered off and no access to the storage
+ * device is allowed.
+ */
+static void sdmmc_host_set_enabled(struct sdmmc_host *host, bool enabled)
+{
+    mutex_lock(&host->lock);
+
+    if (enabled != host->enabled)
+    {
+        if (host->enabled)
+            sdmmc_host_bus_reset(host);
+
+        host->enabled = enabled;
+    }
+
+    mutex_unlock(&host->lock);
 }
 
 #ifdef HAVE_HOTSWAP
@@ -224,6 +281,33 @@ static bool sdmmc_host_medium_present(struct sdmmc_host *host)
 #endif
 }
 
+static void *sdmmc_host_get_dc_buffer(struct sdmmc_host *host)
+{
+    /*
+     * The disk cache should have a free buffer before the disk
+     * is mounted. We use the buffer during card initialization
+     * and release it before doing I/O so the allocation should
+     * always succeed.
+     */
+    if (!host->dc_buffer)
+    {
+        host->dc_buffer = dc_get_buffer();
+        if (!host->dc_buffer)
+            panicf("%s: OOM", __func__);
+    }
+
+    return host->dc_buffer;
+}
+
+static void sdmmc_host_release_dc_buffer(struct sdmmc_host *host)
+{
+    if (host->dc_buffer)
+    {
+        dc_release_buffer(host->dc_buffer);
+        host->dc_buffer = NULL;
+    }
+}
+
 /*
  * Submit one command to the host controller.
  */
@@ -239,6 +323,37 @@ static int sdmmc_host_submit_cmd(struct sdmmc_host *host,
      */
 
     return host->ops->submit_command(host->controller, cmd, resp);
+}
+
+/*
+ * Submit one command and check the card status in its R1 response.
+ *
+ * A card reports a rejected command in R1 rather than by failing the
+ * transfer: it answers normally, the controller sees nothing wrong, and
+ * the data is silently not committed. Only use this for commands whose
+ * response is R1 or R1b; R3, R6 and R7 carry unrelated bits in the same
+ * positions.
+ *
+ * Error bits set in ignore_mask are not treated as failures.
+ */
+static int sdmmc_host_submit_cmd_r1(struct sdmmc_host *host,
+                                    const struct sdmmc_host_command *cmd,
+                                    uint32_t ignore_mask)
+{
+    struct sdmmc_host_response resp;
+
+    int rc = sdmmc_host_submit_cmd(host, cmd, &resp);
+    if (rc)
+        return rc;
+
+    if (resp.data[0] & SD_R1_CARD_ERROR & ~ignore_mask)
+    {
+        logf("%s: cmd%d card status %08lx", __func__, (int)cmd->command,
+             (unsigned long)resp.data[0]);
+        return SDMMC_STATUS_ERROR;
+    }
+
+    return SDMMC_STATUS_OK;
 }
 
 /*
@@ -408,6 +523,34 @@ static int sdmmc_host_cmd_send_csd(struct sdmmc_host *host)
     return rc;
 }
 
+static int sdmmc_host_cmd_send_scr(struct sdmmc_host *host)
+{
+    struct sdmmc_host_command cmd = {
+        .command   = SD_SEND_SCR,
+        .buffer    = sdmmc_host_get_dc_buffer(host),
+        .flags     = SDMMC_RESP_SHORT | SDMMC_DATA_READ,
+        .nr_blocks = 1,
+        .block_len = 8,
+    };
+
+    int rc = sdmmc_host_submit_app_cmd(host, &cmd, NULL);
+    if (rc)
+        return rc;
+
+    /*
+     * Card sends the most significant byte first so
+     * convert the data to native endian.
+     */
+    host->cardinfo.scr[0] = load_be32_aligned(cmd.buffer + 4);
+    host->cardinfo.scr[1] = load_be32_aligned(cmd.buffer + 0);
+
+    /* Use CMD23 (SET_BLOCK_COUNT) if card reports support */
+    if (host->cardinfo.scr[1] & 0x2)
+        host->use_cmd23 = true;
+
+    return rc;
+}
+
 static int sdmmc_host_cmd_select_card(struct sdmmc_host *host)
 {
     struct sdmmc_host_command cmd = {
@@ -453,6 +596,7 @@ static int sdmmc_host_cmd_switch_freq(struct sdmmc_host *host,
 {
     struct sdmmc_host_command cmd = {
         .command   = SD_SWITCH_FUNC,
+        .buffer    = sdmmc_host_get_dc_buffer(host),
         .flags     = SDMMC_RESP_SHORT | SDMMC_DATA_READ,
         .nr_blocks = 1,
         .block_len = 64,
@@ -465,19 +609,7 @@ static int sdmmc_host_cmd_switch_freq(struct sdmmc_host *host,
     else
         return SDMMC_STATUS_ERROR;
 
-    /*
-     * We'll just assume the disk cache will have a free buffer.
-     * Since the disk isn't mounted, we should have at least one
-     * free that would otherwise be used by the FAT filesystem.
-     */
-    cmd.buffer = dc_get_buffer();
-    if (!cmd.buffer)
-        panicf("%s: OOM", __func__);
-
-    int rc = sdmmc_host_submit_cmd(host, &cmd, NULL);
-
-    dc_release_buffer(cmd.buffer);
-    return rc;
+    return sdmmc_host_submit_cmd(host, &cmd, NULL);
 }
 
 static int sdmmc_host_cmd_set_block_len(struct sdmmc_host *host, int len)
@@ -488,7 +620,40 @@ static int sdmmc_host_cmd_set_block_len(struct sdmmc_host *host, int len)
         .flags     = SDMMC_RESP_SHORT,
     };
 
-    return sdmmc_host_submit_cmd(host, &cmd, NULL);
+    return sdmmc_host_submit_cmd_r1(host, &cmd, 0);
+}
+
+static int sdmmc_host_cmd_set_block_count(struct sdmmc_host *host, int count)
+{
+    struct sdmmc_host_response resp;
+    struct sdmmc_host_command cmd = {
+        .command   = SD_SET_BLOCK_COUNT,
+        .argument  = count,
+        .flags     = SDMMC_RESP_SHORT,
+    };
+
+    int rc = sdmmc_host_submit_cmd(host, &cmd, &resp);
+    if (rc)
+        return rc;
+
+    if (resp.data[0] & SD_R1_ILLEGAL_COMMAND)
+    {
+        logf("sdmmc: card claimed support for CMD23 but rejected it");
+        host->use_cmd23 = false;
+    }
+
+    return rc;
+}
+
+static int sdmmc_host_cmd_send_status(struct sdmmc_host *host)
+{
+    struct sdmmc_host_command cmd = {
+        .command   = SD_SEND_STATUS,
+        .argument  = host->cardinfo.rca,
+        .flags     = SDMMC_RESP_SHORT,
+    };
+
+    return sdmmc_host_submit_cmd_r1(host, &cmd, 0);
 }
 
 static void sdmmc_host_set_controller_bus_width(struct sdmmc_host *host, uint32_t width)
@@ -528,56 +693,56 @@ static int sdmmc_host_device_init(struct sdmmc_host *host)
     if (rc)
     {
         logf("sdmmc_host_cmd_go_idle_state: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_send_if_cond(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_send_if_cond: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_send_app_op_cond(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_send_app_op_cond: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_all_send_cid(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_all_send_cid: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_send_rca(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_send_rca: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_send_csd(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_send_csd: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_select_card(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_select_card: %d", rc);
-        return rc;
+        goto out;
     }
 
     rc = sdmmc_host_cmd_clr_card_detect(host);
     if (rc)
     {
         logf("sdmmc_host_cmd_select_card: %d", rc);
-        return rc;
+        goto out;
     }
 
     /*
@@ -590,7 +755,7 @@ static int sdmmc_host_device_init(struct sdmmc_host *host)
         if (rc)
         {
             logf("sdmmc_host_cmd_set_bus_width: %d", rc);
-            return rc;
+            goto out;
         }
 
         sdmmc_host_set_controller_bus_width(host, SDMMC_BUS_WIDTH_4BIT);
@@ -607,7 +772,7 @@ static int sdmmc_host_device_init(struct sdmmc_host *host)
         if (rc)
         {
             logf("sdmmc_host_cmd_switch_freq: %d", rc);
-            return rc;
+            goto out;
         }
 
         sdmmc_host_set_controller_bus_clock(host, SDMMC_BUS_CLOCK_50MHZ);
@@ -617,8 +782,26 @@ static int sdmmc_host_device_init(struct sdmmc_host *host)
         sdmmc_host_set_controller_bus_clock(host, SDMMC_BUS_CLOCK_25MHZ);
     }
 
-    host->initialized = true;
-    return 0;
+    rc = sdmmc_host_cmd_send_scr(host);
+    if (rc)
+    {
+        logf("sdmmc_host_cmd_send_scr: %d", rc);
+        goto out;
+    }
+
+out:
+    if (rc)
+    {
+        host->need_reset = true;
+    }
+    else
+    {
+        host->initialized = true;
+        host->cardinfo.initialized = true;
+    }
+
+    sdmmc_host_release_dc_buffer(host);
+    return rc;
 }
 
 static int sdmmc_host_transfer(struct sdmmc_host *host,
@@ -628,6 +811,10 @@ static int sdmmc_host_transfer(struct sdmmc_host *host,
     int rc = -1;
 
     mutex_lock(&host->lock);
+    sdmmc_host_set_led(host, true);
+
+    if (!host->enabled)
+        goto out;
 
     if (!sdmmc_host_medium_present(host))
         goto out;
@@ -642,10 +829,7 @@ static int sdmmc_host_transfer(struct sdmmc_host *host,
     {
         rc = sdmmc_host_device_init(host);
         if (rc)
-        {
-            host->need_reset = true;
             goto out;
-        }
     }
 
     if (count < 1)
@@ -653,10 +837,12 @@ static int sdmmc_host_transfer(struct sdmmc_host *host,
     if (start + count > host->cardinfo.numblocks)
         goto out;
 
+    int max_nr_blocks = MAX(host->config.max_nr_blocks, 1);
     while (count > 0)
     {
-        /* TODO: multiple block transfers */
-        int xfer_count = 1;
+        int xfer_count = count;
+        if (xfer_count > max_nr_blocks)
+            xfer_count = max_nr_blocks;
 
         /* Set block length for non-HCS cards */
         if (!host->is_hcs_card)
@@ -668,24 +854,109 @@ static int sdmmc_host_transfer(struct sdmmc_host *host,
 
         struct sdmmc_host_command cmd = {
             .buffer = buf,
-            .nr_blocks = 1,
+            .nr_blocks = xfer_count,
             .block_len = SD_BLOCK_SIZE,
             .flags = SDMMC_RESP_SHORT | data_dir,
         };
 
-        if (data_dir == SDMMC_DATA_WRITE)
-            cmd.command = SD_WRITE_BLOCK;
+        if (xfer_count > 1)
+        {
+            if (data_dir == SDMMC_DATA_WRITE)
+                cmd.command = SD_WRITE_MULTIPLE_BLOCK;
+            else
+                cmd.command = SD_READ_MULTIPLE_BLOCK;
+
+            /*
+             * Note: if the card rejects the command the return code
+             * will be successful, but use_cmd23 is set to false, and
+             * CMD12 will be used to terminate the read/write instead.
+             */
+            if (host->use_cmd23)
+            {
+                rc = sdmmc_host_cmd_set_block_count(host, xfer_count);
+                if (rc)
+                    goto out;
+            }
+        }
         else
-            cmd.command = SD_READ_SINGLE_BLOCK;
+        {
+            if (data_dir == SDMMC_DATA_WRITE)
+                cmd.command = SD_WRITE_BLOCK;
+            else
+                cmd.command = SD_READ_SINGLE_BLOCK;
+
+            if (host->quirk_rdwrsingleblock_delay)
+                udelay(50);
+        }
 
         if (host->cardinfo.sd2plus)
             cmd.argument = start;
         else
             cmd.argument = start * SD_BLOCK_SIZE;
 
-        rc = sdmmc_host_submit_cmd(host, &cmd, NULL);
+        rc = sdmmc_host_submit_cmd_r1(host, &cmd, 0);
+
+        if (rc == SDMMC_STATUS_TIMEOUT &&
+            !host->quirk_rdwrsingleblock_delay &&
+            (cmd.command == SD_WRITE_BLOCK ||
+             cmd.command == SD_READ_SINGLE_BLOCK))
+        {
+            logf("sdmmc_host: enabling quirk_rdwrsingleblock_delay");
+
+            sdmmc_host_bus_reset(host);
+            rc = sdmmc_host_device_init(host);
+            if (rc)
+                goto out;
+
+            host->quirk_rdwrsingleblock_delay = true;
+            continue;
+        }
+
         if (rc)
             goto out;
+
+        /*
+         * The R1 above was returned before the data moved, so it cannot
+         * report anything which went wrong during the transfer. Whatever
+         * ends the transfer has to be checked too, and a CMD23 transfer
+         * ends without a command.
+         */
+        if (xfer_count > 1)
+        {
+            if (host->use_cmd23)
+            {
+                rc = sdmmc_host_cmd_send_status(host);
+            }
+            else
+            {
+                /*
+                 * NOTE: some controllers can send CMD12 automatically
+                 *       after the end of a transfer, eg. X1000; it might
+                 *       be worth supporting that via a feature flag.
+                 */
+                uint32_t ignore = 0;
+
+                /*
+                 * A CMD12-terminated read runs until it is stopped, so
+                 * one ending on the last block of the card will have
+                 * tried to read past the end and set OUT_OF_RANGE. The
+                 * SD spec (4.3.3, "Block Read") requires it to be
+                 * ignored.
+                 */
+                if (data_dir == SDMMC_DATA_READ &&
+                    start + xfer_count == host->cardinfo.numblocks)
+                    ignore = SD_R1_OUT_OF_RANGE;
+
+                memset(&cmd, 0, sizeof(cmd));
+                cmd.command = SD_STOP_TRANSMISSION;
+                cmd.flags = SDMMC_RESP_SHORT | SDMMC_RESP_BUSY;
+
+                rc = sdmmc_host_submit_cmd_r1(host, &cmd, ignore);
+            }
+
+            if (rc)
+                goto out;
+        }
 
         buf += xfer_count * SD_BLOCK_SIZE;
         start += xfer_count;
@@ -693,6 +964,7 @@ static int sdmmc_host_transfer(struct sdmmc_host *host,
     }
 
 out:
+    sdmmc_host_set_led(host, false);
     mutex_unlock(&host->lock);
     return rc;
 }
@@ -719,6 +991,16 @@ tCardInfo *card_get_info_target(int drive)
 {
     /* FIXME: this API is racy, no way to fix without refactoring */
     return &sdmmc_sd_hosts[drive]->cardinfo;
+}
+
+void sd_enable(bool enabled)
+{
+    for (size_t i = 0; i < ARRAYLEN(sdmmc_sd_hosts); ++i)
+    {
+        struct sdmmc_host *host = sdmmc_sd_hosts[i];
+
+        sdmmc_host_set_enabled(host, enabled);
+    }
 }
 
 long sd_last_disk_activity(void)

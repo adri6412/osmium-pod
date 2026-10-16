@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id: checkwps.make 22680 2009-09-11 17:58:17Z gevaerts $
 #
 
 GCCOPTS += -g -DDEBUG -D__PCTOOL__ -DDBTOOL
@@ -28,7 +27,7 @@ INCLUDES += -I$(ROOTDIR)/apps/gui \
             -I$(APPSDIR) \
             -I$(BUILDDIR)
 
-OTHERLIBS := $(FIXEDPOINTLIB)
+OTHERLIBS := $(FIXEDPOINTLIB) $(LIBUTF8PROC)
 
 .SECONDEXPANSION: # $$(OBJ) is not populated until after this
 

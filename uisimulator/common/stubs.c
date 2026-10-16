@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg <bjorn@haxx.se>
  *
@@ -202,8 +201,13 @@ bool usb_charging_enable(bool on)
 }
 #endif
 
-#ifndef USB_NONE
-bool usb_inserted(void)
+#if defined(HAVE_HOST_USB_AUDIO)
+void usb_set_audio(int value)
+{
+    (void)value;
+}
+
+bool usb_audio_get_active(void)
 {
     return false;
 }
@@ -219,11 +223,6 @@ void lcd_remote_emireduce(bool state)
 void lcd_set_contrast( int x )
 {
     (void)x;
-}
-
-void mpeg_set_pitch(int pitch)
-{
-    (void)pitch;
 }
 
 void cpu_sleep(bool enabled)

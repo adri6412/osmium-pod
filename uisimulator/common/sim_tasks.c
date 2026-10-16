@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2009 by Jens Arnold
  * Copyright (C) 2011 by Thomas Martitz
@@ -195,6 +194,11 @@ int usb_detect(void)
     return is_usb_inserted ? USB_INSERTED : USB_EXTRACTED;
 }
 
+bool usb_inserted(void)
+{
+    return is_usb_inserted;
+}
+
 void usb_init(void)
 {
 }
@@ -203,9 +207,9 @@ void usb_start_monitoring(void)
 {
 }
 
-void usb_acknowledge(long id)
+void usb_acknowledge(long id, intptr_t seqnum)
 {
-    queue_post(&sim_queue, id, 0);
+    queue_post(&sim_queue, id, seqnum);
 }
 
 void usb_wait_for_disconnect(struct event_queue *q)

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -29,7 +28,7 @@
 #include "disk.h"
 #include "file_internal.h"
 #include "usb.h"
-#include "i2c-x1000.h"
+#include "i2c-ingenic.h"
 #include "boot-x1000.h"
 #include <stdbool.h>
 
@@ -73,7 +72,7 @@ void main(uint32_t saved_cpm_scratch)
      * present, blocking with an "insert SD card" prompt if appropriate. */
     disk_mount_all();
 
-#ifdef SHANLING_Q1
+#if defined(SHANLING_Q1) || defined(AGPTEK_ROCKER_NATIVE)
     /* This is needed for OF updates. The OF extracts the update package
      * to the SD card and reboots to the recovery kernel to complete the
      * update. */

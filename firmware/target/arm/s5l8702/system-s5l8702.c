@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: system-s5l8700.c 28935 2010-12-30 20:23:46Z Buschel $
  *
  * Copyright (C) 2007 by Rob Purchase
  *
@@ -111,6 +110,9 @@ static const struct clocking_mode clk_modes[] =
    /* cdiv  hdiv  hprat  hsdiv */    /* CClk  HClk  PClk  SM1Clk  FPS */
     { 1,    2,    2,     4 },        /* 216   108   54    27      42  */
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
+    /* Preserve the qualified intermediate step used when changing between
+     * the normal and boosted clocks. */
+    { 2,    2,    2,     4 },        /* 108   108   54    27          */
     { 4,    4,    2,     2 },        /* 54    54    27    27      21  */
 #endif
 };
@@ -263,12 +265,6 @@ void system_exception_wait(void)
 {
 //    post_mortem_stub();
     while(1);
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

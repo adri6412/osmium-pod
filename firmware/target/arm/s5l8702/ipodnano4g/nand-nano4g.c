@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2009 by Michael Sparmann
  *
@@ -27,6 +26,22 @@ int nand_init(void)
     // TODO
     return 0;
 }
+
+void nand_spindown(int seconds)
+{
+    (void)seconds;
+}
+
+void nand_spin(void)
+{
+}
+
+#ifdef HAVE_STORAGE_FLUSH
+int nand_flush(void)
+{
+    return 0;
+}
+#endif
 
 int nand_read_sectors(IF_MD(int drive,) sector_t start, int incount,
                      void* inbuf)
@@ -74,3 +89,9 @@ void nand_get_info(IF_MD(int drive,) struct storage_info *info)
     info->revision = "";
 }
 #endif
+
+long nand_last_disk_activity(void)
+{
+    // TODO
+    return 0;
+}

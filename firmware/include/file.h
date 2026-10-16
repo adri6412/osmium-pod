@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg
  *
@@ -40,8 +39,8 @@ enum relate_result
     RELATE_PREFIX,        /* the path2 contains path1 as a prefix */
 };
 
-#if defined(CTRU) && !defined(SIMULATOR)
-#include "filesystem-ctru.h"
+#if (CONFIG_PLATFORM & PLATFORM_GAME_CONSOLE) && !defined(SIMULATOR)
+#include "filesystem-console.h"
 #elif defined(APPLICATION) || defined(CHECKWPS)
 #include "filesystem-app.h"
 #elif (defined(SIMULATOR) || defined(DBTOOL)) && !defined(APPLICATION)
@@ -88,8 +87,8 @@ int fdprintf(int fildes, const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 #ifndef modtime
 #define modtime         FS_PREFIX(modtime)
 #endif
-#ifndef filesize
-#define filesize        FS_PREFIX(filesize)
+#ifndef ffilesize
+#define ffilesize       FS_PREFIX(ffilesize)
 #endif
 #ifndef fsamefile
 #define fsamefile       FS_PREFIX(fsamefile)

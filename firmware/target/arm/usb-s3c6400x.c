@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2009 by Michael Sparmann
  * Copyright © 2010 Amaury Pouly
@@ -39,9 +38,21 @@
 //#define LOGF_ENABLE
 #include "logf.h"
 
+static bool address_status;
+static bool handle_set_address(struct usb_ctrlrequest *req);
+
+/* SET_ADDRESS status belongs to this driver, not the core EP0 machine. */
+static void complete_transfer(int ep, int dir, int status, int length)
+{
+    if(ep == EP_CONTROL && address_status)
+        return;
+    usb_core_transfer_complete(ep, dir, status, length);
+}
+
 #if CONFIG_CPU == AS3525v2
 #define UNCACHED_ADDR AS3525_UNCACHED_ADDR
 #define PHYSICAL_ADDR AS3525_PHYSICAL_ADDR
+
 static inline void discard_dma_buffer_cache(void) {}
 #elif CONFIG_CPU == S5L8702
 #define UNCACHED_ADDR S5L8702_UNCACHED_ADDR
@@ -124,15 +135,6 @@ void usb_drv_stall(int endpoint, bool stall, bool in)
         DEPCTL(endpoint, !in) |= DEPCTL_stall;
     else
         DEPCTL(endpoint, !in) &= ~DEPCTL_stall;
-}
-
-void usb_drv_set_address(int address)
-{
-    (void)address;
-    /* Ignored intentionally, because the controller requires us to set the
-       new address before sending the response for some reason. So we'll
-       already set it when the control request arrives, before passing that
-       into the USB core, which will then call this dummy function. */
 }
 
 static void ep_transfer(int ep, void *ptr, int len, bool out)
@@ -490,7 +492,7 @@ static void handle_ep_int(int ep, bool out)
             }
             if (!out)
                 endpoint->size = size;
-            usb_core_transfer_complete(ep, out ? USB_DIR_OUT : USB_DIR_IN, 0, transfered);
+            complete_transfer(ep, out ? USB_DIR_OUT : USB_DIR_IN, 0, transfered);
             endpoint->done = true;
             semaphore_release(&endpoint->complete);
         }
@@ -526,11 +528,11 @@ static void handle_ep_int(int ep, bool out)
 
             logf("  rt=%x r=%x", ep0_setup_pkt->bRequestType, ep0_setup_pkt->bRequest);
 
-            if(ep0_setup_pkt->bRequestType == USB_TYPE_STANDARD &&
-               ep0_setup_pkt->bRequest     == USB_REQ_SET_ADDRESS)
-                DCFG = (DCFG & ~bitm(DCFG, devadr)) | (ep0_setup_pkt->wValue << DCFG_devadr_bitp);
+            if(usb_drv_is_set_address(ep0_setup_pkt))
+                DCFG = (DCFG & ~bitm(DCFG, devadr)) | ((ep0_setup_pkt->wValue & 0x7f) << DCFG_devadr_bitp);
 
-            usb_core_legacy_control_request(ep0_setup_pkt);
+            if(!handle_set_address(ep0_setup_pkt))
+                usb_core_setup_received(ep0_setup_pkt);
         }
     }
 
@@ -548,6 +550,7 @@ void INT_USB_FUNC(void)
     {
         DCFG &= ~bitm(DCFG, devadr); /* Address 0 */
         reset_endpoints();
+        address_status = false;
         usb_core_bus_reset();
     }
 
@@ -588,19 +591,23 @@ void INT_USB_FUNC(void)
     GINTSTS = sts;
 }
 
-int usb_drv_init_endpoint(int endpoint, int type, int max_packet_size) {
-    (void)max_packet_size; /* FIXME: support max packet size override */
+void usb_drv_ep_init(const struct usb_drv_ep_alloc_ctx* ctx, int ep)
+{
+    /* FIXME: support max packet size override */
+    (void)ctx;
 
-    int num = EP_NUM(endpoint);
-    int dir = EP_DIR(endpoint);
-    bool out = dir == DIR_OUT;
-    DEPCTL(num, out) = (DEPCTL(num, out) & ~(DEPCTL_eptype_bits << DEPCTL_eptype_bitp))
+    const int epnum = EP_NUM(ep);
+    const int epdir = EP_DIR(ep);
+    const int type = ctx->type[epnum][epdir];
+
+    bool out = epdir == DIR_OUT;
+    DEPCTL(epnum, out) = (DEPCTL(epnum, out) & ~(DEPCTL_eptype_bits << DEPCTL_eptype_bitp))
             | DEPCTL_setd0pid | (type << DEPCTL_eptype_bitp) | DEPCTL_usbactep;
-    return 0;
 }
 
-int usb_drv_deinit_endpoint(int endpoint) {
-    return 0;
+void usb_drv_ep_deinit(const struct usb_drv_ep_alloc_ctx* ctx, int ep)
+{
+    (void)ctx;
 }
 
 void usb_drv_cancel_all_transfers()
@@ -618,4 +625,18 @@ int usb_drv_send(int ep, void *ptr, int len)
     while (endpoint->busy && !endpoint->done && usb_detect() != USB_EXTRACTED)
         semaphore_wait(&endpoint->complete, HZ);
     return endpoint->status;
+}
+
+static bool handle_set_address(struct usb_ctrlrequest *req)
+{
+    address_status = false;
+    if(!usb_drv_is_set_address(req))
+        return false;
+
+    const uint8_t address = req->wValue & 0x7f;
+    address_status = true;
+    usb_drv_cancel_all_transfers();
+    usb_drv_send_nonblocking(EP_CONTROL, NULL, 0);
+    usb_core_notify_set_address(address);
+    return true;
 }

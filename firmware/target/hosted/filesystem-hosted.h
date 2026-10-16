@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2014 by Michael Sevakis
  *
@@ -31,7 +30,7 @@ void * os_lc_open(const char *ospath);
 
 #ifndef OSFUNCTIONS_DECLARED
 int os_modtime(const char *path, time_t modtime);
-off_t os_filesize(int osfd);
+off_t os_ffilesize(int osfd);
 int os_fsamefile(int osfd1, int osfd2);
 int os_relate(const char *path1, const char *path2);
 bool os_file_exists(const char *ospath);

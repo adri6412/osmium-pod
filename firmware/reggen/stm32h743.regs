@@ -254,6 +254,20 @@ RCC @ 0x58024400 : block {
         0 LSION
     }
 
+    RSR @ 0xd0 : reg {
+        30 LPWRRSTF
+        28 WWDG1RSTF
+        26 IWDGRSTF
+        24 SFTRSTF
+        23 PORRSTF
+        22 PINRSTF
+        21 BORRSTF
+        20 D2RSTF
+        19 D1RSTF
+        17 CPURSTF
+        16 RMVF
+    }
+
     AHB1ENR @ 0xd8 : reg {
         28 USB2OTGHSULPIEN
         27 USB2OTGHSEN
@@ -585,6 +599,10 @@ RTC @ 0x58004000 : block {
     PRER @ 0x10 : reg {
         22 16 PREDIV_A
         14 00 PREDIV_S
+    }
+
+    WUTR @ 0x14 : reg {
+        15 00 VALUE
     }
 
     WPR @ 0x24 : reg {
@@ -1162,3 +1180,860 @@ EXTI @ 0x58000000 : block {
     CPUEMR @ 0x84 [3; 0x10] : reg
     CPUPR @ 0x88 [3; 0x10] : reg
 }
+
+// Serial audio interface
+block SAI {
+    GCR @ 0x00 : reg {
+        05 04 SYNCOUT : { 0 = NONE; 1 = BLOCK_A; 2 = BLOCK_B }
+        01 00 SYNCIN
+    }
+
+    block SUBBLOCK {
+        CR1 @ 0x04 : reg {
+            -- 26 OSR   : { 0 = 256FS; 1 = 512FS }
+            25 20 MCKDIV
+            -- 19 NOMCK
+            -- 17 DMAEN
+            -- 16 SAIEN
+            -- 13 OUTDRIV
+            -- 12 MONO
+            11 10 SYNCEN : { 0 = ASYNC; 1 = SYNC_INT; 2 = SYNC_EXT }
+            -- 09 CKSTR  : { 0 = TX_RISING_RX_FALLING; 1 = TX_FALLING_RX_RISING }
+            -- 08 LSBFIRST
+            07 05 DS     : { 2 = 8BIT; 3 = 10BIT; 4 = 16BIT; 5 = 20BIT; 6 = 24BIT; 7 = 32BIT }
+            03 02 PRTCFG : { 0 = FREE; 1 = SPDIF; 2 = AC97 }
+            01 00 MODE   : { 0 = MASTER_TX; 1 = MASTER_RX; 2 = SLAVE_TX; 3 = SLAVE_RX }
+        }
+
+        CR2 @ 0x08 : reg {
+            15 14 COMP : { 0 = NONE; 2 = U_LAW; 3 = A_LAW }
+            -- 13 CPL
+            12 07 MUTECNT
+            -- 06 MUTEVAL : { 0 = ZERO_SAMPLE; 1 = LAST_SAMPLE }
+            -- 05 MUTE
+            -- 04 TRIS
+            -- 03 FFLUSH
+            02 00 FTH : { 0 = EMPTY; 1 = QUARTER; 2 = HALF; 3 = THREE_QUARTERS; 4 = FULL }
+        }
+
+        FRCR @ 0x0c : reg {
+            -- 18 FSOFF
+            -- 17 FSPOL
+            -- 16 FSDEF
+            14 08 FSALL
+            07 00 FRL
+        }
+
+        SLOTR @ 0x10 : reg {
+            31 16 SLOTEN
+            11 08 NBSLOT
+            07 06 SLOTSZ : { 0 = DATASZ; 1 = 16BIT; 2 = 32BIT }
+            04 00 FBOFF
+        }
+
+        IM @ 0x14 : reg {
+            06 LFSDET
+            05 AFSDET
+            04 CNRDY
+            03 FREQ
+            02 WCKCFG
+            01 MUTEDET
+            00 OVRUDR
+        }
+
+        SR @ 0x18 : reg {
+            18 16 FLVL
+            include IM
+        }
+
+        CLRFR @ 0x1c : reg {
+            include IM
+        }
+
+        DR @ 0x20 : reg
+    }
+
+    A @ 0x00 : SUBBLOCK
+    B @ 0x20 : SUBBLOCK
+}
+
+SAI1 @ 0x40015800 : SAI
+SAI2 @ 0x40015c00 : SAI
+SAI3 @ 0x40016000 : SAI
+SAI4 @ 0x58005400 : SAI
+
+// DMA controller
+block DMA {
+    LISR @ 0x00 : reg {
+        27 TCIF3
+        26 HTIF3
+        25 TEIF3
+        24 DMEIF3
+        22 FEIF3
+
+        21 TCIF2
+        20 HTIF2
+        19 TEIF2
+        18 DMEIF2
+        16 FEIF2
+
+        11 TCIF1
+        10 HTIF1
+        09 TEIF1
+        08 DMEIF1
+        06 FEIF1
+
+        05 TCIF0
+        04 HTIF0
+        03 TEIF0
+        02 DMEIF0
+        00 FEIF0
+    }
+
+    HISR @ 0x04 : reg {
+        27 TCIF7
+        26 HTIF7
+        25 TEIF7
+        24 DMEIF7
+        22 FEIF7
+
+        21 TCIF6
+        20 HTIF6
+        19 TEIF6
+        18 DMEIF6
+        16 FEIF6
+
+        11 TCIF5
+        10 HTIF5
+        09 TEIF5
+        08 DMEIF5
+        06 FEIF5
+
+        05 TCIF4
+        04 HTIF4
+        03 TEIF4
+        02 DMEIF4
+        00 FEIF4
+    }
+
+    LIFCR @ 0x08 : LISR
+    HIFCR @ 0x0c : HISR
+
+    CHN @ 0x00 [8; 0x18] : block {
+        CR @ 0x10 : reg {
+            enum BURST_TYPE {
+                0 = SINGLE
+                1 = INCR4
+                2 = INCR8
+                3 = INCR16
+            }
+
+            enum SIZE_TYPE {
+                0 = 8BIT
+                1 = 16BIT
+                2 = 32BIT
+            }
+
+            24 23 MBURST : BURST_TYPE
+            22 21 PBURST : BURST_TYPE
+            -- 20 TRBUFF
+            -- 19 CT
+            -- 18 DBM
+            17 16 PL     : { 0 = LOW; 1 = MEDIUM; 2 = HIGH; 3 = VERYHIGH }
+            -- 15 PINCOS
+            14 13 MSIZE  : SIZE_TYPE
+            12 11 PSIZE  : SIZE_TYPE
+            -- 10 MINC
+            -- 09 PINC
+            -- 08 CIRC
+            07 06 DIR    : { 0 = PERIPH_TO_MEM; 1 = MEM_TO_PERIPH; 2 = MEM_TO_MEM }
+            -- 05 PFCTRL : { 0 = DMA; 1 = PERIPH }
+            -- 04 TCIE
+            -- 03 HTIE
+            -- 02 TEIE
+            -- 01 DMEIE
+            -- 00 EN
+        }
+
+        NDTR @ 0x14 : reg
+        PAR @ 0x18 : reg
+        M0AR @ 0x1c : reg
+        M1AR @ 0x20 : reg
+
+        FCR @ 0x24 : reg {
+            -- 07 FEIE
+            05 03 FS
+            -- 02 DMDIS
+            01 00 FTH   : { 0 = QUARTER; 1 = HALF; 2 = THREE_QUARTERS; 3 = FULL }
+        }
+    }
+}
+
+DMA1 @ 0x40020000 : DMA
+DMA2 @ 0x40020400 : DMA
+
+// DMA multiplexer
+block DMAMUX {
+    CR @ 0x00 [16; 0x04] : reg {
+        28 24 SYNC_ID
+        23 19 NBREQ
+        18 17 SPOL
+        -- 16 SE
+        -- 09 EGE
+        -- 08 SOIE
+        06 00 DMAREQ_ID
+    }
+
+    CSR @ 0x80 : reg
+    CFR @ 0x84 : reg
+
+    RGCR @ 0x100 [8; 0x04] : reg {
+        23 19 GNBREQ
+        18 17 GPOL
+        -- 16 GE
+        -- 08 OIE
+        04 00 SIG_ID
+    }
+
+    RGSR @ 0x140 : reg
+    RGCFR @ 0x144 : reg
+}
+
+DMAMUX1 @ 0x40020800 : DMAMUX
+DMAMUX2 @ 0x58025800 : DMAMUX
+
+// I2C controller
+block I2C {
+    CR1 @ 0x00 : reg {
+        -- 23 PECEN
+        -- 22 ALERTEN
+        -- 21 SMBDEN
+        -- 20 SMBHEN
+        -- 19 GCEN
+        -- 18 WUPEN
+        -- 17 NOSTRETCH
+        -- 16 SBC
+        -- 15 RXDMAEN
+        -- 14 TXDMAEN
+        -- 12 ANFOFF
+        11 08 DNF
+        -- 07 ERRIE
+        -- 06 TCIE
+        -- 05 STOPIE
+        -- 04 NACKIE
+        -- 03 ADDRIE
+        -- 02 RXIE
+        -- 01 TXIE
+        -- 00 PE
+    }
+
+    CR2 @ 0x04 : reg {
+        -- 26 PECBYTE
+        -- 25 AUTOEND
+        -- 24 RELOAD
+        23 16 NBYTES
+        -- 15 NACK
+        -- 14 STOP
+        -- 13 START
+        -- 12 HEAD10R
+        -- 11 ADD10
+        -- 10 RD_WRN
+        09 00 SADD
+    }
+
+    OAR1 @ 0x08 : reg {
+        -- 15 OA1EN
+        -- 10 OA1MODE
+        09 00 OA1
+    }
+
+    OAR2 @ 0x0c : reg {
+        -- 15 OA2EN
+        10 08 OA2MSK
+        07 01 OA2
+    }
+
+    TIMINGR @ 0x10 : reg {
+        31 28 PRESC
+        23 20 SCLDEL
+        19 16 SDADEL
+        15 08 SCLH
+        07 00 SCLL
+    }
+
+    TIMEOUTR @ 0x14 : reg {
+        -- 31 TEXTEN
+        27 16 TIMEOUTB
+        -- 15 TIMOUTEN
+        -- 12 TIDLE
+        11 00 TIMEOUTA
+    }
+
+    ISR @ 0x18 : reg {
+        23 17 ADDCODE
+        -- 16 DIR
+        -- 15 BUSY
+        -- 14 ALERT
+        -- 12 TIMEOUT
+        -- 11 PECERR
+        -- 10 OVR
+        -- 09 ARLO
+        -- 08 BERR
+        -- 07 TCR
+        -- 06 TC
+        -- 05 STOPF
+        -- 04 NACKF
+        -- 03 ADDR
+        -- 02 RXNE
+        -- 01 TXIS
+        -- 00 TXE
+    }
+
+    ICR @ 0x1c : reg {
+        -- 13 ALERTCF
+        -- 12 TIMOUTCF
+        -- 11 PECCF
+        -- 10 OVRCF
+        -- 09 ARLOCF
+        -- 08 BERRCF
+        -- 05 STOPCF
+        -- 04 NACKCF
+        -- 03 ADDRCF
+    }
+
+    RXDR @ 0x24 : reg
+    TXDR @ 0x28 : reg
+}
+
+I2C1 @ 0x40005400 : I2C
+I2C2 @ 0x40005800 : I2C
+I2C3 @ 0x40005C00 : I2C
+I2C4 @ 0x58001C00 : I2C
+
+block ADC {
+    ISR @ 0x00 : reg {
+        12 LDORDY
+        10 JQOVF
+        09 AWD3
+        08 AWD2
+        07 AWD1
+        06 JEOS
+        05 JEOC
+        04 OVR
+        03 EOS
+        02 EOC
+        01 EOSMP
+        00 ADRDY
+    }
+
+    IER @ 0x04 : reg {
+        10 JQOVFIE
+        09 AWD3IE
+        08 AWD2IE
+        07 AWD1IE
+        06 JEOSIE
+        05 JEOCIE
+        04 OVRIE
+        03 EOSIE
+        02 EOCIE
+        01 EOSMPIE
+        00 ADRDYIE
+    }
+
+    CR @ 0x08 : reg {
+        -- 31 ADCAL
+        -- 30 ADCALDIF
+        -- 29 DEEPPWD
+        -- 28 ADVREGEN
+        -- 27 LINCALRDYW6
+        -- 26 LINCALRDYW5
+        -- 25 LINCALRDYW4
+        -- 24 LINCALRDYW3
+        -- 23 LINCALRDYW2
+        -- 22 LINCALRDYW1
+        -- 16 ADCALLIN
+        -- 09 BOOST1 // present on revision V only
+        -- 08 BOOST0
+        -- 05 JADSTP
+        -- 04 ADSTP
+        -- 03 JADSTART
+        -- 02 ADSTART
+        -- 01 ADDIS
+        -- 00 ADEN
+    }
+
+    CFGR @ 0x0c : reg {
+        -- 31 JQDIS
+        30 26 AWD1CH
+        -- 25 JAUTO
+        -- 24 JAWD1EN
+        -- 23 AWD1EN
+        -- 22 AWD1SGL
+        -- 21 JQM
+        -- 20 JDISCEN
+        19 17 DISCNUM
+        -- 16 DISCEN
+        -- 14 AUTDLY
+        -- 13 CONT
+        -- 12 OVRMOD
+        11 10 EXTEN
+        09 05 EXTSEL
+        04 02 RES
+        01 00 DMNGT
+    }
+
+    CFGR2 @ 0x10 : reg {
+        31 28 LSHIFT
+        25 16 OSVR
+        -- 14 RSHIFT4
+        -- 13 RSHIFT3
+        -- 12 RSHIFT2
+        -- 11 RSHIFT1
+        -- 10 ROVSM
+        -- 09 TROVS
+        08 05 OVSS
+        -- 01 JOVSE
+        -- 00 ROVSE
+    }
+
+    enum SMPTIME {
+        0 = 1_5CYCLE
+        1 = 2_5CYCLE
+        2 = 8_5CYCLE
+        3 = 16_5CYCLE
+        4 = 32_5CYCLE
+        5 = 64_5CYCLE
+        6 = 387_5CYCLE
+        7 = 810_5CYCLE
+    }
+
+    SMPR1 @ 0x14 : reg {
+        29 27 SMP9 : SMPTIME
+        26 24 SMP8 : SMPTIME
+        23 21 SMP7 : SMPTIME
+        20 18 SMP6 : SMPTIME
+        17 15 SMP5 : SMPTIME
+        14 12 SMP4 : SMPTIME
+        11 09 SMP3 : SMPTIME
+        08 06 SMP2 : SMPTIME
+        05 03 SMP1 : SMPTIME
+        02 00 SMP0 : SMPTIME
+    }
+
+    SMPR2 @ 0x18 : reg {
+        29 27 SMP19 : SMPTIME
+        26 24 SMP18 : SMPTIME
+        23 21 SMP17 : SMPTIME
+        20 18 SMP16 : SMPTIME
+        17 15 SMP15 : SMPTIME
+        14 12 SMP14 : SMPTIME
+        11 09 SMP13 : SMPTIME
+        08 06 SMP12 : SMPTIME
+        05 03 SMP11 : SMPTIME
+        02 00 SMP10 : SMPTIME
+    }
+
+    PCSEL @ 0x1c : reg
+    LTR1 @ 0x20 : reg
+    HTR1 @ 0x24 : reg
+
+    SQR1 @ 0x30 : reg {
+        28 24 SQ4
+        22 18 SQ3
+        16 12 SQ2
+        10 06 SQ1
+        03 00 L
+    }
+
+    SQR2 @ 0x34 : reg {
+        28 24 SQ9
+        22 18 SQ8
+        16 12 SQ7
+        10 06 SQ6
+        04 00 SQ5
+    }
+
+    SQR3 @ 0x38 : reg {
+        28 24 SQ14
+        22 18 SQ13
+        16 12 SQ12
+        10 06 SQ11
+        04 00 SQ10
+    }
+
+    SQR4 @ 0x38 : reg {
+        10 06 SQ16
+        04 00 SQ15
+    }
+
+    DR @ 0x40 : reg
+
+    JSQR @ 0x4c : reg {
+        31 27 JSQ4
+        25 21 JSQ3
+        19 15 JSQ2
+        13 09 JSQ1
+        08 07 JEXTEN
+        06 02 JEXTSEL
+        01 00 JL
+    }
+
+    OFR @ 0x60 [4; 0x04] : reg {
+        -- 31 SSATE
+        30 26 OFFSET_CH
+        25 00 OFFSET
+    }
+
+    JDR @ 0x80 [4; 0x04] : reg
+
+    AWD2CR @ 0xa0 : reg {
+        19 00 AWD2CH
+    }
+
+    AWD3CR @ 0xa4 : reg {
+        19 00 AWD3CH
+    }
+
+    LTR2 @ 0xb0 : reg
+    HTR2 @ 0xb4 : reg
+    LTR3 @ 0xb8 : reg
+    HTR3 @ 0xbc : reg
+
+    DIFSEL @ 0xc0 : reg
+
+    CALFACT @ 0xc4 : reg {
+        26 16 D
+        10 00 S
+    }
+
+    CALFACT2 @ 0xc8 : reg {
+        29 00 LINCALFACT
+    }
+
+    CSR @ 0x300 : reg {
+        26 JQOVF_SLV
+        25 AWD3_SLV
+        24 AWD2_SLV
+        23 AWD1_SLV
+        22 JEOS_SLV
+        21 JEOC_SLV
+        20 OVR_SLV
+        19 EOS_SLV
+        18 EOC_SLV
+        17 EOSMP_SLV
+        16 ADRDY_SLV
+        10 JQOVF_MST
+        09 AWD3_MST
+        08 AWD2_MST
+        07 AWD1_MST
+        06 JEOS_MST
+        05 JEOC_MST
+        04 OVR_MST
+        03 EOS_MST
+        02 EOC_MST
+        01 EOSMP_MST
+        00 ADRDY_MST
+    }
+
+    CCR @ 0x308 : reg {
+        -- 24 VBATEN
+        -- 23 TSEN
+        -- 22 VREFEN
+        21 18 PRESC
+        17 16 CKMOD
+        15 14 DAMDF
+        10 08 DELAY
+        04 00 DUAL
+    }
+
+    CDR @ 0x30c : reg {
+        31 16 RDATA_SLV
+        15 00 RDATA_MST
+    }
+
+    CDR2 @ 0x310 : reg
+}
+
+ADC1 @ 0x40022000 : ADC
+ADC2 @ 0x40022100 : ADC
+ADC3 @ 0x58026000 : ADC
+
+block TIM {
+    CR1 @ 0x00 : reg {
+        -- 11 UIFREMAP
+        09 08 CKD
+        -- 07 ARPE
+        06 05 CMS
+        -- 04 DIR
+        -- 03 OPM
+        -- 02 URS
+        -- 01 UDIS
+        -- 00 CEN
+    }
+
+    CR2 @ 0x04 : reg {
+        23 20 MMS2
+        -- 18 OIS6
+        -- 16 OIS5
+        -- 14 OIS4
+        -- 13 OIS3N
+        -- 12 OIS3
+        -- 11 OIS2N
+        -- 10 OIS2
+        -- 09 OIS1N
+        -- 08 OIS1
+        -- 07 TI1S
+        06 04 MMS
+        -- 03 CCDS
+        -- 02 CCUS
+        -- 00 CCPC
+    }
+
+    SMCR @ 0x08 : reg {
+        21 20 TS_4_3
+        -- 16 SMS3
+        -- 15 ETP
+        -- 14 ECE
+        13 12 ETPS
+        11 08 ETF
+        -- 07 MSM
+        06 04 TS
+        02 00 SMS
+    }
+
+    DIER @ 0x0c : reg {
+        -- 14 TDE
+        -- 13 COMDE
+        -- 12 CC4DE
+        -- 11 CC3DE
+        -- 10 CC2DE
+        -- 09 CC1DE
+        -- 08 UDE
+        -- 07 BIE
+        -- 06 TIE
+        -- 05 COMIE
+        -- 04 CC4IE
+        -- 03 CC3IE
+        -- 02 CC2IE
+        -- 01 CC1IE
+        -- 00 UIE
+    }
+
+    SR @ 0x10 : reg {
+        -- 17 CC6IF
+        -- 16 CC5IF
+        -- 13 SBIF
+        -- 12 CC4OF
+        -- 11 CC3OF
+        -- 10 CC2OF
+        -- 09 CC1OF
+        -- 08 B2IF
+        -- 07 BIF
+        -- 06 TIF
+        -- 05 COMIF
+        -- 04 CC4IF
+        -- 03 CC3IF
+        -- 02 CC2IF
+        -- 01 CC1IF
+        -- 00 UIF
+    }
+
+    EGR @ 0x14 : reg {
+        -- 08 B2G
+        -- 07 BG
+        -- 06 TG
+        -- 05 COMG
+        -- 04 CC4G
+        -- 03 CC3G
+        -- 02 CC2G
+        -- 01 CC1G
+        -- 00 UG
+    }
+
+    CCMR1 @ 0x18 : reg {
+        09 08 CC2S
+        01 00 CC1S
+    }
+
+    CCMR1_IN @ 0x18 : reg {
+        15 12 IC2F
+        11 10 IC2PSC
+        09 08 CC2S
+        07 04 IC1F
+        03 02 IC1PSC
+        01 00 CC1S
+    }
+
+    CCMR1_OUT @ 0x18 : reg {
+        -- 24 OC2M3
+        -- 16 OC1M3
+        -- 15 OC2CE
+        14 12 OC2M
+        -- 11 OC2PE
+        -- 10 OC2FE
+        09 08 CC2S
+        -- 07 OC1CE
+        06 04 OC1M
+        -- 03 OC1PE
+        -- 02 OC1FE
+        01 00 CC1S
+    }
+
+    CCMR2 @ 0x1c : reg {
+        09 08 CC4S
+        01 00 CC3S
+    }
+
+    CCMR2_IN @ 0x1c : reg {
+        15 12 IC4F
+        11 10 IC4PSC
+        09 08 CC4S
+        07 04 IC3F
+        03 02 IC3PSC
+        01 00 CC3S
+    }
+
+    CCMR2_OUT @ 0x1c : reg {
+        -- 24 OC4M3
+        -- 16 OC3M3
+        -- 15 OC4CE
+        14 12 OC4M
+        -- 11 OC4PE
+        -- 10 OC4FE
+        09 08 CC4S
+        -- 07 OC3CE
+        06 04 OC3M
+        -- 03 OC3PE
+        -- 02 OC3FE
+        01 00 CC3S
+    }
+
+    CCER @ 0x20 : reg {
+        -- 21 CC6P
+        -- 20 CC6E
+        -- 17 CC5P
+        -- 16 CC5E
+        -- 15 CC4NP
+        -- 14 CC4NE
+        -- 13 CC4P
+        -- 12 CC4E
+        -- 11 CC3NP
+        -- 10 CC3NE
+        -- 09 CC3P
+        -- 08 CC3E
+        -- 07 CC2NP
+        -- 06 CC2NE
+        -- 05 CC2P
+        -- 04 CC2E
+        -- 03 CC1NP
+        -- 02 CC1NE
+        -- 01 CC1P
+        -- 00 CC1E
+    }
+
+    CNT @ 0x24 : reg {
+        -- 31 UIFCPY
+        15 00 CNT
+    }
+
+    CNT32 @ 0x24 : reg {
+        -- 31 UIFCPY
+        30 00 CNT
+    }
+
+    PSC @ 0x28 : reg
+    ARR @ 0x2c : reg
+    RCR @ 0x30 : reg
+
+    CCR1 @ 0x34 : reg
+    CCR2 @ 0x38 : reg
+    CCR3 @ 0x3c : reg
+    CCR4 @ 0x40 : reg
+
+    BDTR @ 0x44 : reg {
+        -- 25 BK2P
+        -- 24 BK2E
+        23 20 BK2F
+        19 16 BKF
+        -- 15 MOE
+        -- 14 AOE
+        -- 13 BKP
+        -- 12 BKE
+        -- 11 OSSR
+        -- 10 OSSI
+        09 08 LOCK
+        07 00 DTG
+    }
+
+    DCR @ 0x48 : reg {
+        12 08 DBL
+        04 00 DBA
+    }
+
+    DMAR @ 0x4c : reg
+
+    CCMR3_OUT @ 0x54 : reg {
+        -- 24 OC6M3
+        -- 16 OC5M3
+        -- 15 OC6CE
+        14 12 OC6M
+        -- 11 OC6PE
+        -- 10 OC6FE
+        -- 07 OC5CE
+        06 04 OC5M
+        -- 03 OC5PE
+        -- 02 OC5FE
+    }
+
+    CCR5 @ 0x58 : reg {
+        -- 31 GC5C3
+        -- 30 GC5C2
+        -- 29 GC5C1
+        15 00 CCR5
+    }
+
+    CCR6 @ 0x5c : reg
+
+    AF1 @ 0x60 : reg {
+        17 14 ETRSEL
+        -- 11 BKCMP2P
+        -- 10 BKCMP1P
+        -- 09 BKINP
+        -- 08 BKDFxBKxE // differs for TIM1/TIM8
+        -- 02 BKCMP2E
+        -- 01 BKCMP1E
+        -- 00 BKINE
+    }
+
+    AF2 @ 0x64 : reg {
+        -- 11 BK2CMP2P
+        -- 10 BK2CMP1P
+        -- 09 BK2INP
+        -- 08 BK2DFxBKxE // differs for TIM1/TIM8
+        -- 02 BK2CMP2E
+        -- 01 BK2CMP1E
+        -- 00 BK2INE
+    }
+
+    TISEL @ 0x68 : reg {
+        27 24 TI4SEL
+        19 16 TI3SEL
+        11 08 TI2SEL
+        03 00 TI1SEL
+    }
+}
+
+TIM17 @ 0x40014800 : TIM
+TIM16 @ 0x40014400 : TIM
+TIM15 @ 0x40014000 : TIM
+TIM8  @ 0x40010400 : TIM
+TIM1  @ 0x40010000 : TIM
+TIM14 @ 0x40002000 : TIM
+TIM13 @ 0x40001c00 : TIM
+TIM12 @ 0x40001800 : TIM
+TIM7  @ 0x40001400 : TIM
+TIM6  @ 0x40001000 : TIM
+TIM5  @ 0x40000c00 : TIM
+TIM4  @ 0x40000800 : TIM
+TIM3  @ 0x40000400 : TIM
+TIM2  @ 0x40000000 : TIM

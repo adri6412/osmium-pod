@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2006 by Michael Sevakis
  *
@@ -84,5 +83,11 @@ void ** find_array_ptr(void **arr, void *ptr);
 /* Remove a pointer from a pointer array if it exists. Compacts it so that
    no gaps exist. Returns 0 on success and -1 if the element wasn't found. */
 int remove_array_ptr(void **arr, void *ptr);
+
+/* Initialize the PRNG subsystem */
+void prng_init(void);
+
+/* Reseed the PRNG using the best entropy source available */
+unsigned int prng_newseed(void);
 
 #endif /* GENERAL_H */

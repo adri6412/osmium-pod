@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2012 Amaury Pouly
  *
@@ -47,6 +46,7 @@ static int g_nvp_node = -1;
 
 #define errorf(...) do { cprintf(GREY, __VA_ARGS__); return __LINE__; } while(0)
 
+#if 0
 static void print_hex(void *p, int size, int unit)
 {
     uint8_t *p8 = p;
@@ -64,6 +64,7 @@ static void print_hex(void *p, int size, int unit)
             printf(" %08x", *p32);
     }
 }
+#endif
 
 #define SECTOR              512u
 #define EMMC_MINIBOOT_START 0
@@ -103,7 +104,7 @@ static uint32_t do_image(uint32_t start, const char *name)
      * must be ronded to the next sector */
     size = ROUND_UP(size + 8, SECTOR);
 
-    print_entry(start, start + size, name);
+    print_entry(start, start + size, "%s", name);
 
     /* Check U-Boot crc (must be 0) */
     uint32_t crc_buffer[SECTOR / 4];
@@ -283,4 +284,3 @@ int main(int argc, char **argv)
 
     return ret;
 }
-

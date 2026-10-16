@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by James Espinoza
  *
@@ -173,12 +172,6 @@ void gpt_stop(void)
     cancel_uevent();
     GPTCR &= ~GPTCR_EN;
     restore_interrupt(status);
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 void system_halt(void)

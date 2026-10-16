@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005-2007 Miika Pekkarinen
  * Copyright (C) 2007-2008 Nicolas Pennequin
@@ -26,6 +25,7 @@
 #include "kernel.h"
 #include "codecs.h"
 #include "codec_thread.h"
+#include "pcm_mixer.h"
 #include "pcmbuf.h"
 #include "audio_thread.h"
 #include "playback.h"
@@ -518,7 +518,7 @@ static void run_codec(void)
     codec_queue_ack(Q_CODEC_RUN);
 
     trigger_cpu_boost();
-    dsp_configure(ci.dsp, DSP_SET_OUT_FREQUENCY, pcmbuf_get_frequency());
+    dsp_configure(ci.dsp, DSP_SET_OUT_FREQUENCY, mixer_get_frequency());
 
     if (!encoder)
     {

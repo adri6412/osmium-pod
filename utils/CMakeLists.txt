@@ -42,22 +42,29 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_link_options($<$<CONFIG:RELEASE>:-s>)
 endif()
 
-
 enable_testing()
 
 # Qt
-find_package(QT NAMES Qt6 Qt5 REQUIRED)
-if(QT_VERSION_MAJOR EQUAL 5)
-    find_package(Qt5 REQUIRED COMPONENTS
-                 Core Widgets Svg Multimedia Network Test LinguistTools)
-else()
-    find_package(Qt6 REQUIRED COMPONENTS
+find_package(QT NAMES Qt6 REQUIRED)
+    find_package(Qt6 6.6 REQUIRED COMPONENTS
                  Core Core5Compat Widgets Svg Network LinguistTools SvgWidgets
-                 OPTIONAL_COMPONENTS Multimedia Test)
-endif()
+                 OPTIONAL_COMPONENTS Multimedia Test TextToSpeech)
+	       ## note Core5Compat is only needed for QuaZip
 get_target_property(_moc_executable Qt${QT_VERSION_MAJOR}::moc IMPORTED_LOCATION)
 get_filename_component(QT_BINDIR "${_moc_executable}" DIRECTORY)
 message("-- Found Qt${QT_VERSION_MAJOR}: ${Qt${QT_VERSION_MAJOR}_DIR}")
+if (TARGET Qt${QT_VERSION_MAJOR}::Multimedia)
+  message("-- Found Qt::Multimedia")
+else()
+  message("-- Could not find QT::Multimedia, TTS preview not available")
+endif()
+if (TARGET Qt${QT_VERSION_MAJOR}::TextToSpeech)
+  message("-- Found Qt::TextToSpeech")
+else()
+  message("-- Could not find QT::TextToSpeech, Qt TTS not available")
+endif()
+
+add_compile_definitions(QT_NO_USE_NODISCARD_FILE_OPEN)
 
 # If we're on Linux, try to find the used libs in the system.
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -65,6 +72,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(PkgConfig)
     pkg_check_modules(libusb QUIET REQUIRED IMPORTED_TARGET libusb-1.0)
     message("-- Found libusb: ${libusb_LINK_LIBRARIES}")
+    add_compile_definitions(USE_LIBUSBAPI)
 
     # optional system libs.
     pkg_check_modules(speex QUIET IMPORTED_TARGET speex speexdsp)
@@ -84,15 +92,86 @@ if(APPLE)
 endif()
 
 
+find_package(QuaZip-Qt${QT_VERSION_MAJOR} QUIET)
+if(QuaZip-Qt${QT_VERSION_MAJOR}_FOUND)
+    message("-- Found QuaZip")
+    set(QUAZIP_LIBRARY QuaZip::QuaZip)
+else()
+    message("-- Could not find system QuaZip, using our own copy.")
+    # TODO: Upstream has cmake support, use that instead.
+    add_library(quazip
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/ioapi.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/minizip_crypt.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/qioapi.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazip.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipfile.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipfile.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipfileinfo.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipfileinfo.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazip_global.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazip.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipnewinfo.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/quazipnewinfo.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/unzip.c
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/unzip.h
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/zip.c
+        ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip/zip.h)
+    target_include_directories(quazip PUBLIC ${CMAKE_CURRENT_LIST_DIR}/rbutilqt/quazip)
+    target_link_libraries(quazip z Qt${QT_VERSION_MAJOR}::Core)
+    target_link_libraries(quazip Qt${QT_VERSION_MAJOR}::Core5Compat)
+    target_compile_definitions(quazip PUBLIC QUAZIP_STATIC)
+    set_property(TARGET quazip PROPERTY AUTOMOC ON)
+    set(QUAZIP_LIBRARY quazip)
+endif()
+
+# Setup code signing for macOS
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    # Signing the binaries
+    set(CODESIGN_IDENTITY "-" CACHE STRING
+            "Code signing identity to use for macOS signing")
+
+    if(DEFINED ENV{CODESIGN_IDENTITY})
+        set(CODESIGN_IDENTITY "$ENV{CODESIGN_IDENTITY}")
+    endif()
+
+    if("${CODESIGN_IDENTITY}" STREQUAL "-")
+        message("-- Using ad-hoc Apple code signing")
+    else()
+        message("-- Using Apple code signing identity: ${CODESIGN_IDENTITY}")
+    endif()
+
+    # Submitting the .dmg file to Apple's service to get a
+    # notarization ticket for distributing outside the App store
+    set(KEYCHAIN_PROFILE "" CACHE STRING
+            "Apple Keychain profile name to use for notarization")
+
+    if(DEFINED ENV{KEYCHAIN_PROFILE})
+        set(KEYCHAIN_PROFILE "$ENV{KEYCHAIN_PROFILE}")
+    endif()
+
+    if("${KEYCHAIN_PROFILE}" STREQUAL "")
+        message("-- Skipping Apple notarization")
+    else()
+        message("-- Using Apple notarization keychain profile: ${KEYCHAIN_PROFILE}")
+    endif()
+endif()
+
 add_executable(ipodpatcher-bin
     ipodpatcher/main.c
-    ipodpatcher/ipodpatcher-aupd.c
+    ipodpatcher/ipodpatcher_aupd.c
     )
 target_link_libraries(ipodpatcher-bin ipodpatcher)
 target_compile_definitions(ipodpatcher-bin PRIVATE VERSION="none")
 set_target_properties(ipodpatcher-bin PROPERTIES OUTPUT_NAME ipodpatcher)
 if(APPLE)
     target_link_libraries(ipodpatcher-bin ${FRAMEWORK_IOKIT} ${FRAMEWORK_COREFOUNDATION})
+
+    add_custom_command(TARGET ipodpatcher-bin POST_BUILD
+        COMMAND codesign --force --options runtime
+                --sign "${CODESIGN_IDENTITY}"
+                "$<TARGET_FILE:ipodpatcher-bin>"
+        VERBATIM
+    )
 endif()
 
 add_library(ipodpatcher
@@ -123,6 +202,15 @@ add_executable(sansapatcher-bin
 target_link_libraries(sansapatcher-bin sansapatcher)
 target_compile_definitions(sansapatcher-bin PRIVATE VERSION="none")
 set_target_properties(sansapatcher-bin PROPERTIES OUTPUT_NAME sansapatcher)
+
+if(APPLE)
+    add_custom_command(TARGET sansapatcher-bin POST_BUILD
+        COMMAND codesign --force --options runtime
+                --sign "${CODESIGN_IDENTITY}"
+                "$<TARGET_FILE:sansapatcher-bin>"
+        VERBATIM
+    )
+endif()
 
 add_library(sansapatcher
     sansapatcher/parttypes.h
@@ -163,10 +251,7 @@ target_link_libraries(mkamsboot ucl)
 
 add_library(ucl
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/alloc.c
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/fake16.h
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/getbit.h
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/internal.h
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/io.c
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/Makefile
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/n2_99.ch
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/n2b_99.c
@@ -183,7 +268,7 @@ add_library(ucl
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/n2e_to.c
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_conf.h
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_crc.c
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_dll.c
+    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_dll.ch
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_init.c
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_mchw.ch
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_ptr.c
@@ -191,10 +276,9 @@ add_library(ucl
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_str.c
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_swd.ch
     ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_util.c
-    ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/src/ucl_util.h
     )
 
-target_include_directories(ucl PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/include)
+target_include_directories(ucl PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl/include ${CMAKE_CURRENT_LIST_DIR}/../tools/ucl)
 
 add_library(rbspeex
     ${CMAKE_CURRENT_LIST_DIR}/../tools/rbspeex/rbspeex.c
@@ -288,6 +372,9 @@ add_library(mks5lboot
     mks5lboot/mks5lboot.h
     )
 target_include_directories(mks5lboot PUBLIC ${CMAKE_CURRENT_LIST_DIR}/mks5lboot)
+if(WIN32)
+target_link_libraries(mks5lboot PRIVATE setupapi)
+endif()
 
 add_library(bspatch
     bspatch/bspatch.c
@@ -311,7 +398,7 @@ target_include_directories(telechips PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../tools)
 
 find_library(LIBBZ2 bz2)
 if(${LIBBZ2} STREQUAL "LIBBZ2-NOTFOUND")
-    message("-- bz2 not found, building our own")
+    message("-- Could not find system libbz2, building our own")
     add_library(bz2
         bzip2/blocksort.c
         bzip2/bzlib.c
@@ -392,4 +479,3 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/deploy.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/QtTest.cmake)
 add_subdirectory(rbutilqt)
 add_subdirectory(themeeditor)
-

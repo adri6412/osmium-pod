@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Maurus Cuelenaere
  *
@@ -192,6 +191,7 @@ int main(int argc, char *argv[])
         fclose(infile);
         fclose(outfile);
         fprintf(stderr, "[ERR]  Cannot open %s\n", argv[3]);
+        return 6;
     }
     
     int fw_filesize = _filesize(fw);

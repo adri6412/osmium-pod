@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Heikki Hannikainen, Uwe Freese
  * Revisions copyright (C) 2005 by Gerald Van Baren
@@ -774,7 +773,8 @@ static void power_thread(void)
 #elif defined(DX50) || defined(DX90)
     while (_battery_voltage() < 1) /* can give false readings initially */
     {
-#elif defined(EROS_QN) || defined(FIIO_M3K) || defined(SHANLING_Q1)
+#elif defined(EROS_QN) || defined(FIIO_M3K) || defined(SHANLING_Q1) || \
+      defined(AGPTEK_ROCKER_NATIVE)
 
     /* wait until the first battery read is ready */
     while (_battery_voltage() <= 0)

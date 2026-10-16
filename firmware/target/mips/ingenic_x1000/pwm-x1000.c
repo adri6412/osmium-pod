@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -21,7 +20,7 @@
 
 #include "pwm-x1000.h"
 #include "clk-x1000.h"
-#include "gpio-x1000.h"
+#include "gpio-ingenic.h"
 #include "system.h"
 #include "kernel.h"
 #include "x1000/tcu.h"

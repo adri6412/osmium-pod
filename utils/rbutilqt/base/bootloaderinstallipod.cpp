@@ -83,7 +83,7 @@ void BootloaderInstallIpod::installStage2(void)
     QCoreApplication::processEvents();
 
     if(ipod_reopen_rw(&ipod) < 0) {
-        emit logItem(tr("Could not open Ipod in R/W mode"), LOGERROR);
+        emit logItem(tr("Could not open iPod in R/W mode"), LOGERROR);
         emit done(true);
         return;
     }
@@ -95,7 +95,7 @@ void BootloaderInstallIpod::installStage2(void)
     if(add_bootloader(&ipod, blfile.toLatin1().data(), FILETYPE_DOT_IPOD) == 0) {
         emit logItem(tr("Successfull added bootloader"), LOGOK);
         ipod_close(&ipod);
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
         m_remountDevice = ipod.diskname;
         connect(this, SIGNAL(remounted(bool)), this, SLOT(installStage3(bool)));
         waitRemount();
@@ -152,7 +152,7 @@ bool BootloaderInstallIpod::uninstall(void)
     }
 
     if (ipod_reopen_rw(&ipod) < 0) {
-        emit logItem(tr("Could not open Ipod in R/W mode"), LOGERROR);
+        emit logItem(tr("Could not open iPod in R/W mode"), LOGERROR);
         emit done(true);
         return false;
     }
@@ -242,12 +242,12 @@ bool BootloaderInstallIpod::ipodInitialize(struct ipod_t *ipod)
             return false;
         }
 #if defined(Q_OS_WIN32)
-        sprintf(ipod->diskname, "\\\\.\\PhysicalDrive%i", devicename.toInt());
-#elif defined(Q_OS_MACX)
-        sprintf(ipod->diskname, "%s",
+        snprintf(ipod->diskname, sizeof(ipod->diskname), "\\\\.\\PhysicalDrive%i", devicename.toInt());
+#elif defined(Q_OS_MACOS)
+        snprintf(ipod->diskname, sizeof(ipod->diskname), "%s",
             qPrintable(devicename.remove(QRegularExpression("s[0-9]+$"))));
 #else
-        sprintf(ipod->diskname, "%s",
+        snprintf(ipod->diskname, sizeof(ipod->diskname), "%s",
             qPrintable(devicename.remove(QRegularExpression("[0-9]+$"))));
 #endif
         LOG_INFO() << "ipodpatcher: overriding scan, using"
@@ -259,16 +259,16 @@ bool BootloaderInstallIpod::ipodInitialize(struct ipod_t *ipod)
     }
     int result = ipod_open(ipod, 1);
     if(result == -2) {
-        emit logItem(tr("Could not open Ipod: permission denied"), LOGERROR);
+        emit logItem(tr("Could not open iPod: permission denied"), LOGERROR);
         return false;
     }
     else if(result < 0) {
-        emit logItem(tr("Could not open Ipod"), LOGERROR);
+        emit logItem(tr("Could not open iPod"), LOGERROR);
         return false;
     }
 
     if(read_partinfo(ipod, 1) < 0) {
-        emit logItem(tr("Error reading partition table - possibly not an Ipod"), LOGERROR);
+        emit logItem(tr("Error reading partition table - possibly not an iPod"), LOGERROR);
         ipod_close(ipod);
         return false;
     }

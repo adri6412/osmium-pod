@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 Björn Stenberg
  *
@@ -47,6 +46,7 @@
 #include "sound.h"
 #include "general.h"
 #include "rbpaths.h"
+#include "panic.h"
 
 #define LOGF_ENABLE
 #include "logf.h"
@@ -147,6 +147,7 @@ struct codec_api ci = {
 
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
+    panicf,
 
 };
 
@@ -156,7 +157,7 @@ void codec_get_full_path(char *path, const char *codec_root_fn)
             CODEC_EXTENSION, codec_root_fn);
 }
 
-/* Returns pointer to and size of free codec RAM. Aligns to CACHEALIGN_SIZE. */
+/* Returns pointer to and size of free codec RAM. Aligns to MEM_ALIGN_SIZE. */
 void *codec_get_buffer_callback(size_t *size)
 {
     void *buf = &codecbuf[codec_size];
@@ -166,7 +167,7 @@ void *codec_get_buffer_callback(size_t *size)
         return NULL;
 
     *size = s;
-    ALIGN_BUFFER(buf, *size, CACHEALIGN_SIZE);
+    ALIGN_BUFFER(buf, *size, MEM_ALIGN_SIZE);
 
     return buf;
 }

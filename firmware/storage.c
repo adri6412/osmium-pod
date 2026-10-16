@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Frank Gevaerts
  *
@@ -229,14 +228,14 @@ static void NORETURN_ATTR storage_thread(void)
             break;
 #endif /* HAVE_HOTSWAP */
 
-#ifndef USB_NONE
+#if !defined(USB_NONE) && (!defined(BOOTLOADER) || defined(HAVE_BOOTLOADER_USB_MODE))
         case SYS_USB_CONNECTED:
         case SYS_USB_DISCONNECTED:
             bdcast = 0;
             storage_event_send(CONFIG_STORAGE, ev.id, (intptr_t)&bdcast);
             usb_mode = ev.id == SYS_USB_CONNECTED;
             if (usb_mode) {
-                usb_acknowledge(SYS_USB_CONNECTED_ACK);
+                usb_acknowledge(SYS_USB_CONNECTED_ACK, ev.data);
             }
             else {
                 bdcast = CONFIG_STORAGE;

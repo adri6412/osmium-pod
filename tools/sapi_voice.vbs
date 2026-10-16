@@ -5,7 +5,6 @@
 '   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 '   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 '                     \/            \/     \/    \/            \/
-' $Id$
 '
 ' Copyright (C) 2007 Steve Bavin, Jens Arnold, Mesar Hameed
 '
@@ -38,16 +37,16 @@ Const STDERR = 2
 
 Dim oShell, oArgs, oEnv
 Dim oFSO, oStdIn, oStdOut
-Dim bVerbose, bSAPI4, bList
+Dim bVerbose, bList
 Dim bMSSP
-Dim sLanguage, sVoice, sSpeed, sName, sVendor
+Dim sLanguage, sVoice, sSpeed, sVolume, sName, sVendor
 
 Dim oSpVoice, oSpFS ' SAPI5 voice and filestream
-Dim oTTS, nMode ' SAPI4 TTS object, mode selector
 Dim oVoice ' for traversing the list of voices
 Dim nLangID, sSelectString
 
 Dim aLine, aData    ' used in command reading
+Dim nError, sError  ' error returned to the controlling process
 
 On Error Resume Next
 
@@ -60,141 +59,80 @@ Set oEnv = oShell.Environment("Process")
 bVerbose = (oEnv("V") <> "")
 
 Set oArgs = WScript.Arguments.Named
-bSAPI4 = oArgs.Exists("sapi4")
 bMSSP = oArgs.Exists("mssp")
 bList = oArgs.Exists("listvoices")
 sLanguage = oArgs.Item("language")
 sVoice = oArgs.Item("voice")
 sSpeed = oArgs.Item("speed")
+sVolume = oArgs.Item("volume")
 
+' Create SAPI5 object
+If bMSSP Then
+        Set oSpVoice = CreateObject("speech.SpVoice")
+Else
+        Set oSpVoice = CreateObject("SAPI.SpVoice")
+End If
+If Err.Number <> 0 Then
+    WScript.StdErr.WriteLine "Error " & Err.Number _
+                             & " - could not get SpVoice object." _
+                             & " SAPI 5 not installed?"
+    WScript.Quit 1
+End If
 
-If bSAPI4 Then
-    ' Create SAPI4 ActiveVoice object
-    Set oTTS = WScript.CreateObject("ActiveVoice.ActiveVoice", "TTS_")
-    If Err.Number <> 0 Then
-        Err.Clear
-        Set oTTS = WScript.CreateObject("ActiveVoice.ActiveVoice.1", "TTS_")
-        If Err.Number <> 0 Then
-            WScript.StdErr.WriteLine "Error - could not get ActiveVoice" _
-                                     & " object. SAPI 4 not installed?"
-            WScript.Quit 1
-        End If
-    End If
-    oTTS.Initialized = 1
-
-    If bList Then 
-        ' Just list available voices for the selected language
-        For Each nLangID in LangIDs(sLanguage)
-            For nMode = 1 To oTTS.CountEngines
-                If oTTS.LanguageID(nMode) = nLangID Then
-                    WScript.StdErr.Write oTTS.ModeName(nMode) & ","
-                End If
-            Next
-        Next
-        WScript.StdErr.WriteLine
-        WScript.Quit 0
-    End If
-
-    ' Select matching voice
-    For Each nLangID in LangIDs(sLanguage)
-        sSelectString = "LanguageID=" & nLangID
-        If sVoice <> "" Then
-            sSelectString = sSelectString & ";Speaker=" & sVoice _
-                            & ";ModeName=" & sVoice
-        End If
-        nMode = oTTS.Find(sSelectString)
-        If oTTS.LanguageID(nMode) = nLangID And (sVoice = "" Or _
-           oTTS.Speaker(nMode) = sVoice Or oTTS.ModeName(nMode) = sVoice) Then
-            sName = oTTS.ModeName(nMode)
-            If bVerbose Then 
-                WScript.StdErr.WriteLine "Using " & sName & " for " & sSelectString
-            End If
-            Exit For
-        Else
-            sSelectString = ""
-        End If
-    Next
-    If sSelectString = "" Then
-        WScript.StdErr.WriteLine "Error - found no matching voice for " _
-                                 & sLanguage & ", " & sVoice
-        WScript.Quit 1
-    End If
-    oTTS.Select nMode
-
-    ' Speed selection
-    If sSpeed <> "" Then oTTS.Speed = sSpeed
-
-    ' Get vendor information
-    sVendor = oTTS.MfgName(nMode)
-
-Else ' SAPI5
-    ' Create SAPI5 object
-    If bMSSP Then
-            Set oSpVoice = CreateObject("speech.SpVoice")
-    Else
-            Set oSpVoice = CreateObject("SAPI.SpVoice")
-    End If
-    If Err.Number <> 0 Then
-        WScript.StdErr.WriteLine "Error " & Err.Number _
-                                 & " - could not get SpVoice object." _
-                                 & " SAPI 5 not installed?"
-        WScript.Quit 1
-    End If
-
-    If bList Then
-        ' Just list available voices for the selected language
-        For Each nLangID in LangIDs(sLanguage)
-            sSelectString = "Language=" & Hex(nLangID)
-            For Each oVoice in oSpVoice.GetVoices(sSelectString)
-                WScript.StdErr.Write oVoice.GetAttribute("Name") & ";"
-            Next
-        Next
-        WScript.StdErr.WriteLine
-        WScript.Quit 0
-    End If
-
-    ' Select matching voice
+If bList Then
+    ' Just list available voices for the selected language
     For Each nLangID in LangIDs(sLanguage)
         sSelectString = "Language=" & Hex(nLangID)
-        If sVoice <> "" Then
-            sSelectString = sSelectString & ";Name=" & sVoice
-        End If
-        Set oSpVoice.Voice = oSpVoice.GetVoices(sSelectString).Item(0)
-        If Err.Number = 0 Then
-            sName = oSpVoice.Voice.GetAttribute("Name")
-            If bVerbose Then
-                WScript.StdErr.WriteLine "Using " & sName & " for " & sSelectString
-            End If
-            Exit For
-        Else
-            sSelectString = ""
-            Err.Clear
-        End If
+        For Each oVoice in oSpVoice.GetVoices(sSelectString)
+            WScript.StdErr.Write oVoice.GetAttribute("Name") & ";"
+        Next
     Next
-    If sSelectString = "" Then
-        WScript.StdErr.WriteLine "Error - found no matching voice for " _
-                                 & sLanguage & ", " & sVoice
-        WScript.Quit 1
-    End If
-
-    ' Speed selection
-    If sSpeed <> "" Then oSpVoice.Rate = sSpeed
-
-    ' Get vendor information, protect from missing attribute
-    sVendor = oSpVoice.Voice.GetAttribute("Vendor")
-    If Err.Number <> 0 Then
-        Err.Clear
-        sVendor = "(unknown)"
-        ' Some L&H engines don't set the vendor attribute - check the name
-        If Len(sName) > 3 And Left(sName, 3) = "LH " Then
-            sVendor = "L&H"
-        End If
-    End If
-
-    ' Filestream object for output
-    Set oSpFS = CreateObject("SAPI.SpFileStream")
-    oSpFS.Format.Type = AudioFormat(sVendor)
+    WScript.StdErr.WriteLine
+    WScript.Quit 0
 End If
+
+' Select matching voice
+For Each nLangID in LangIDs(sLanguage)
+    sSelectString = "Language=" & Hex(nLangID)
+    If sVoice <> "" Then
+        sSelectString = sSelectString & ";Name=" & sVoice
+    End If
+    Set oSpVoice.Voice = oSpVoice.GetVoices(sSelectString).Item(0)
+    If Err.Number = 0 Then
+        sName = oSpVoice.Voice.GetAttribute("Name")
+        If bVerbose Then
+            WScript.StdErr.WriteLine "Using " & sName & " for " & sSelectString
+        End If
+        Exit For
+    Else
+        sSelectString = ""
+        Err.Clear
+    End If
+Next
+If sSelectString = "" Then
+    WScript.StdErr.WriteLine "Error - found no matching voice for " _
+                             & sLanguage & ", " & sVoice
+    WScript.Quit 1
+End If
+
+' Speed selection
+If sSpeed <> "" Then oSpVoice.Rate = sSpeed
+' Volume selection
+If sVolume <> "" Then oSpVoice.Volume = sVolume
+' Get vendor information, protect from missing attribute
+sVendor = oSpVoice.Voice.GetAttribute("Vendor")
+If Err.Number <> 0 Then
+    Err.Clear
+    sVendor = "(unknown)"
+    ' Some L&H engines don't set the vendor attribute - check the name
+    If Len(sName) > 3 And Left(sName, 3) = "LH " Then
+        sVendor = "L&H"
+    End If
+End If
+
+' Filestream object for output
+Set oSpFS = CreateObject("SAPI.SpFileStream")
+oSpFS.Format.Type = AudioFormat(sVendor)
 
 Do
     aLine = Split(oStdIn.ReadLine, vbTab, 2)
@@ -212,18 +150,26 @@ Do
             aData = Split(aLine(1), vbTab, 2)
             If bVerbose Then WScript.StdErr.WriteLine "Saying " & aData(1) _
                                                       & " in " & aData(0)
-            If bSAPI4 Then
-                oTTS.FileName = aData(0)
-                oTTS.Speak aData(1)
-                While oTTS.Speaking
-                    WScript.Sleep 1
-                Wend
-                oTTS.FileName = ""
-            Else
-                oSpFS.Open aData(0), SSFMCreateForWrite, false
+            Err.Clear
+            oSpFS.Open aData(0), SSFMCreateForWrite, false
+            nError = Err.Number
+            sError = Err.Description
+            If nError = 0 Then
                 Set oSpVoice.AudioOutputStream = oSpFS
                 oSpVoice.Speak aData(1)
+                nError = Err.Number
+                sError = Err.Description
                 oSpFS.Close
+                If nError = 0 And Err.Number <> 0 Then
+                    nError = Err.Number
+                    sError = Err.Description
+                End If
+            End If
+            If nError <> 0 Then
+                oStdOut.WriteLine "ERROR" & vbTab & nError & ": " & sError
+                Err.Clear
+            ElseIf Not oFSO.FileExists(aData(0)) Then
+                oStdOut.WriteLine "ERROR" & vbTab & "SAPI reported success but created no wave file"
             End If
         Case "EXEC"
             If bVerbose Then WScript.StdErr.WriteLine "> " & aLine(1)
@@ -360,6 +306,8 @@ Function LangIDs(ByRef sLanguage)
             LangIDs = Array(&h427)
         Case "magyar"
             LangIDs = Array(&h40e)
+        Case "moldoveneste"
+            LangIDs = Array(&h818)
         Case "nederlands"
             LangIDs = Array(&h413, &h813) ' Standard, Belgian
         Case "norsk-nynorsk"
@@ -392,6 +340,8 @@ Function LangIDs(ByRef sLanguage)
             LangIDs = Array(&h41f)
         Case "ukrainian"
             LangIDs = Array(&h422)
+        Case "vietnamese"
+            LangIDs = Array(&h42a)
         Case "wallisertitsch"
             LangIDs = Array(&h807) ' Swiss German
         Case "walon"

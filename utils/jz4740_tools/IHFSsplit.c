@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by William Poetra Yoga Hadisoeseno 
  *
@@ -102,7 +101,7 @@ void mkdir_p(const char *path)
     char *dir;
 
     dir = dirname(strdup(path));
-    if (strchr(dir, '/'))
+    if (strchr(dir, '/') && strcmp(dir, path) != 0)
         mkdir_p(dir);
 
 #ifdef _WIN32

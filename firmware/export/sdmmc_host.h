@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -207,6 +206,9 @@ struct sdmmc_host_config
     uint32_t bus_widths;
     uint32_t bus_clocks;
 
+    /* Max number of blocks in a multiblock transfer */
+    int max_nr_blocks;
+
     /* Set to true if the device is removable at runtime */
     bool is_removable;
 };
@@ -230,11 +232,28 @@ struct sdmmc_host
      */
     struct mutex lock;
 
+    /* Temporary disk cache buffer */
+    void *dc_buffer;
+
     /* Bus & device state flags; must only be accessed with lock held */
+    bool enabled     : 1;
     bool need_reset  : 1;
     bool powered     : 1;
     bool initialized : 1;
     bool is_hcs_card : 1;
+    bool use_cmd23   : 1;
+    bool led_active  : 1; /* LED active may be read without lock */
+
+    /*
+     * Some 512G Samsung cards (and possibly other cards) seem to
+     * have problems with repeated single block read commands and
+     * sometimes just time out without ever sending the data. The
+     * card response is OK but no data is received.
+     *
+     * Adding a delay of a few tens of milliseconds before each
+     * read/write single block command appears to fix the problem.
+     */
+    bool quirk_rdwrsingleblock_delay : 1;
 
     /* Controller implemented by the target */
     const struct sdmmc_controller_ops *ops;
@@ -287,5 +306,11 @@ void sdmmc_host_init_medium_present(struct sdmmc_host *host, bool present) INIT_
  *       call `sdmmc_host_init_medium_present()` to set the initial state.
  */
 void sdmmc_host_set_medium_present(struct sdmmc_host *host, bool present);
+
+/**
+ * Returns clock frequency in Hz for an `SDMMC_BUS_CLOCK_*` constant.
+ * Returns zero if fed an invalid constant.
+ */
+size_t sdmmc_host_get_bus_freq(uint32_t clock);
 
 #endif /* __SDMMC_HOST_H__ */

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 Dave Chapman
  *
@@ -122,7 +121,7 @@ bool get_flac_metadata(int fd, struct mp3entry* id3)
             }
 
             id3->vbr = true;   /* All FLAC files are VBR */
-            id3->filesize = filesize(fd);
+            id3->filesize = ffilesize(fd);
             id3->frequency = (buf[10] << 12) | (buf[11] << 4)
                 | ((buf[12] & 0xf0) >> 4);
             rc = true;  /* Got vital metadata */

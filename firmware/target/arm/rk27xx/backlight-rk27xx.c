@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Marcin Bukat
  *
@@ -40,7 +39,7 @@ static int brightness = DEFAULT_BRIGHTNESS_SETTING;
  * So the function used to calculate the values in the matrix was:
  * f(x) = (PWM_FREQ_MAX - PWM_FREQ_MIN) * ((100*x/31 + 16)/116)^3 + PWM_FREQ_MIN
  */
-#ifdef RK27_GENERIC
+#if defined(RK27_GENERIC) || defined(SAMSUNG_YPCP3)
 static const unsigned short lin_brightness[] = {
      8110,  8191,  8304,  8455,  8649,  8892,  9189,  9545,
      9966, 10457, 11024, 11671, 12406, 13232, 14156, 15182,

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (c) 2004,2005 by Marcoen Hirschberg
  *
@@ -44,6 +43,10 @@
 #define O_NOISODECODE 0
 #endif
 
+#ifdef UTF8PROC_EXPORTS
+#include "utf8proc.h"
+#endif
+
 #define getle16(p) (p[0] | (p[1] << 8))
 #define getbe16(p) ((p[0] << 8) | p[1])
 
@@ -59,8 +62,9 @@
 #define open_noiso_internal open
 #endif /* !APPLICATION */
 
-#if 0 /* not needed just now (will probably end up a spinlock) */
 #include "mutex.h"
+
+#if 0 /* not needed just now (will probably end up a spinlock) */
 static struct mutex cp_mutex SHAREDBSS_ATTR;
 #define cp_lock_init()   mutex_init(&cp_mutex)
 #define cp_lock_enter()  mutex_lock(&cp_mutex)
@@ -217,7 +221,7 @@ static int alloc_and_load_cp_table(int cp, void *buf)
     if (fd < 0)
         return -1;
 
-    off_t size = filesize(fd);
+    off_t size = ffilesize(fd);
 
     if (size > 0 && size <= MAX_CP_TABLE_SIZE*2 &&
         !(size % (off_t)sizeof (uint16_t))) {
@@ -651,9 +655,32 @@ const char * get_codepage_name(int cp)
     return cp_info[cp].name;
 }
 
-#if 0 /* not needed just now */
+#ifdef UTF8PROC_EXPORTS
+static utf8proc_int32_t normbuf[2048];
+static struct mutex norm_mutex SHAREDBSS_ATTR;
+
+void utf8_normalize(char *string)
+{
+    utf8proc_ssize_t result, orig;
+
+    if (!string || !*string)
+         return;
+
+    mutex_lock(&norm_mutex);
+    orig = strlen(string);
+    result = utf8proc_decompose(string, 0, normbuf, sizeof(normbuf)/4 -1, UTF8PROC_NULLTERM);
+    if (result > 0) {
+        result = utf8proc_reencode(normbuf, result, UTF8PROC_NULLTERM|UTF8PROC_COMPOSE|UTF8PROC_STABLE);
+        if (result > 0 && result <= orig && strcmp((char*)normbuf, string))
+            strcpy(string, (char*)normbuf);
+    }
+    mutex_unlock(&norm_mutex);
+}
+
 void unicode_init(void)
 {
     cp_lock_init();
+    mutex_init(&norm_mutex);
 }
+
 #endif

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Alan Korr
  * Copyright (C) 2008 by Frank Gevaerts
@@ -30,7 +29,6 @@ struct storage_info;
 
 void mmc_enable(bool on);
 void mmc_spindown(int seconds);
-void mmc_sleep(void);
 void mmc_sleepnow(void);
 bool mmc_disk_is_active(void);
 int mmc_soft_reset(void);

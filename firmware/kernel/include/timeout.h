@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg
  *
@@ -22,6 +21,7 @@
 #define _KERNEL_H_
 
 #include "config.h"
+#include <stdint.h>
 
 struct timeout;
 

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -30,7 +29,7 @@
 # include "usb_core.h"
 #endif
 
-#include "i2c-x1000.h"
+#include "i2c-ingenic.h"
 
 /* TODO: Better(?) battery reporting for Q1 using CW2015 driver
  *

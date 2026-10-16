@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2014 by Michael Sevakis
  *
@@ -193,7 +192,7 @@ static inline void volume_onmount_internal(IF_MV_NONVOID(int volume))
 
             if (rtlen <= 0 || rtlen >= (int) sizeof(rtpath))
                 rtlen = 0; /* path too long or sprintf error */
-            else if (file_exists(rtpath))
+            else if (rbfs_file_exists(rtpath))
             {
                 rtlen = get_redirect_dir(rtpath, sizeof(rtpath), volume, "", "");
                 while (rtlen > 0 && rtpath[--rtlen] == PATH_SEPCH)

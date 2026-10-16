@@ -31,6 +31,7 @@
 #include "misc.h"
 #include "system.h"
 #include "language.h"
+#include "iap-usb.h"
 #ifdef HAVE_DIRCACHE
 #include "dircache.h"
 #endif
@@ -318,20 +319,11 @@ static void hp_unplug_change(bool inserted)
 #endif /* HAVE_HEADPHONE_DETECTION */
 
 
-/* check range, set volume and save settings */
+/* set volume and save settings */
 void setvol(void)
 {
-    const int min_vol = sound_min(SOUND_VOLUME);
-    const int max_vol = sound_max(SOUND_VOLUME);
-    int volume = global_status.volume;
-    if (volume < min_vol)
-        volume = min_vol;
-    if (volume > max_vol)
-        volume = max_vol;
-    if (volume > global_settings.volume_limit)
-        volume = global_settings.volume_limit;
-
-    sound_set_volume(volume);
+    sound_set_volume(global_status.volume);
+    iap_on_volume(global_status.volume);
     global_status.last_volume_change = current_tick;
     status_save(false);
 }
@@ -356,7 +348,7 @@ static void update_norm_tab(void)
     norm_tab[0] = min;
     norm_tab_size = 1;
 
-    for (int i = 0; i < lim; ++i)
+    for (int i = 1; i < lim - 1; ++i)
     {
         int vol = from_normalized_volume(i, min, max, lim);
         int rem = vol % step;
@@ -665,7 +657,10 @@ const char *format_time_auto(char *buffer, int buf_len, long value,
     const char * const sign        = &"-"[value < 0 ? 0 : 1];
     bool               is_rtl      = lang_is_rtl();
     char               timebuf[25]; /* -2147483648:00:00.00\0 */
-    int                len, left_offset;
+    int                len;
+#if 0 /* unused */
+    int left_offset;
+#endif
     unsigned char      base_idx, max_idx;
 
     unsigned long  units_in[UNIT_IDX_TIME_COUNT];
@@ -738,8 +733,11 @@ const char *format_time_auto(char *buffer, int buf_len, long value,
 
         timebuf[offsets[base_idx] + fwidth[base_idx]] = '\0';
 
+#if 0 /* unused */
         left_offset  = -(offsets[max_idx]);
-        left_offset += strlcpy(buffer, sign, buf_len);
+        left_offset +=
+#endif
+        strlcpy(buffer, sign, buf_len);
 
         /* trim leading zero on the max_idx */
         if ((unit_idx & UNIT_TRIM_ZERO) == UNIT_TRIM_ZERO &&
@@ -767,7 +765,9 @@ const char *format_time_auto(char *buffer, int buf_len, long value,
 
         fwidth[UNIT_IDX_HR] = len - offsets[UNIT_IDX_HR];
 
+#if 0 /* unused */
         left_offset = -(offsets[base_idx]);
+#endif
 
         /* trim leading zero on the max_idx */
         if ((unit_idx & UNIT_TRIM_ZERO) == UNIT_TRIM_ZERO &&
@@ -782,7 +782,10 @@ const char *format_time_auto(char *buffer, int buf_len, long value,
         if (!supress_unit)
         {
             strmemccpy(buffer, unit_strings_core[units[max_idx]], buf_len);
-            left_offset += strlcat(buffer, " ", buf_len);
+#if 0 /* unused */
+            left_offset +=
+#endif
+            strlcat(buffer, " ", buf_len);
             strlcat(buffer, &timebuf[offsets[base_idx]], buf_len);
         }
         else
@@ -944,49 +947,40 @@ int open_utf8(const char* pathname, int flags)
 
 #define NVOL_FRACBITS 16
 #define NVOL_UNITY    (1L << NVOL_FRACBITS)
-#define NVOL_FACTOR   (600L << NVOL_FRACBITS)
-
-#define NVOL_MAX_LINEAR_DB_SCALE (240L << NVOL_FRACBITS)
 
 #define nvol_div(x,y) fp_div((x), (y), NVOL_FRACBITS)
 #define nvol_mul(x,y) fp_mul((x), (y), NVOL_FRACBITS)
 #define nvol_exp10(x) fp_exp10((x), NVOL_FRACBITS)
 #define nvol_log10(x) fp_log10((x), NVOL_FRACBITS)
 
-static bool use_linear_dB_scale(long min_vol, long max_vol)
+static long get_nvol_factor(void)
 {
-    /*
-     * Alsamixer uses a linear scale for small ranges.
-     * Commented out so perceptual volume works as advertised on all targets.
-     */
-    /*
-    return max_vol - min_vol <= NVOL_MAX_LINEAR_DB_SCALE;
-    */
+    long factor = 600L << NVOL_FRACBITS;
+    long numdecimals = sound_numdecimals(SOUND_VOLUME);
 
-    (void)min_vol;
-    (void)max_vol;
-    return false;
+    if (numdecimals == 0)
+        factor /= 10;
+
+    /* nothing *actually* needs this, but: */
+    while (numdecimals-- > 1)
+        factor *= 10;
+
+    return factor;
 }
 
 long to_normalized_volume(long vol, long min_vol, long max_vol, long max_norm)
 {
     long norm, min_norm;
+    long factor = get_nvol_factor();
 
     vol <<= NVOL_FRACBITS;
     min_vol <<= NVOL_FRACBITS;
     max_vol <<= NVOL_FRACBITS;
     max_norm <<= NVOL_FRACBITS;
 
-    if (use_linear_dB_scale(min_vol, max_vol))
-    {
-        norm = nvol_div(vol - min_vol, max_vol - min_vol);
-    }
-    else
-    {
-        min_norm = nvol_exp10(nvol_div(min_vol - max_vol, NVOL_FACTOR));
-        norm = nvol_exp10(nvol_div(vol - max_vol, NVOL_FACTOR));
-        norm = nvol_div(norm - min_norm, NVOL_UNITY - min_norm);
-    }
+    min_norm = nvol_exp10(nvol_div(min_vol - max_vol, factor));
+    norm = nvol_exp10(nvol_div(vol - max_vol, factor));
+    norm = nvol_div(norm - min_norm, NVOL_UNITY - min_norm);
 
     return nvol_mul(norm, max_norm) >> NVOL_FRACBITS;
 }
@@ -994,6 +988,7 @@ long to_normalized_volume(long vol, long min_vol, long max_vol, long max_norm)
 long from_normalized_volume(long norm, long min_vol, long max_vol, long max_norm)
 {
     long vol, min_norm;
+    long factor = get_nvol_factor();
 
     norm <<= NVOL_FRACBITS;
     min_vol <<= NVOL_FRACBITS;
@@ -1002,16 +997,9 @@ long from_normalized_volume(long norm, long min_vol, long max_vol, long max_norm
 
     vol = nvol_div(norm, max_norm);
 
-    if (use_linear_dB_scale(min_vol, max_vol))
-    {
-        vol = nvol_mul(vol, max_vol - min_vol) + min_vol;
-    }
-    else
-    {
-        min_norm = nvol_exp10(nvol_div(min_vol - max_vol, NVOL_FACTOR));
-        vol = nvol_mul(vol, NVOL_UNITY - min_norm) + min_norm;
-        vol = nvol_mul(nvol_log10(vol), NVOL_FACTOR) + max_vol;
-    }
+    min_norm = nvol_exp10(nvol_div(min_vol - max_vol, factor));
+    vol = nvol_mul(vol, NVOL_UNITY - min_norm) + min_norm;
+    vol = nvol_mul(nvol_log10(vol), factor) + max_vol;
 
     return vol >> NVOL_FRACBITS;
 }
@@ -1154,18 +1142,21 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
     switch(event)
     {
         case SYS_USB_CONNECTED:
+        {
+            intptr_t seqnum = button_get_data();
             if (callback != NULL)
                 callback(parameter);
             system_flush();
 #if defined(BOOTFILE) && !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
             check_bootfile(false); /* gets initial size */
 #endif
-            osm_usb_screen();
+            osm_usb_screen(seqnum);
 #if defined(BOOTFILE) && !defined(USB_NONE) && !defined(USB_HANDLED_BY_OF)
             check_bootfile(true);
 #endif
             osm_library_changed();
             return SYS_USB_CONNECTED;
+        }
 
         case SYS_POWEROFF:
         case SYS_REBOOT:

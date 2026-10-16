@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: pcm-s5l8700.c 28600 2010-11-14 19:49:20Z Buschel $
  *
  * Copyright © 2011 Michael Sparmann
  *
@@ -31,6 +30,7 @@
 #include "pcm_sampr.h"
 #include "pcm-target.h"
 #include "dma-s5l8702.h"
+#include "pcm_sink.h"
 
 /* DMA configuration */
 
@@ -80,20 +80,32 @@ static struct dmac_ch_cfg dma_play_ch_cfg = {
 #define CHUNK_MAX_BYTES     (LLI_MAX_BYTES * 1)
 #define WATERMARK_BYTES     (PCM_WATERMARK * 4)
 
+/* I2S0 TX setup and start command. The Nano 3G uses the values Apple's
+ * firmware writes for its WM1870, which is the I2S clock master; the
+ * ipod6g values have TXCON bits 3-4 and TXCOM bit 3 set as well, and with
+ * them I2S0 never takes the codec's BCLK/LRCK. */
+#ifdef IPOD_NANO3G
+#define I2STXCON_SETUP  0x0b100001
+#define I2STXCOM_START  0x6
+#else
+#define I2STXCON_SETUP  0xb100019
+#define I2STXCOM_START  0xe
+#endif
+
 static volatile int locked = 0;
 static unsigned char dblbuf[2][WATERMARK_BYTES] CACHEALIGN_ATTR;
 static int active_dblbuf;
 size_t pcm_remaining;
 
 /* Mask the DMA interrupt */
-void pcm_play_lock(void)
+static void sink_lock(void)
 {
     if (locked++ == 0)
         dmac_ch_lock_int(&dma_play_ch);
 }
 
 /* Unmask the DMA interrupt if enabled */
-void pcm_play_unlock(void)
+static void sink_unlock(void)
 {
     if (--locked == 0)
         dmac_ch_unlock_int(&dma_play_ch);
@@ -141,45 +153,48 @@ static void dma_play_callback(void *cb_data)
     pcm_play_dma_status_callback(PCM_DMAST_STARTED);
 }
 
-void pcm_play_dma_start(const void* addr, size_t size)
-{
-    pcm_play_dma_stop();
-
-    pcm_remaining = size;
-    I2STXCOM = 0xe;
-    dma_play_callback((void*)addr);
-}
-
-void pcm_play_dma_stop(void)
+static void sink_dma_stop(void)
 {
     dmac_ch_stop(&dma_play_ch);
     I2STXCOM = 0xa;
+}
+
+static void sink_dma_start(const void* addr, size_t size)
+{
+    sink_dma_stop();
+
+    pcm_remaining = size;
+    I2STXCOM = I2STXCOM_START;
+    dma_play_callback((void*)addr);
 }
 
 /* MCLK = 12MHz (MCLKDIV2=1), [CS42L55 DS, s4.8] */
 #define MCLK_FREQ     12000000
 
 /* set the configured PCM frequency */
-void pcm_dma_apply_settings(void)
+static void sink_set_freq(uint16_t freq)
 {
+#ifdef HAVE_CS42L55
     static uint16_t last_clkcon3l = 0;
-    uint16_t clkcon3l;
-    int fsel;
+#else
+    /* Not a valid setting, so the first call always programs MCLK. The
+     * CS42L55 driver starts MCLK itself; the WM8975 driver does not. */
+    static uint16_t last_clkcon3l = 0xffff;
+#endif
+    uint16_t clkcon3l = 0;  /* OSC0 -> 12 MHz */
 
+#ifdef HAVE_CS42L55
     /* For unknown reasons, s5l8702 I2S controller does not synchronize
      * with CS42L55 at 32000 Hz. To fix it, the CODEC is configured with
      * a sample rate of 48000 Hz and MCLK is decreased 1/3 to 8 Mhz,
      * obtaining 32 KHz in LRCK controller input and 8 MHz in SCLK input.
      * OF uses this trick.
      */
-    if (pcm_fsel == HW_FREQ_32) {
-        fsel = HW_FREQ_48;
+    if (freq == HW_FREQ_32) {
+        freq = HW_FREQ_48;
         clkcon3l = 0x3028;  /* PLL2 / 3 / 9 -> 8 MHz */
     }
-    else {
-        fsel = pcm_fsel;
-        clkcon3l = 0;  /* OSC0 -> 12 MHz */
-    }
+#endif
 
     /* configure MCLK */
     /* TODO: maybe all CLKCON management should be moved to
@@ -192,27 +207,22 @@ void pcm_dma_apply_settings(void)
     }
 
     /* configure I2S clock ratio */
-    I2SCLKDIV = MCLK_FREQ / hw_freq_sampr[fsel];
+    I2SCLKDIV = MCLK_FREQ / hw_freq_sampr[freq];
     /* select CS42L55 sample rate */
-    audiohw_set_frequency(fsel);
+    audiohw_set_frequency(freq);
 }
 
-void pcm_play_dma_init(void)
+static void sink_dma_init(void)
 {
     PWRCON(1) &= ~(1 << 7);
 
     dmac_ch_init(&dma_play_ch, &dma_play_ch_cfg);
 
-    I2STXCON = 0xb100019;
+    I2STXCON = I2STXCON_SETUP;
     I2SCLKCON = 1;
 
     audiohw_preinit();
-    pcm_dma_apply_settings();
-}
-
-void pcm_play_dma_postinit(void)
-{
-    audiohw_postinit();
+    sink_set_freq(HW_FREQ_DEFAULT);
 }
 
 #ifdef HAVE_PCM_DMA_ADDRESS
@@ -222,6 +232,23 @@ void * pcm_dma_addr(void *addr)
 }
 #endif
 
+struct pcm_sink builtin_pcm_sink = {
+    .caps = {
+        .samprs       = hw_freq_sampr,
+        .num_samprs   = HW_NUM_FREQ,
+        .default_freq = HW_FREQ_DEFAULT,
+        .volume_type  = PCM_NATIVE_VOLUME_TYPE,
+    },
+    .ops = {
+        .init     = sink_dma_init,
+        .postinit = audiohw_postinit,
+        .set_freq = sink_set_freq,
+        .lock     = sink_lock,
+        .unlock   = sink_unlock,
+        .play     = sink_dma_start,
+        .stop     = sink_dma_stop,
+    },
+};
 
 /****************************************************************************
  ** Recording DMA transfer

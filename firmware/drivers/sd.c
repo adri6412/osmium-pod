@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright © 2009 by Rafaël Carré
  *
@@ -22,10 +21,6 @@
 #include "config.h"
 #include "sdmmc.h"
 #include "storage.h"
-
-void sd_sleep(void)
-{
-}
 
 void sd_spin(void)
 {

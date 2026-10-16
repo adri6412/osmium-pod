@@ -5,7 +5,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 # Usage: version.sh [source-root]
@@ -19,16 +18,14 @@
 # This logic is pulled from the Linux's scripts/setlocalversion (also GPL)
 # and tweaked for rockbox.
 gitversion() {
-    export GIT_DIR="$1/.git"
-
     # This verifies we are in a git directory
-    if head=`git rev-parse --verify --short=10 HEAD 2>/dev/null`; then
+    if head=`git -C "$1" rev-parse --verify --short=10 HEAD 2>/dev/null`; then
 
 	# Are there uncommitted changes?
 	export GIT_WORK_TREE="$1"
-	if git diff --name-only HEAD | read dummy; then
+	if git -C "$1" diff --name-only HEAD | read dummy; then
 	    mod="M"
-	elif git diff --name-only --cached HEAD | read dummy; then
+	elif git -C "$1" diff --name-only --cached HEAD | read dummy; then
 	    mod="M"
 	fi
 
@@ -51,11 +48,13 @@ if [ -z $VERSION ]; then
         VER=`cat $TOP/$VERSIONFILE`;
     else
         # Ok, we need to derive it from the Version Control system
-        if [ -d "$TOP/.git" ]; then
 	    VER=`gitversion $TOP`
-        fi
     fi
-VERSION=$VER-`date -u +%y%m%d`
+if [ -z $SOURCE_DATE_EPOCH ]; then
+	VERSION=$VER-`date -u +%y%m%d`
+else
+	VERSION=$VER-`date -d @$SOURCE_DATE_EPOCH -u +%y%m%d`
+fi
 fi
 echo $VERSION
 

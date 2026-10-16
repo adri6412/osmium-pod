@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Maurus Cuelenaere
  *
@@ -192,6 +191,7 @@ No access to the NAND yet..
 #define USB_STATUS_BY_EVENT
 #define USB_VENDOR_ID     0x07C4
 #define USB_PRODUCT_ID    0xA4A5
+#define HAVE_BOOTLOADER_USB_MODE
 
 /* Define this if a programmable hotkey is mapped */
 //#define HAVE_HOTKEY

@@ -5,7 +5,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 use strict;
@@ -223,7 +222,7 @@ sub make_install {
 
     foreach my $_dir (@files) {
         my $dir = "wps/" . $_dir;
-        if ( -d "$src/$dir" && $_dir !~ /\.\.?/) {
+        if ( -d "$src/$dir" && $_dir !~ /^\.\.?$/) {
             unless (glob_mkdir("$userdir/$dir")) {
                 return 0;
             }
@@ -260,7 +259,7 @@ GetOptions ( 'r|root=s'      => \$ROOT,
 # Thus we use the ":" for those for which we use a default value in case of ""
 # and assign the default value afterwards
 if ($ziptool eq '') {
-    $ziptool = "zip -r9";
+    $ziptool = "zip -r9 -X";
 }
 if ($output eq '') {
     $output = "rockbox.zip"
@@ -425,7 +424,7 @@ sub buildzip {
         glob_copy("$ROOT/firmware/drivers/libertas/firmware/*", "$temp_dir/libertas/");
     }
     # add hbmenu shortcut's icon and 3dsx executable
-    if ($modelname =~ /ctru/) {
+    if ($modelname =~ /3ds/) {
         glob_copy("icon.icn", "$temp_dir/");
         glob_copy("rockbox.3dsx", "$temp_dir/");
     }
@@ -677,12 +676,11 @@ sub buildzip {
     } else {
         copy("$ROOT/wps/classic_statusbar.mono.sbs", "$temp_dir/wps/classic_statusbar.sbs");
     }
-    if ($remote_depth != $depth) {
-        copy("$ROOT/wps/classic_statusbar.mono.sbs", "$temp_dir/wps/classic_statusbar.rsbs");
-    } else {
+    if ($remote_depth == $depth) {
         copy("$temp_dir/wps/classic_statusbar.sbs", "$temp_dir/wps/classic_statusbar.rsbs");
+    } elsif ($remote_depth != 0) {
+        copy("$ROOT/wps/classic_statusbar.mono.sbs", "$temp_dir/wps/classic_statusbar.rsbs");
     }
-    copy("$temp_dir/wps/rockbox_none.sbs", "$temp_dir/wps/rockbox_none.rsbs");
     } # wps
 
     # and the info file
@@ -704,6 +702,13 @@ sub buildzip {
     glob_mkdir("$temp_dir/rocks/viewers/lua/");
     glob_copy('apps/plugins/lua/*.lua', "$temp_dir/rocks/viewers/lua/");
     }
+
+    # finally, bundle map files for debug
+    glob_mkdir("$temp_dir/debug");
+    glob_copy("*.map", "$temp_dir/debug");
+# codecs and plugin maps add up
+#    find(find_copyfile(qr/\.(map)/, abs_path("$temp_dir/debug")), 'lib');
+#    find(find_copyfile(qr/\.(map)/, abs_path("$temp_dir/debug")), 'apps/plugins');
 }
 
 my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
@@ -760,12 +765,12 @@ sub runone {
         }
 
         # add hbmenu shortcut and cia file to zip file
-        if ($modelname =~ /ctru/) {
-            move("rockbox.cia", "3ds");
-            copy("$ROOT/packaging/ctru/rockbox.xml", "3ds");
+        if ($modelname =~ /3ds/) {
+            copy("rockbox.cia", "3ds");
+            copy("$ROOT/packaging/3ds/rockbox.xml", "3ds");
 
             system("$ziptool -u $output 3ds/rockbox.xml $target >/dev/null");
-            print "$ziptool $output $ROOT/packaging/ctru/rockbox.xml $target >/dev/null\n" if $verbose;
+            print "$ziptool $output $ROOT/packaging/3ds/rockbox.xml $target >/dev/null\n" if $verbose;
             system("$ziptool -u $output 3ds/rockbox.cia $target >/dev/null");
             print "$ziptool $output rockbox.cia $target >/dev/null\n" if $verbose;
         }

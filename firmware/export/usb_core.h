@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Björn Stenberg
  *
@@ -39,6 +38,11 @@
 
 extern int usb_max_pkt_size;
 
+enum usb_control_response {
+    USB_CONTROL_ACK,
+    USB_CONTROL_STALL,
+};
+
 enum {
     USB_STRING_INDEX_LANGUAGE,
     USB_STRING_INDEX_MANUFACTURER,
@@ -51,19 +55,23 @@ struct usb_class_driver;
 
 void usb_core_init(void);
 void usb_core_exit(void);
-void usb_core_control_request(struct usb_ctrlrequest* req, void* data);
-void usb_core_control_complete(int status);
-void usb_core_legacy_control_request(struct usb_ctrlrequest* req);
+/* IRQ context, after both EP0 directions and their stale completions have
+ * been cancelled. Does not release a request buffer still owned by a handler. */
+void usb_core_control_cancelled(void);
+void usb_core_setup_received(struct usb_ctrlrequest* req);
+void usb_core_control_response(enum usb_control_response response, const void* data, size_t size);
 void usb_core_transfer_complete(int endpoint,int dir,int status,int length);
 void usb_core_bus_reset(void);
-bool usb_core_any_exclusive_storage(void);
 void usb_core_enable_driver(int driver,bool enabled);
 bool usb_core_driver_enabled(int driver);
+#ifdef HAVE_USBSTACK
 void usb_core_handle_transfer_completion(
         struct usb_transfer_completion_event_data* event);
+#endif
 void usb_core_handle_notify(long id, intptr_t data);
 /* For controllers which handle SET ADDR and/or SET CONFIG in hardware */
-void usb_core_notify_set_address(uint8_t addr);
+/* Address state only; hardware programming and status timing belong to drivers. */
+void usb_core_notify_set_address(uint8_t addr); /* IRQ-safe notification */
 void usb_core_notify_set_config(uint8_t config);
 
 #ifdef HAVE_HOTSWAP
@@ -71,4 +79,3 @@ void usb_core_hotswap_event(int volume,bool inserted);
 #endif
 
 #endif
-

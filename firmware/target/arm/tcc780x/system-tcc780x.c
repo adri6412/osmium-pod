@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Rob Purchase
  *
@@ -293,12 +292,6 @@ void system_exception_wait(void)
 #else
     #error "system_exception_wait not implemented for this target"
 #endif
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

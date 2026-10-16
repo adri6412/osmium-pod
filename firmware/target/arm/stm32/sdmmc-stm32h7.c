@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 by Aidan MacDonald
  *
@@ -28,6 +27,7 @@
 /* cmd_wait flags */
 #define WAIT_CMD   0x01
 #define WAIT_DATA  0x02
+#define WAIT_BUSY  0x04
 
 /* Maximum number of bytes for 1 transfer */
 #define MAX_DATA_LEN \
@@ -49,20 +49,39 @@
 #define DATA_END_BITS \
     (DATA_SUCCESS_BITS | DATA_ERROR_BITS)
 
-static size_t get_sdmmc_bus_freq(uint32_t clock)
-{
-    switch (clock)
-    {
-    case SDMMC_BUS_CLOCK_400KHZ: return 400000;
-    case SDMMC_BUS_CLOCK_25MHZ:  return 25000000;
-    case SDMMC_BUS_CLOCK_50MHZ:  return 50000000;
-    default:                     return 0;
-    }
-}
+/* IRQs for busy wait phase */
+#define BUSY_SUCCESS_BITS \
+    __reg_orm(SDMMC_STAR, BUSYD0END)
+#define BUSY_ERROR_BITS \
+    __reg_orm(SDMMC_STAR, DTIMEOUT)
+#define BUSY_END_BITS \
+    (BUSY_SUCCESS_BITS | DATA_ERROR_BITS)
 
 static size_t abs_diff(size_t a, size_t b)
 {
     return a > b ? a - b : b - a;
+}
+
+/*
+ * The CLKCR and CMDR registers must not be written twice
+ * within 7 AHB clock cycles. If this is not respected the
+ * hardware seems to misbehave, for example updating the
+ * clock divider in CLKCR can fail (the register field is
+ * updated, but the actual clock output is not).
+ *
+ * Reading a peripheral register should require at least
+ * two cycles on the AHB bus (1 address + 1 data cycle),
+ * assuming they are single transfers and no pipelining
+ * can take place. Doing four reads of an SDMMC register
+ * should therefore be enough to add the correct number
+ * of wait states.
+ */
+static void stm32h7_sdmmc_regwrite_delay(struct stm32h7_sdmmc_controller *ctl)
+{
+    reg_readl(ctl->regs, SDMMC_STAR);
+    reg_readl(ctl->regs, SDMMC_STAR);
+    reg_readl(ctl->regs, SDMMC_STAR);
+    reg_readl(ctl->regs, SDMMC_STAR);
 }
 
 static bool stm32h7_sdmmc_is_powered_off(struct stm32h7_sdmmc_controller *ctl)
@@ -80,7 +99,7 @@ void stm32h7_reset_sdmmc1(void)
 
 void stm32h7_sdmmc_init(struct stm32h7_sdmmc_controller *ctl,
                         uint32_t instance,
-                        enum stm_clock clock,
+                        const struct stm32_clock *clock,
                         void (*reset_sdmmc)(void),
                         void (*vcc_enable)(bool))
 {
@@ -109,7 +128,7 @@ void stm32h7_sdmmc_set_power_enabled(void *controller, bool enabled)
         sleep(1);
 
         /* Bus clock is now needed, so enable kernel clock */
-        stm_clock_enable(ctl->clock);
+        stm32_clock_enable(ctl->clock);
 
         /* Configure bus parameters */
         stm32h7_sdmmc_set_bus_width(ctl, SDMMC_BUS_WIDTH_1BIT);
@@ -121,7 +140,8 @@ void stm32h7_sdmmc_set_power_enabled(void *controller, bool enabled)
         udelay(200);
 
         /* Automatically stop clock when bus is not in use */
-        reg_writelf(ctl->regs, SDMMC_CLKCR, PWRSAV(1));
+        reg_writelf(ctl->regs, SDMMC_CLKCR, PWRSAV(1), HWFC_EN(1));
+        stm32h7_sdmmc_regwrite_delay(ctl);
     }
     else
     {
@@ -136,7 +156,7 @@ void stm32h7_sdmmc_set_power_enabled(void *controller, bool enabled)
          * and the bus is powered down; some quick testing shows this
          * seems to be true.
          */
-        stm_clock_disable(ctl->clock);
+        stm32_clock_disable(ctl->clock);
 
         /* Disable VCC */
         if (ctl->vcc_enable)
@@ -164,6 +184,8 @@ void stm32h7_sdmmc_set_bus_width(void *controller, uint32_t width)
         reg_writelf(ctl->regs, SDMMC_CLKCR, WIDBUS_V(8BIT));
     else
         panicf("%s", __func__);
+
+    stm32h7_sdmmc_regwrite_delay(ctl);
 }
 
 void stm32h7_sdmmc_set_bus_clock(void *controller, uint32_t clock)
@@ -174,8 +196,8 @@ void stm32h7_sdmmc_set_bus_clock(void *controller, uint32_t clock)
     if (stm32h7_sdmmc_is_powered_off(ctl))
         return;
 
-    size_t ker_freq = stm_clock_get_frequency(ctl->clock);
-    size_t bus_freq = get_sdmmc_bus_freq(clock);
+    size_t ker_freq = stm32_clock_get_frequency(ctl->clock);
+    size_t bus_freq = sdmmc_host_get_bus_freq(clock);
     if (!bus_freq)
         panicf("%s", __func__);
 
@@ -213,6 +235,8 @@ void stm32h7_sdmmc_set_bus_clock(void *controller, uint32_t clock)
                 DDR(0),
                 NEGEDGE(0),
                 CLKDIV(div[idx] / 2));
+
+    stm32h7_sdmmc_regwrite_delay(ctl);
 }
 
 int stm32h7_sdmmc_submit_command(void *controller,
@@ -224,6 +248,7 @@ int stm32h7_sdmmc_submit_command(void *controller,
     uint32_t maskr = CMD_ERROR_BITS;
     uint32_t cmdr = __reg_orf(SDMMC_CMDR, CPSMEN(1), CMDINDEX(cmd->command));
     uint32_t cmd_wait = WAIT_CMD;
+    uint32_t dctrl = 0, dtimer = 0, dlenr = 0;
 
     void *buff_addr = cmd->buffer;
     size_t buff_size = cmd->nr_blocks * cmd->block_len;
@@ -262,6 +287,13 @@ int stm32h7_sdmmc_submit_command(void *controller,
         break;
     }
 
+    /* For R1b responses we need to wait for the busy signal. */
+    if (cmd->flags & SDMMC_RESP_BUSY)
+    {
+        maskr |= BUSY_END_BITS;
+        cmd_wait |= WAIT_BUSY;
+    }
+
     /*
      * Handle commands with data transfers
      */
@@ -273,29 +305,7 @@ int stm32h7_sdmmc_submit_command(void *controller,
         if (buff_size > MAX_DATA_LEN)
             panicf("%s: buffer too big", __func__);
 
-        /*
-         * IDMA on the SDMMC controller can't access the DTCM.
-         * This is only possible by bounce-buffering in one of
-         * the other memories accessible to IDMA, then using
-         * another DMA process to copy the resulting buffer to
-         * DTCM, which seems unnecessarily convoluted.
-         */
-        if ((uintptr_t)buff_addr >= STM32_DTCM_BASE &&
-            (uintptr_t)buff_addr < STM32_DTCM_BASE + STM32_DTCM_SIZE)
-            panicf("%s: buffer in DTCM not supported", __func__);
-
-        /*
-         * Must assign to a variable to prevent GCC from whining
-         * about 'limited range of data type', because the ITCM
-         * is mapped at address 0.
-         */
-        static const uintptr_t itcm_base = STM32_ITCM_BASE;
-        if ((uintptr_t)buff_addr >= itcm_base &&
-            (uintptr_t)buff_addr < itcm_base + STM32_ITCM_SIZE)
-            panicf("%s: buffer in ITCM not supported", __func__);
-
         /* Set block size */
-        uint32_t dctrl = 0;
         uint32_t dblocksize = find_first_set_bit(cmd->block_len);
         if (dblocksize > 14 || (cmd->block_len & (cmd->block_len - 1)))
             panicf("%s: incorrect block size", __func__);
@@ -319,11 +329,8 @@ int stm32h7_sdmmc_submit_command(void *controller,
         reg_assignlf(ctl->regs, SDMMC_IDMACTRLR, IDMAEN(1));
 
         /* Use a 10 second timeout (DTIMER is in units of bus clocks) */
-        reg_varl(ctl->regs, SDMMC_DTIMER) = 10 * ctl->bus_freq;
-        reg_varl(ctl->regs, SDMMC_DLENR) = buff_size;
-
-        /* DCTRL must be written last */
-        reg_varl(ctl->regs, SDMMC_DCTRL) = dctrl;
+        dtimer = 10 * ctl->bus_freq;
+        dlenr = buff_size;
 
         /* Enable data phase */
         reg_vwritef(cmdr, SDMMC_CMDR, CMDTRANS(1));
@@ -334,10 +341,16 @@ int stm32h7_sdmmc_submit_command(void *controller,
     {
         /* Disable data transfer */
         reg_assignlf(ctl->regs, SDMMC_IDMACTRLR, IDMAEN(0));
-        reg_varl(ctl->regs, SDMMC_DTIMER) = 0;
-        reg_varl(ctl->regs, SDMMC_DLENR) = 0;
-        reg_varl(ctl->regs, SDMMC_DCTRL) = 0;
+
+        /* DTIMER is the wait time for the busy signal */
+        if (cmd->flags & SDMMC_RESP_BUSY)
+            dtimer = 1 * ctl->bus_freq;
     }
+
+    /* Set data transfer registers */
+    reg_varl(ctl->regs, SDMMC_DLENR)  = dlenr;
+    reg_varl(ctl->regs, SDMMC_DTIMER) = dtimer;
+    reg_varl(ctl->regs, SDMMC_DCTRL)  = dctrl;
 
     /*
      * Set CMDSTOP bit for CMD12 (stop transmission) command;
@@ -360,20 +373,13 @@ int stm32h7_sdmmc_submit_command(void *controller,
     reg_varl(ctl->regs, SDMMC_MASKR) = maskr;
     reg_varl(ctl->regs, SDMMC_ARGR) = cmd->argument;
     reg_varl(ctl->regs, SDMMC_CMDR) = cmdr;
+    stm32h7_sdmmc_regwrite_delay(ctl);
 
     /* Wait for command completion */
     semaphore_wait(&ctl->sem, TIMEOUT_BLOCK);
 
-    /*
-     * Discard data from speculative reads that may have
-     * accessed the buffer during the DMA transfer.
-     */
+    /* Save original command status code */
     int cmd_error = ctl->cmd_error;
-    if (cmd_error == SDMMC_STATUS_OK)
-    {
-        if (SDMMC_DATA_DIR(cmd->flags) == SDMMC_DATA_READ)
-            discard_dcache_range(buff_addr, buff_size);
-    }
 
     /*
      * If a data transfer command fails we need to issue CMD12
@@ -394,6 +400,15 @@ int stm32h7_sdmmc_submit_command(void *controller,
          */
         stm32h7_sdmmc_submit_command(ctl, &cmd12, NULL);
     }
+
+    /*
+     * Discard data from speculative reads that may have
+     * accessed the buffer during the DMA transfer. Must
+     * be done after the CMD12 above otherwise the cache
+     * may end up out of sync with main memory.
+     */
+    if (SDMMC_DATA_DIR(cmd->flags) == SDMMC_DATA_READ)
+        discard_dcache_range(buff_addr, buff_size);
 
     /* Return error from original command */
     return cmd_error;
@@ -428,14 +443,19 @@ void stm32h7_sdmmc_irq_handler(struct stm32h7_sdmmc_controller *ctl)
     uint32_t icr = 0;
 
     if (!ctl->cmd_wait)
-        panicf("sdmmc_irq: not waiting: %08lx", star);
+    {
+        if (star != 0)
+            panicf("sdmmc_irq: not waiting: %08lx", star);
+
+        return;
+    }
 
     /*
      * Ignore interrupts which we haven't enabled; this is needed
      * to ensure the correct interrupt is used to detect command
      * completion (CMDSENT or CMDREND).
      */
-    star &= maskr;
+    star &= maskr | __reg_orm(SDMMC_STAR, BUSYD0);
 
     if (ctl->cmd_wait & WAIT_CMD)
     {
@@ -481,12 +501,42 @@ void stm32h7_sdmmc_irq_handler(struct stm32h7_sdmmc_controller *ctl)
                     ctl->cmd_error = SDMMC_STATUS_TIMEOUT;
                 else if (reg_vreadf(star, SDMMC_STAR, DCRCFAIL))
                     ctl->cmd_error = SDMMC_STATUS_INVALID_CRC;
-                else if (star & DATA_ERROR_BITS)
+                else if (reg_vreadf(star, SDMMC_STAR, DABORT))
                     ctl->cmd_error = SDMMC_STATUS_ERROR;
+                else if (reg_vreadf(star, SDMMC_STAR, IDMATE))
+                    panicf("sdmmc dma err: %08lx", reg_readl(ctl->regs, SDMMC_IDMABASE0R));
+                else if (star & DATA_ERROR_BITS)
+                    panicf("sdmmc data error: %08lx", star);
             }
 
             ctl->cmd_wait &= ~WAIT_DATA;
             icr |= DATA_END_BITS;
+        }
+    }
+
+    if (ctl->cmd_wait & WAIT_BUSY)
+    {
+        if (reg_vreadf(star, SDMMC_STAR, CMDREND) &&
+            !reg_vreadf(star, SDMMC_STAR, BUSYD0))
+        {
+            /*
+             * Skip waiting if the busy signal is not asserted by
+             * the card when the command ends; in this case we'll
+             * never receive a BUSYD0END interrupt because it is
+             * only raised on a transition from busy -> not busy.
+             */
+            ctl->cmd_wait &= ~WAIT_BUSY;
+        }
+        else if ((star & BUSY_END_BITS) || ctl->cmd_error)
+        {
+            if (!ctl->cmd_error)
+            {
+                if (reg_vreadf(star, SDMMC_STAR, DTIMEOUT))
+                    ctl->cmd_error = SDMMC_STATUS_TIMEOUT;
+            }
+
+            ctl->cmd_wait &= ~WAIT_BUSY;
+            icr |= BUSY_END_BITS;
         }
     }
 

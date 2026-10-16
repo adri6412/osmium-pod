@@ -5,7 +5,6 @@
 *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 *                     \/            \/     \/    \/            \/
-* $Id$
 *
 * Copyright (C) 2007 by Michael Sevakis
 *
@@ -191,17 +190,9 @@ void system_init(void)
     CLKCON &= ~0xFF1ED0;
  
     CLKSLOW |= 0x80;
-#elif defined(MINI2440)        
-    /* TODO: anything? */
 #else
 #error Unknown target    
 #endif
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

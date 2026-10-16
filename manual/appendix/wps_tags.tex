@@ -1,4 +1,3 @@
-% $Id$ %
 \chapter{\label{ref:wps_tags}Theme Tags}
 Themeing is discussed in detail in section \reference{ref:ConfiguringtheWPS},
 what follows is a list of the available tags.
@@ -63,14 +62,18 @@ show the information for the next song to be played.
      \config{\%V(x,y,[width],\tabnlindent[height],[font])}\newline
       \config{\%Vf([fgshade])}\newline
       \config{\%Vb([bgshade])}
-      & See section \ref{ref:Viewports}\\}}
+      & See section \ref{ref:Viewports}\newline
+      \note{Any text or tags after \%Vf() or \%Vb() may result in
+            unexpected behavior and should be avoided.}\\}}
 
     \opt{lcd_color}{%
       \config{\%V(x,y,[width],\tabnlindent[height],[font])}\newline
       \config{\%Vf([fgcolour])}\newline
       \config{\%Vb([bgcolour])}\newline
       \config{\%Vg(start,end \tabnlindent[,text])}
-      & See section \ref{ref:Viewports}\\}
+      & See section \ref{ref:Viewports}\newline
+      \note{Any text or tags after \%Vf() or \%Vb() may result in
+            unexpected behavior and should be avoided.}\\}
 
     \opt{lcd_non-mono}{%
       \config{\%Vs(mode[,param])}
@@ -174,7 +177,18 @@ or \config{\%D(2)}), produce the information for the next file to be played.
     \config{\%pR} & Peak meter for the right channel. Can be used as a value, %
             a conditional tag or a bar tag.\\
     \config{\%pn} & Playlist name (without path or extension)\\
-    \config{\%pp} & Playlist position\\
+    \config{\%pp} & Playlist position as index\\
+    \config{\%pP} & Playlist position as percentage. Can be used as a value, %
+            a conditional tag or a bar tag.\\
+    \config{\%pX} & Percentage of the whole playlist played by time. Unlike
+         \config{\%pP} this reflects tracks of differing length when 500 or less, 
+         such as audiobook chapters. Othewise acts like \config{\%pP} except with
+         also including progress through the current track in the percentage.
+    \opt{HAVE_DISK_STORAGE}{
+         Track lengths are estimated from file size to reduce disk use, so
+         the value may be approximate.
+         }
+         Can be used as a value, a conditional tag or a bar tag.\\
     \config{\%pr} & Remaining time in song\\
     \config{\%ps} & ``s'' if shuffle mode is enabled\\
     \config{\%pt} & Total track time\\
@@ -305,6 +319,32 @@ Examples:
 
 \config{\%?if(\%cs, =, 2)<This is the WPS>}
 
+\opt{quickscreen}{
+\section{Drawing the Quickscreen using a skin}
+
+Quickscreen settings can be displayed using the following tags.
+
+\begin{tagmap}
+    \config{\%QT} & Top Quickscreen setting (name)\\
+    \config{\%Qt} & Top Quickscreen setting (value)\\
+    \config{\%QR} & Right Quickscreen setting (name)\\
+    \config{\%Qr} & Right Quickscreen setting (value)\\
+    \config{\%QB} & Bottom Quickscreen setting (name)\\
+    \config{\%Qb} & Bottom Quickscreen setting (value)\\
+    \config{\%QL} & Left Quickscreen setting (name)\\
+    \config{\%Ql} & Left Quickscreen setting (value)\\
+  \end{tagmap}
+
+  Define viewports containing these tags for each Quickscreen position, with your
+  desired font and formatting. Check if \config{\%cs} is equal to \config{10}
+  (i.e. Quickscreen is the current screen) before displaying them.
+
+  If \config{\%QT} is present anywhere in the \fname{.sbs}, then the un-skinned
+  Quickscreen will not be shown.
+
+  \note{If a preset does not match a legal setting, or has no setting applied, all tags will display "ERR".}
+}
+
 \section{List Title (\fname{.sbs} only)}
   \begin{tagmap}
     \config{\%Lt} & Title text. Should be used in a conditional so that non-list
@@ -328,17 +368,17 @@ Examples:
       number, can be used in normal viewports to get the selected items icon number.\\
     \config{\%LN} & Get the position of the current item in the list (1-based). Useful for displaying numbered lists.\\
     \config{\%LR} & Get the row number on which the current item will be drawn (1-based). Can be used to change the style based on where on the screen the item appears.\\
-    \config{\%Lc} & Get the column number on which the current item will be drawn (1-based). Can be used to change the style based on where on the screen the item appears.\\
-    \config{\%LC} & Use as a conditional to determine if the current item is the selected item\\
-    \config{\%Lb} & BAR TAG to show the scroll bar, params/options like other bar types. It still needs a bit of work though. Use as a conditional to find out if the bar is actually needed\\
-    \config{\%LB(viewport,width,\tabnlindent height[,tile])} & specify the
+    \config{\%LC} & Get the column number on which the current item will be drawn (1-based). Can be used to change the style based on where on the screen the item appears.\\
+    \config{\%Lc} & Use as a conditional to determine if the current item is the selected item\\
+    \config{\%LB} & BAR TAG to show the scroll bar, params/options like other bar types. It still needs a bit of work though. Use as a conditional to find out if the bar is actually needed\\
+    \config{\%Lb(viewport,width,\tabnlindent height[,tile])} & specify the
       viewport label to draw for each item and the size of each item. if the
       last param is 'tile' it will form a grid instead of a list\\
   \end{tagmap}
   \note{To do this you need at least one viewport which will be drawn for each item on the screen, and the ui viewport configured (using the %Vi tag). To make this work do the following:
     Setup the ui viewport as normal. As many items as can fit in this viewport will be displayed (Titles are not included and need to be drawn in a seperate viewport manually)
     Create one or more viewports with a shared label which you want to display for each item. The x/y position is relative to an imaginary box which each item fits in inside the ui viewport.
-    Tell the skin to draw the lists using the \%LB() tag}
+    Tell the skin to draw the lists using the \%Lb() tag}
 
 
 \section{Changing Volume}
@@ -375,25 +415,6 @@ Examples:
 \item As a simple tag: \config{\%St(skip length)}
 \item As a conditional: \config{\%?St(eq enabled)<Eq is enabled|Eq is disabled>}
 \end{enumerate}
-
-\opt{quickscreen}{
-\subsection{Displaying Quickscreen settings}
-
-If your player has a quickscreen, the preset settings can be displayed using the following.
-
-\begin{tagmap}
-    \config{\%QT} & Display the name of the top quickscreen setting.\\
-    \config{\%Qt} & Display the value of the top quickscreen setting.\\
-    \config{\%QR} & Display the name of the right quickscreen setting.\\
-    \config{\%Qr} & Display the value of the right quickscreen setting.\\
-    \config{\%QB} & Display the name of the bottom quickscreen setting.\\
-    \config{\%Qb} & Display the value of the bottom quickscreen setting.\\
-    \config{\%QL} & Display the name of the left quickscreen setting.\\
-    \config{\%Ql} & Display the value of the left quickscreen setting.\\
-  \end{tagmap}
-
-  \note{If a preset does not match a legal setting, or has no setting applied, all tags will display "ERR".}
-}
 
 \section{\label{ref:wps_images}Images}
   \begin{tagmap}
@@ -492,6 +513,39 @@ Examples:
 \end{enumerate}
 
 For general information where to put album art see \reference{ref:album_art}.
+}
+
+\opt{recording}{
+\section{Recording}
+These tags show the state of recording, in any skin.
+  \begin{tagmap}
+    \config{\%Rp} & Can this \dap{} record?\\
+    \config{\%Rr} & Is a recording in progress?\\
+    \config{\%Rh} & Hours of the current recording.\\
+    \config{\%Rn} & Minutes of the current recording, 00 to 59.\\
+    \config{\%Rs} & Seconds of the current recording, 00 to 59.\\
+    \config{\%RS} & Size of the current recording, e.g. ``1.5MB''.\\
+    \config{\%RP} & Seconds in the pre-record buffer; empty unless
+      pre-recording.\\
+    \config{\%Re} & Recording format: wav, aiff, wv or mp3. As a conditional:
+      \config{\%?Re<wav|aiff|wv|mp3>}.\\
+    \config{\%Rf} & Sample rate in kHz, e.g. ``44.1''. As a conditional, 1 to
+      12: 96, 88.2, 64, 48, 44.1, 32, 24, 22.05, 16, 12, 11.025 and 8~kHz.\\
+    \config{\%Rb} & MP3 bitrate in kbps; empty for the other formats. As a
+      conditional, 1 to 18 for 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128,
+      144, 160, 192, 224, 256 and 320~kbps.\\
+    \config{\%Rm} & Is the recording mono?\\
+    \config{\%Ri} & Recording source, by name. As a conditional, the same on
+      every \dap{}: \config{\%?Ri<mic|line in|digital|FM radio>}.\\
+    \config{\%Rg} & Gain of the recording source in dB -- for line in and
+      FM radio the left channel's. Empty for a source without a gain.\\
+    \config{\%Rc} & Number of clips the peak meter has counted.\\
+    \config{\%Rt} & Trigger state: off, ready, steady, go, postrec, retrig or
+      continue. As a conditional:
+      \config{\%?Rt<off|ready|steady|go|postrec|retrig|continue>}.\\
+    \config{\%Rw} & Recording warnings, as a hexadecimal number; empty while
+      there are none.\\
+  \end{tagmap}
 }
 
 \opt{radio}{
@@ -756,6 +810,13 @@ display cycling round the defined sublines. See
     specify an image.
   \item[nobar] -- don't draw the bar or its frame (for use with the
     ``slider'' option).
+  \item[hold] -- for the peak meter bars (\config{\%pL}, \config{\%pR}):
+    the bar falls back at the peak meter's release rate instead of
+    following each drop, and the highest level is held for the peak hold
+    time. The next param may be a number, the thickness of the held peak in
+    pixels (default 1). With a fill image the held peak is drawn from that
+    part of the image, so for a bar drawn as LED segments set it to the size
+    of one segment.
     \opt{touchscreen}{
         \item[notouch] -- don't create the touchregion for progress/volume bars.
         \item[touchlabel] -- the next option sets the label of the bar touch area, for linking with the \%Tl tag.

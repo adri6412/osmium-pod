@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Björn Stenberg
  *
@@ -128,6 +127,7 @@
 #define SENSE_MEDIUM_ERROR          0x03
 #define SENSE_ILLEGAL_REQUEST       0x05
 #define SENSE_UNIT_ATTENTION        0x06
+#define SENSE_DATA_PROTECT          0x07
 
 #define ASC_MEDIUM_NOT_PRESENT      0x3a
 #define ASC_INVALID_FIELD_IN_CBD    0x24
@@ -136,6 +136,14 @@
 #define ASC_READ_ERROR              0x11
 #define ASC_NOT_READY               0x04
 #define ASC_INVALID_COMMAND         0x20
+#define ASC_WRITE_PROTECTED         0x27
+
+/* A drive whose driver can only read it is reported write protected */
+#ifdef HAVE_STORAGE_READONLY
+#define LUN_READONLY(lun)   storage_readonly(lun)
+#else
+#define LUN_READONLY(lun)   false
+#endif
 
 #define ASCQ_BECOMING_READY         0x01
 
@@ -297,6 +305,7 @@ static struct {
     unsigned char *data[2];
     unsigned char data_select;
     unsigned int last_result;
+    unsigned int data_residue;
 } cur_cmd;
 
 static struct {
@@ -308,6 +317,8 @@ static struct {
 
 static void handle_scsi(struct command_block_wrapper* cbw);
 static void send_csw(int status);
+static void reject_command(const struct command_block_wrapper *cbw);
+static void account_data_transfer(int dir, int status, int length);
 static void send_command_result(void *data,int size);
 static void send_command_failed_result(void);
 static void send_block_data(void *data,int size);
@@ -322,13 +333,13 @@ static bool locked[NUM_DRIVES];
 
 static int usb_interface;
 
-struct usb_class_driver_ep_allocation usb_storage_ep_allocs[2] = {
-    {.type = USB_ENDPOINT_XFER_BULK, .dir = DIR_IN, .optional = false},
-    {.type = USB_ENDPOINT_XFER_BULK, .dir = DIR_OUT, .optional = false},
+static struct usb_class_driver_ep_allocation ep_allocs[2] = {
+    {.type = USB_ENDPOINT_XFER_BULK, .dir = DIR_IN, .optional = false, .mps = -1},
+    {.type = USB_ENDPOINT_XFER_BULK, .dir = DIR_OUT, .optional = false, .mps = -1},
 };
 
-#define EP_IN (usb_storage_ep_allocs[0].ep)
-#define EP_OUT (usb_storage_ep_allocs[1].ep)
+#define EP_IN (ep_allocs[0].ep)
+#define EP_OUT (ep_allocs[1].ep)
 
 #if defined(HAVE_MULTIDRIVE)
 static bool skip_first = 0;
@@ -340,6 +351,7 @@ static unsigned char* ramdisk_buffer;
 
 static enum {
     WAITING_FOR_COMMAND,
+    WAITING_FOR_STORAGE,
     SENDING_BLOCKS,
     SENDING_RESULT,
     SENDING_FAILED_RESULT,
@@ -378,7 +390,7 @@ static bool check_disk_present(IF_MD_NONVOID(int volume))
 }
 
 #ifdef HAVE_HOTSWAP
-void usb_storage_notify_hotswap(int volume,bool inserted)
+static void usb_storage_notify_hotswap(int volume,bool inserted)
 {
     logf("notify %d",inserted);
     if(inserted && check_disk_present(IF_MD(volume))) {
@@ -401,18 +413,18 @@ void usb_set_skip_first_drive(bool skip)
 #endif
 
 /* called by usb_core_init() */
-void usb_storage_init(void)
+static void usb_storage_init(void)
 {
     logf("usb_storage_init done");
 }
 
-int usb_storage_set_first_interface(int interface)
+static int usb_storage_set_first_interface(int interface)
 {
     usb_interface = interface;
     return interface + 1;
 }
 
-int usb_storage_get_config_descriptor(unsigned char *dest,int max_packet_size)
+static int usb_storage_get_config_descriptor(unsigned char *dest,int max_packet_size)
 {
     unsigned char *orig_dest = dest;
 
@@ -436,9 +448,14 @@ int usb_storage_get_config_descriptor(unsigned char *dest,int max_packet_size)
 #else
 static int usb_handle = 0;
 #endif
-void usb_storage_init_connection(void)
+
+/* Sets up the buffers and primes the rx endpoint for the first command.
+ * The buffers are allocated only once Rockbox has handed the storage over:
+ * the host configures the device before every thread has acknowledged the
+ * connect, while for example the recording buffer still holds all free
+ * memory. Until then the host's first command waits at the endpoint. */
+static void start_receiving_commands(void)
 {
-    logf("ums: set config");
     /* prime rx endpoint. We only need room for commands */
     state = WAITING_FOR_COMMAND;
 
@@ -456,6 +473,9 @@ void usb_storage_init_connection(void)
 #endif
 #else
     unsigned char * buffer;
+
+    if (usb_handle > 0)
+        return; /* already receiving */
 
     // Add 31 to handle worst-case misalignment
     usb_handle = core_alloc_ex(ALLOCATE_BUFFER_SIZE + MAX_CBW_SIZE + 31,
@@ -476,6 +496,25 @@ void usb_storage_init_connection(void)
 #endif
 #endif
     usb_drv_recv_nonblocking(EP_OUT, cbw_buffer, MAX_CBW_SIZE);
+}
+
+static bool receiving_commands(void)
+{
+#ifdef USB_STATIC_ALLOC
+    return true;
+#else
+    return usb_handle > 0;
+#endif
+}
+
+static int usb_storage_init_connection(void)
+{
+    logf("ums: set config");
+    state = WAITING_FOR_COMMAND;
+#ifndef USB_STATIC_ALLOC
+    if(usb_exclusive_storage())
+#endif
+        start_receiving_commands();
 
     int i;
     for(i=0;i<storage_num_drives();i++) {
@@ -483,6 +522,7 @@ void usb_storage_init_connection(void)
         ejected[i] = !check_disk_present(IF_MD(i));
         queue_broadcast(SYS_USB_LUN_LOCKED, (i<<16)+0);
     }
+    return 0;
 }
 
 void usb_storage_disconnect(void)
@@ -493,7 +533,7 @@ void usb_storage_disconnect(void)
 }
 
 /* called by usb_core_transfer_complete() */
-void usb_storage_transfer_complete(int ep,int dir,int status,int length)
+static void usb_storage_transfer_complete(int ep,int dir,int status,int length)
 {
     (void)ep;
     struct command_block_wrapper* cbw = (void*)cbw_buffer;
@@ -501,9 +541,15 @@ void usb_storage_transfer_complete(int ep,int dir,int status,int length)
     struct tm tm;
 #endif
 
+
     logf("transfer result for ep %d/%d %X %d", ep,dir,status, length);
 
+    account_data_transfer(dir, status, length);
+
     switch(state) {
+        case WAITING_FOR_STORAGE:
+            /* The CBW is retained until usb_storage_notify_event(). */
+            break;
         case RECEIVING_BLOCKS:
             if(dir==USB_DIR_IN) {
                 logf("IN received in RECEIVING");
@@ -679,7 +725,10 @@ static void usb_storage_send_ata_identify(void)
     }
     cur_cmd.count = 0;
     cur_cmd.last_result = 0;
-    send_block_data(cur_cmd.data[0], 512);
+    /* IDENTIFY can be the first data command after SET_CONFIGURATION.
+     * cur_cmd.data[] belongs to previous READ/WRITE commands and may be
+     * unset, or refer to a buffer freed by a USB reset. */
+    send_block_data(tb.transfer_buffer, ATA_IDENTIFY_WORDS * 2);
 }
 #ifdef HAVE_ATA_SMART
 static void usb_storage_send_smart(uint8_t cmd)
@@ -694,27 +743,32 @@ static void usb_storage_send_smart(uint8_t cmd)
 #endif /* STORAGE_ATA */
 
 /* called by usb_core_control_request() */
-bool usb_storage_control_request(struct usb_ctrlrequest* req, void* reqdata, unsigned char* dest)
+static bool usb_storage_control_request(struct usb_ctrlrequest* req, uint8_t* reqdata, size_t reqdata_size)
 {
-    bool handled = false;
+    (void)reqdata_size;
 
-    (void)dest;
-    (void)reqdata;
+    bool handled = false;
 
     switch (req->bRequest) {
         case USB_BULK_GET_MAX_LUN: {
-            *tb.max_lun = storage_num_drives() - 1;
+            /* comes before the handover, without the transfer buffer */
+            reqdata[0] = storage_num_drives() - 1;
 #if defined(HAVE_MULTIDRIVE)
-            if(skip_first) (*tb.max_lun) --;
+            if(skip_first) reqdata[0]--;
 #endif
             logf("ums: getmaxlun");
-            usb_drv_control_response(USB_CONTROL_ACK, tb.max_lun, 1);
+            usb_core_control_response(USB_CONTROL_ACK, reqdata, 1);
             handled = true;
             break;
         }
 
         case USB_BULK_RESET_REQUEST:
             logf("ums: bulk reset");
+            if(state == WAITING_FOR_STORAGE) {
+                /* Discard the retained CBW on host reset and accept a new
+                 * one; do not replay the cancelled command when ready. */
+                usb_drv_recv_nonblocking(EP_OUT, cbw_buffer, MAX_CBW_SIZE);
+            }
             state = WAITING_FOR_COMMAND;
             /* UMS BOT 3.1 says The device shall preserve the value of its bulk
                data toggle bits and endpoint STALL conditions despite
@@ -723,7 +777,7 @@ bool usb_storage_control_request(struct usb_ctrlrequest* req, void* reqdata, uns
             usb_drv_reset_endpoint(EP_IN, false);
             usb_drv_reset_endpoint(EP_OUT, true);
 #endif
-            usb_drv_control_response(USB_CONTROL_ACK, NULL, 0);
+            usb_core_control_response(USB_CONTROL_ACK, NULL, 0);
             handled = true;
             break;
     }
@@ -767,7 +821,7 @@ static void send_and_read_next(void)
 }
 /****************************************************************************/
 
-static void handle_scsi(struct command_block_wrapper* cbw)
+static void handle_scsi_ready(struct command_block_wrapper* cbw)
 {
     struct storage_info info;
     unsigned int length = cbw->data_transfer_length;
@@ -800,11 +854,8 @@ static void handle_scsi(struct command_block_wrapper* cbw)
     block_count=info.num_sectors;
 #endif
 
-#ifdef HAVE_HOTSWAP
-    if(storage_removable(lun) && !storage_present(lun)) {
+    if(storage_removable(lun) && !storage_present(lun))
         ejected[lun] = true;
-    }
-#endif
 
     if(ejected[lun])
         lun_present = false;
@@ -817,6 +868,7 @@ static void handle_scsi(struct command_block_wrapper* cbw)
     uint32_t bsize = block_size*block_size_mult;
     sector_t bcount = block_count/block_size_mult;
 
+    cur_cmd.data_residue = letoh32(cbw->data_transfer_length);
     cur_cmd.tag = cbw->tag;
     cur_cmd.lun = lun;
     cur_cmd.cur_cmd = cbw->command_block[0];
@@ -824,13 +876,6 @@ static void handle_scsi(struct command_block_wrapper* cbw)
     switch (cbw->command_block[0]) {
         case SCSI_TEST_UNIT_READY:
             logf("scsi test_unit_ready %d",lun);
-            if(!usb_exclusive_storage()) {
-                send_csw(UMS_STATUS_FAIL);
-                cur_sense_data.sense_key=SENSE_NOT_READY;
-                cur_sense_data.asc=ASC_MEDIUM_NOT_PRESENT;
-                cur_sense_data.ascq=0;
-                break;
-            }
             if(lun_present) {
                 send_csw(UMS_STATUS_GOOD);
             }
@@ -855,11 +900,9 @@ static void handle_scsi(struct command_block_wrapper* cbw)
             tb.lun_data->lun_list_length=htobe32(8*storage_num_drives());
             for(i=0;i<storage_num_drives();i++)
             {
-#ifdef HAVE_HOTSWAP
                 if(storage_removable(i))
                     tb.lun_data->luns[i][1]=1;
                 else
-#endif
                     tb.lun_data->luns[i][1]=0;
             }
             length = MIN(length, allocation_length);
@@ -910,7 +953,8 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                     tb.ms_data_10->mode_data_length =
                         htobe16(sizeof(struct mode_sense_data_10)-2);
                     tb.ms_data_10->medium_type = 0;
-                    tb.ms_data_10->device_specific = 0;
+                    tb.ms_data_10->device_specific =
+                        LUN_READONLY(lun) ? 0x80 : 0;
                     tb.ms_data_10->reserved = 0;
                     tb.ms_data_10->longlba = 1;
                     tb.ms_data_10->block_descriptor_length =
@@ -974,7 +1018,8 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                     tb.ms_data_6->mode_data_length =
                         sizeof(struct mode_sense_data_6)-1;
                     tb.ms_data_6->medium_type = 0;
-                    tb.ms_data_6->device_specific = 0;
+                    tb.ms_data_6->device_specific =
+                        LUN_READONLY(lun) ? 0x80 : 0;
                     tb.ms_data_6->block_descriptor_length =
                         sizeof(struct mode_sense_bdesc_shortlba);
                     tb.ms_data_6->block_descriptor.density_code = 0;
@@ -1017,6 +1062,13 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                 logf("scsi load/eject");
                 if((cbw->command_block[4] & 0x01) == 0) /* Don't start */
                 {
+#ifdef HAVE_STORAGE_FLUSH
+                    /* The host stops or ejects the unit when it is done with
+                     * it - "safely remove" - and may cut power next. Commit
+                     * what the storage driver still holds in RAM, such as a
+                     * flash translation layer's part-written pages. */
+                    storage_flush();
+#endif
                     if((cbw->command_block[4] & 0x02) != 0) /* eject */
                     {
                         logf("scsi eject");
@@ -1254,6 +1306,13 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                 cur_sense_data.ascq=0;
                 break;
             }
+            if(LUN_READONLY(lun)) {
+                send_csw(UMS_STATUS_FAIL);
+                cur_sense_data.sense_key=SENSE_DATA_PROTECT;
+                cur_sense_data.asc=ASC_WRITE_PROTECTED;
+                cur_sense_data.ascq=0;
+                break;
+            }
             cur_cmd.data[0] = tb.transfer_buffer;
             cur_cmd.data[1] = &tb.transfer_buffer[WRITE_BUFFER_SIZE];
             cur_cmd.data_select=0;
@@ -1286,6 +1345,13 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                 send_csw(UMS_STATUS_FAIL);
                 cur_sense_data.sense_key=SENSE_NOT_READY;
                 cur_sense_data.asc=ASC_MEDIUM_NOT_PRESENT;
+                cur_sense_data.ascq=0;
+                break;
+            }
+            if(LUN_READONLY(lun)) {
+                send_csw(UMS_STATUS_FAIL);
+                cur_sense_data.sense_key=SENSE_DATA_PROTECT;
+                cur_sense_data.asc=ASC_WRITE_PROTECTED;
                 cur_sense_data.ascq=0;
                 break;
             }
@@ -1338,7 +1404,9 @@ static void handle_scsi(struct command_block_wrapper* cbw)
             && (cbw->command_block[8]==0 || cbw->command_block[8]==0x0c)
 
             && cbw->command_block[9]==0)
-            receive_time();
+                receive_time();
+            else
+                reject_command(cbw);
             break;
 #endif /* CONFIG_RTC */
 
@@ -1386,12 +1454,66 @@ static void handle_scsi(struct command_block_wrapper* cbw)
 #endif /* STORAGE_ATA */
         default:
             logf("scsi unknown cmd %x",cbw->command_block[0x0]);
-            send_csw(UMS_STATUS_FAIL);
-            cur_sense_data.sense_key=SENSE_ILLEGAL_REQUEST;
-            cur_sense_data.asc=ASC_INVALID_COMMAND;
-            cur_sense_data.ascq=0;
+            reject_command(cbw);
             break;
     }
+}
+
+/* SET_CONFIGURATION now precedes the storage handover. Keep the first
+ * CBW pending until all Rockbox clients have acknowledged/unmounted. This
+ * avoids falsely reporting an absent disk to a fast host and, importantly,
+ * prevents READ/WRITE commands from racing Rockbox filesystem users. The
+ * OUT endpoint is not rearmed until this CBW has received its CSW. */
+static void handle_scsi(struct command_block_wrapper* cbw)
+{
+    if(!usb_exclusive_storage()) {
+        state = WAITING_FOR_STORAGE;
+        return;
+    }
+    handle_scsi_ready(cbw);
+}
+
+static void usb_storage_notify_event(intptr_t data)
+{
+    (void)data;
+    if(!receiving_commands()) {
+        if(usb_exclusive_storage())
+            start_receiving_commands();
+        return;
+    }
+    if(state == WAITING_FOR_STORAGE && usb_exclusive_storage())
+        handle_scsi((struct command_block_wrapper*)cbw_buffer);
+}
+
+/* Count data only, never the CBW or CSW. A short result must report the
+ * untransferred bytes instead of claiming that the whole request succeeded. */
+static void account_data_transfer(int dir, int status, int length)
+{
+    bool data_in = state == SENDING_RESULT || state == SENDING_FAILED_RESULT ||
+                   state == SENDING_BLOCKS;
+    bool data_out = state == RECEIVING_BLOCKS;
+#if CONFIG_RTC
+    data_out |= state == RECEIVING_TIME;
+#endif
+    if(status == 0 && length > 0 &&
+       ((data_in && dir == USB_DIR_IN) || (data_out && dir == USB_DIR_OUT)))
+        cur_cmd.data_residue -= MIN(cur_cmd.data_residue, (unsigned int)length);
+}
+
+/* BOT cases Hi/Dn and Ho/Dn still have a data phase. Sending the CSW as
+ * IN data makes the host wait for a second status that will never arrive. */
+static void reject_command(const struct command_block_wrapper *cbw)
+{
+    cur_sense_data.sense_key = SENSE_ILLEGAL_REQUEST;
+    cur_sense_data.asc = ASC_INVALID_COMMAND;
+    cur_sense_data.ascq = 0;
+    if(letoh32(cbw->data_transfer_length)) {
+        bool in = (cbw->flags & USB_DIR_IN) != 0;
+        /* Halt the data pipe first. The host clears it before reading CSW
+         * (BOT 6.7.2 case 4 / 6.7.3 case 9). Queue CSW behind that halt. */
+        usb_drv_stall(in ? EP_IN : EP_OUT, true, in);
+    }
+    send_csw(UMS_STATUS_FAIL);
 }
 
 static void send_block_data(void *data,int size)
@@ -1430,7 +1552,7 @@ static void send_csw(int status)
 {
     tb.csw->signature = htole32(CSW_SIGNATURE);
     tb.csw->tag = cur_cmd.tag;
-    tb.csw->data_residue = 0;
+    tb.csw->data_residue = htole32(cur_cmd.data_residue);
     tb.csw->status = status;
 
     usb_drv_send_nonblocking(EP_IN, tb.csw,
@@ -1479,3 +1601,22 @@ static void fill_inquiry(IF_MD_NONVOID(int lun))
 
     tb.inquiry->DeviceTypeModifier = DEVICE_REMOVABLE;
 }
+
+struct usb_class_driver usb_cdrv_storage = {
+    .needs_exclusive_storage = true,
+    .needs_cpu_boost = true,
+    .config = 1,
+    .ep_allocs_size = ARRAYLEN(ep_allocs),
+    .ep_allocs = ep_allocs,
+    .set_first_interface = usb_storage_set_first_interface,
+    .get_config_descriptor = usb_storage_get_config_descriptor,
+    .init_connection = usb_storage_init_connection,
+    .init = usb_storage_init,
+    .disconnect = usb_storage_disconnect,
+    .transfer_complete = usb_storage_transfer_complete,
+    .control_request = usb_storage_control_request,
+    .notify_event = usb_storage_notify_event,
+#ifdef HAVE_HOTSWAP
+    .notify_hotswap = usb_storage_notify_hotswap,
+#endif
+};

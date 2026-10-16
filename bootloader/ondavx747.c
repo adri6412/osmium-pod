@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Maurus Cuelenaere
  *
@@ -39,7 +38,6 @@
 #include "adc.h"
 #include "version.h"
 
-extern void show_logo(void);
 extern void power_off(void);
 
 static void show_splash(int timeout, const char *msg)
@@ -76,7 +74,7 @@ static void usb_mode(void)
         /* Got the message - wait for disconnect */
         show_splash(0, "Bootloader USB mode");
 
-        usb_acknowledge(SYS_USB_CONNECTED_ACK);
+        usb_acknowledge(SYS_USB_CONNECTED_ACK, button_get_data());
 
         while (1)
         {

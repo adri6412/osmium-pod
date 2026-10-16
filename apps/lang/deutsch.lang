@@ -1010,13 +1010,13 @@
   desc: in the equalizer settings menu
   user: core
   <source>
-    *: "Peak Filter %d"
+    *: "Peak Filter"
   </source>
   <dest>
-    *: "Bandfilter %d"
+    *: "Glockenfilter"
   </dest>
   <voice>
-    *: "Bandfilter"
+    *: "Glockenfilter"
   </voice>
 </phrase>
 <phrase>
@@ -9092,15 +9092,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Bass Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Bass Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Tiefengrenzfrequenz"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tiefengrenzfrequenz"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Tiefengrenzfrequenz"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tiefengrenzfrequenz"
   </voice>
 </phrase>
 <phrase>
@@ -9109,15 +9109,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Treble Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Treble Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Höhengrenzfrequenz"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Höhengrenzfrequenz"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Höhengrenzfrequenz"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Höhengrenzfrequenz"
   </voice>
 </phrase>
 <phrase>
@@ -11520,7 +11520,7 @@
 </phrase>
 <phrase>
   id: LANG_USB_MODE
-  desc: in Settings -> General -> System -> USB Mode
+  desc: in Settings -> General -> System -> USB
   user: core
   <source>
     *: "USB Mode"
@@ -14615,11 +14615,11 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_HIDE_ALBUM_TITLE_NEW
-  desc: in the pictureflow settings
+  id: LANG_HIDE_INFO
+  desc: Hide Information
   user: core
   <source>
-    *: "Hide information"
+    *: "Hide Information"
   </source>
   <dest>
     *: "Information verbergen"
@@ -14690,7 +14690,7 @@
   user: core
   <source>
     *: "Press LEFT to cancel."
-    android,hifietma*,zenvision: "Press BACK to cancel."
+    android,hifietma*: "Press BACK to cancel."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Press POWER to cancel."
     ihifi760,ihifi960: "Double tap RETURN to cancel."
     ihifi770,ihifi770c,ihifi800: "Press HOME to cancel."
@@ -14705,7 +14705,7 @@
   </source>
   <dest>
     *: "Zum Abbrechen LINKS drücken."
-    android,hifietma*,vibe500,zenvision: "Zum Abbrechen ZURÜCK drücken."
+    android,hifietma*,vibe500: "Zum Abbrechen ZURÜCK drücken."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Zum Abbrechen POWER drücken."
     ihifi760,ihifi960: "Zum Abbrechen ZURÜCK doppeldrücken."
     ihifi770,ihifi770c,ihifi800: "Zum Abbrechen STARTMENÜ drücken."
@@ -14719,7 +14719,7 @@
   </dest>
   <voice>
     *: "Zum Abbrechen LINKS drücken."
-    android,hifietma*,vibe500,zenvision: "Zum Abbrechen ZURÜCK drücken."
+    android,hifietma*,vibe500: "Zum Abbrechen ZURÜCK drücken."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Zum Abbrechen POWER drücken."
     ihifi760,ihifi960: "Zum Abbrechen ZURÜCK doppeldrücken."
     ihifi770,ihifi770c,ihifi800: "Zum Abbrechen STARTMENÜ drücken."
@@ -14957,20 +14957,6 @@
   </dest>
   <voice>
     *: "Kein Zusatzprogramm"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_OPEN_PLUGIN_SET_WPS_CONTEXT_PLUGIN
-  desc: open plugin module
-  user: core
-  <source>
-    *: "Set WPS Context Plugin"
-  </source>
-  <dest>
-    *: "Setze WPS Kontext Zusatzprogramm"
-  </dest>
-  <voice>
-    *: "Setze W P S Kontext Zusatzprogramm"
   </voice>
 </phrase>
 <phrase>
@@ -15213,7 +15199,7 @@
 </phrase>
 <phrase>
   id: LANG_VOICED_DATE_FORMAT
-  desc: format string for how dates will be read back. Y == 4-digit year, A == month name, m == numeric month, d == numeric day. For example, "AdY" will read "January 21 2021"
+  desc: format string for how dates will be read back. Y == 4-digit year (grouped), y == 4-digit year (numeric), A == month name, m == numeric month, d == numeric day. For example, for 2021-01-05, "AdY" will be voiced as "January 5 twenty twenty-one" and "dmy" will be voiced as "5 1 two thousand twenty one
   user: core
   <source>
     *: "dAY"
@@ -15822,16 +15808,16 @@
 </phrase>
 <phrase>
   id: LANG_DEFAULT_BROWSER
-  desc: in Settings
+  desc: deprecated
   user: core
   <source>
-    *: "Default Browser"
+    *: ""
   </source>
   <dest>
-    *: "Standardbrowser"
+    *: ""
   </dest>
   <voice>
-    *: "Standardbrowser"
+    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -16962,5 +16948,235 @@
   <voice>
     *: none
     general_purpose_led: "LED Indikatoren verwenden"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ANNOUNCE_STATUS
+  desc: announnnce_status plugin
+  user: core
+  <source>
+    *: "Announce Status"
+  </source>
+  <dest>
+    *: "Status mitteilen"
+  </dest>
+  <voice>
+    *: "Status mitteilen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEEP_DIRECTORY
+  desc: file browser setting
+  user: core
+  <source>
+    *: "Always remember last folder"
+  </source>
+  <dest>
+    *: "Zuletzt verwendeten Ordner immer merken"
+  </dest>
+  <voice>
+    *: "Zuletzt verwendeten Ordner immer merken"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_MENU
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "USB"
+  </source>
+  <dest>
+    *: "~USB"
+  </dest>
+  <voice>
+    *: "~U S B"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILE_NOT_FOUND
+  desc: When file does not exist
+  user: core
+  <source>
+    *: "File not found"
+  </source>
+  <dest>
+    *: "Datei nicht gefunden"
+  </dest>
+  <voice>
+    *: "Datei nicht gefunden"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SHOW_IN_FILES
+  desc: Reveal item in File Browser
+  user: core
+  <source>
+    *: "Show in Files"
+  </source>
+  <dest>
+    *: "Zeige in Dateien"
+  </dest>
+  <voice>
+    *: "Zeige in Dateien"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CHANNEL_SWAP
+  desc: in sound_settings
+  user: core
+  <source>
+    *: "Swap Left & Right"
+  </source>
+  <dest>
+    *: "Rechts & Links tauschen"
+  </dest>
+  <voice>
+    *: "Rechts und Links tauschen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_SET
+  desc: countdown_timer plugin - header shown on the setup screen where the user enters the countdown duration
+  user: core
+  <source>
+    *: "SET TIMER"
+  </source>
+  <dest>
+    *: "Timer stellen"
+  </dest>
+  <voice>
+    *: "Timer stellen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_RUNNING
+  desc: countdown_timer plugin - status label shown while the countdown is active
+  user: core
+  <source>
+    *: "RUNNING"
+  </source>
+  <dest>
+    *: "LÄUFT"
+  </dest>
+  <voice>
+    *: "Läuft"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_PAUSED
+  desc: countdown_timer plugin - status label shown while the countdown is paused
+  user: core
+  <source>
+    *: "PAUSED"
+  </source>
+  <dest>
+    *: "ANGEHALTEN"
+  </dest>
+  <voice>
+    *: "Angehalten"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_OVERTIME
+  desc: countdown_timer plugin - status label shown when the countdown has passed zero and is counting up
+  user: core
+  <source>
+    *: "OVERTIME"
+  </source>
+  <dest>
+    *: "ÜBERZEIT"
+  </dest>
+  <voice>
+    *: "Überzeit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_FINISHED
+  desc: countdown_timer plugin - status label shown at the moment the countdown expires
+  user: core
+  <source>
+    *: "FINISHED"
+  </source>
+  <dest>
+    *: "BEENDET"
+  </dest>
+  <voice>
+    *: "Beendet"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_CONTEXT_ITEM
+  desc: WPS context item
+  user: core
+  <source>
+    *: "Set Context Item"
+  </source>
+  <dest>
+    *: "Kontext-Element festlegen"
+  </dest>
+  <voice>
+    *: "Kontextelement festlegen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_BAND
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter %d"
+  </source>
+  <dest>
+    *: "~Filter %d"
+  </dest>
+  <voice>
+    *: "~Filter"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_FILTER_TYPE
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter Type"
+  </source>
+  <dest>
+    *: "Filter Typ"
+  </dest>
+  <voice>
+    *: "Filter Typ"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPOSITE_VIDEO_OUTPUT
+  desc: Enables composite video framebuffer mirroring on supported targets
+  user: core
+  <source>
+    *: none
+    videoout: "Composite Video Output"
+  </source>
+  <dest>
+    *: none
+    videoout: "Composite Video Ausgang"
+  </dest>
+  <voice>
+    *: none
+    videoout: "Composite Video Ausgang"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_FLICK_SHORTCUTS
+  desc: in settings menu
+  user: core
+  <source>
+    *: none
+    touchscreen: "Touchscreen Flick Shortcuts"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Wischgesten Kurzbefehle"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Wischgesten Kurzbefehle"
   </voice>
 </phrase>

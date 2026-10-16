@@ -24,11 +24,23 @@
 
 TTSSapi::TTSSapi(QObject* parent) : TTSBase(parent)
 {
-    m_TTSTemplate = "cscript //nologo \"%exe\" /language:%lang "
-        "/voice:\"%voice\" /speed:%speed \"%options\"";
-    m_TTSVoiceTemplate = "cscript //nologo \"%exe\" /language:%lang /listvoices";
+    m_TTSTemplate << "//nologo";
+    m_TTSTemplate << "%exe";
+    m_TTSTemplate << "/language:%lang";
+    m_TTSTemplate << "/voice:%voice";
+    m_TTSTemplate << "/speed:%speed";
+    m_TTSTemplate << "/volume:%volume";
+    m_TTSTemplate << "%options";
+
+    m_TTSVoiceTemplate << "//nologo";
+    m_TTSVoiceTemplate << "%exe";
+    m_TTSVoiceTemplate << "/language:%lang";
+    m_TTSVoiceTemplate << "/listvoices";
+
     m_TTSType = "sapi";
     defaultLanguage = "english";
+    voicescript = nullptr;
+    voicestream = nullptr;
     m_started = false;
 }
 
@@ -63,6 +75,12 @@ void TTSSapi::generateSettings()
         speed = 0;
     insertSetting(eSPEED, new EncTtsSetting(this,
                 EncTtsSetting::eINT, tr("Speed:"), speed, -10, 10));
+    // volume
+    int volume = RbSettings::subValue(m_TTSType, RbSettings::TtsVolume).toInt();
+    if(volume > 100 || volume < 0)
+        volume = 100;
+    insertSetting(eVOLUME, new EncTtsSetting(this,
+                EncTtsSetting::eINT, tr("Volume:"), volume, 0, 100));
     // options
     insertSetting(eOPTIONS, new EncTtsSetting(this,
                 EncTtsSetting::eSTRING, tr("Options:"),
@@ -79,6 +97,8 @@ void TTSSapi::saveSettings()
             getSetting(eVOICE)->current().toString());
     RbSettings::setSubValue(m_TTSType, RbSettings::TtsSpeed,
             getSetting(eSPEED)->current().toInt());
+    RbSettings::setSubValue(m_TTSType, RbSettings::TtsVolume,
+            getSetting(eVOLUME)->current().toInt());
     RbSettings::setSubValue(m_TTSType, RbSettings::TtsOptions,
             getSetting(eOPTIONS)->current().toString());
 
@@ -101,6 +121,7 @@ bool TTSSapi::start(QString *errStr)
     m_TTSLanguage =RbSettings::subValue(m_TTSType, RbSettings::TtsLanguage).toString();
     m_TTSVoice=RbSettings::subValue(m_TTSType, RbSettings::TtsVoice).toString();
     m_TTSSpeed=RbSettings::subValue(m_TTSType, RbSettings::TtsSpeed).toString();
+    m_TTSVolume=RbSettings::subValue(m_TTSType, RbSettings::TtsVolume).toString();
 
     QFile::remove(QDir::tempPath() +"/sapi_voice.vbs");
     QFile::copy(":/builtin/sapi_voice.vbs",QDir::tempPath() + "/sapi_voice.vbs");
@@ -113,17 +134,18 @@ bool TTSSapi::start(QString *errStr)
         return false;
     }
     // create the voice process
-    QString execstring = m_TTSTemplate;
-    execstring.replace("%exe",m_TTSexec);
-    execstring.replace("%options",m_TTSOpts);
-    execstring.replace("%lang",m_TTSLanguage);
-    execstring.replace("%voice",m_TTSVoice);
-    execstring.replace("%speed",m_TTSSpeed);
+    QStringList exec = m_TTSTemplate;
+    exec.replaceInStrings("%exe",m_TTSexec);
+    exec.replaceInStrings("%options",m_TTSOpts);
+    exec.replaceInStrings("%lang",m_TTSLanguage);
+    exec.replaceInStrings("%voice",m_TTSVoice);
+    exec.replaceInStrings("%speed",m_TTSSpeed);
+    exec.replaceInStrings("%volume",m_TTSVolume);
 
-    LOG_INFO() << "Start:" << execstring;
+    LOG_INFO() << "Start: cscript " << exec;
     voicescript = new QProcess(nullptr);
     //connect(voicescript,SIGNAL(readyReadStandardError()),this,SLOT(error()));
-    voicescript->start(execstring);
+    voicescript->start("cscript", exec);
     LOG_INFO() << "wait for process";
     if(!voicescript->waitForStarted())
     {
@@ -140,11 +162,7 @@ bool TTSSapi::start(QString *errStr)
     }
 
     voicestream = new QTextStream(voicescript);
-#if QT_VERSION < 0x060000
-    voicestream->setCodec("UTF16-LE");
-#else
     voicestream->setEncoding(QStringConverter::Utf16LE);
-#endif
 
     m_started = true;
     return true;
@@ -153,15 +171,24 @@ bool TTSSapi::start(QString *errStr)
 QString TTSSapi::voiceVendor(void)
 {
     bool keeprunning = m_started;
-    QString vendor;
+    QString vendor = "(unknown)";
     if(!m_started) {
         QString error;
-        start(&error);
+        if(!start(&error)) {
+            LOG_ERROR() << "could not start SAPI while querying vendor:" << error;
+            return vendor;
+        }
     }
     *voicestream << "QUERY\tVENDOR\r\n";
     voicestream->flush();
-    while((vendor = voicestream->readLine()).isEmpty())
-            QCoreApplication::processEvents();
+    if(voicescript->waitForReadyRead(5000)) {
+        QString response = voicestream->readLine();
+        if(!response.isEmpty())
+            vendor = response;
+    }
+    else {
+        LOG_ERROR() << "SAPI timed out while querying the voice vendor";
+    }
 
     LOG_INFO() << "TTS vendor:" << vendor;
     if(!keeprunning) {
@@ -182,13 +209,13 @@ QStringList TTSSapi::getVoiceList(QString language)
         return result;
 
     // create the voice process
-    QString execstring = m_TTSVoiceTemplate;
-    execstring.replace("%exe",m_TTSexec);
-    execstring.replace("%lang",language);
+    QStringList exec = m_TTSVoiceTemplate;
+    exec.replaceInStrings("%exe",m_TTSexec);
+    exec.replaceInStrings("%lang",language);
 
-    LOG_INFO() << "Start:" << execstring;
+    LOG_INFO() << "Start: cscript " << exec;
     voicescript = new QProcess(nullptr);
-    voicescript->start(execstring);
+    voicescript->start("cscript", exec);
     LOG_INFO() << "wait for process";
     if(!voicescript->waitForStarted()) {
         LOG_INFO() << "process startup timed out!";
@@ -201,11 +228,7 @@ QStringList TTSSapi::getVoiceList(QString language)
     if(dataRaw.startsWith("Error")) {
         LOG_INFO() << "Error:" << dataRaw;
     }
-#if QT_VERSION >= 0x050e00
     result = dataRaw.split(";", Qt::SkipEmptyParts);
-#else
-    result = dataRaw.split(";", QString::SkipEmptyParts);
-#endif
     if(result.size() > 0)
     {
         result.sort();
@@ -230,31 +253,93 @@ QStringList TTSSapi::getVoiceList(QString language)
 
 TTSStatus TTSSapi::voice(const QString& text, const QString& wavfile, QString *errStr)
 {
-    (void) errStr;
     QString query = "SPEAK\t"+wavfile+"\t"+text;
     LOG_INFO() << "voicing" << query;
     // append newline to query. Done now to keep debug output more readable.
     query.append("\r\n");
-    *voicestream << query;
-    *voicestream << "SYNC\tbla\r\n";
-    voicestream->flush();
-    // do NOT poll the output with readLine(), this causes sync issues!
-    voicescript->waitForReadyRead();
 
-    if(!QFileInfo(wavfile).isFile()) {
-        LOG_ERROR() << "output file does not exist:" << wavfile;
-        return FatalError;
+    // Some third-party SAPI voices occasionally stop responding after many
+    // consecutive requests. Restart the private cscript process and retry the
+    // current string instead of discarding the entire voice-file operation.
+    constexpr int maxAttempts = 3;
+    constexpr int responseTimeout = 20000;
+    for(int attempt = 1; attempt <= maxAttempts; ++attempt) {
+        QFile::remove(wavfile);
+        *voicestream << query;
+        *voicestream << "SYNC\tbla\r\n";
+        voicestream->flush();
+
+        // Wait for the explicit SYNC reply. QProcess::waitForReadyRead() alone
+        // is insufficient: the script can also write warnings, and older code
+        // mistook those for completion before the wave file existed.
+        QElapsedTimer timer;
+        timer.start();
+        bool synced = false;
+        while(timer.elapsed() < responseTimeout) {
+            int remaining = responseTimeout - static_cast<int>(timer.elapsed());
+            if(!voicescript->waitForReadyRead(remaining))
+                break;
+
+            QString response = voicestream->readLine();
+            if(response == "bla") {
+                synced = true;
+                break;
+            }
+            if(response.startsWith("ERROR\t")) {
+                *errStr = response.mid(6);
+                LOG_ERROR() << "SAPI error:" << *errStr;
+                return FatalError;
+            }
+        }
+
+        if(synced && QFileInfo(wavfile).isFile())
+            return NoError;
+
+        if(synced) {
+            *errStr = tr("SAPI did not create the output wave file");
+            LOG_ERROR() << "output file does not exist:" << wavfile;
+            return FatalError;
+        }
+
+        LOG_WARNING() << "SAPI timed out on attempt" << attempt
+                      << "of" << maxAttempts << "for" << text;
+        if(attempt < maxAttempts) {
+            stop();
+            QString startError;
+            if(!start(&startError)) {
+                *errStr = tr("Could not restart SAPI after a timeout: %1")
+                              .arg(startError);
+                LOG_ERROR() << *errStr;
+                return FatalError;
+            }
+        }
     }
-    return NoError;
+
+    *errStr = tr("SAPI timed out repeatedly while generating speech");
+    LOG_ERROR() << *errStr;
+    return FatalError;
 }
 
 bool TTSSapi::stop()
 {
+    if(!m_started || voicescript == nullptr)
+        return true;
+
     *voicestream << "QUIT\r\n";
     voicestream->flush();
-    voicescript->waitForFinished();
+    if(!voicescript->waitForFinished(5000)) {
+        LOG_WARNING() << "SAPI process did not quit, terminating it";
+        voicescript->terminate();
+        if(!voicescript->waitForFinished(2000)) {
+            LOG_WARNING() << "SAPI process did not terminate, killing it";
+            voicescript->kill();
+            voicescript->waitForFinished(2000);
+        }
+    }
     delete voicestream;
     delete voicescript;
+    voicestream = nullptr;
+    voicescript = nullptr;
     QFile::setPermissions(QDir::tempPath() +"/sapi_voice.vbs",
               QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner
             | QFile::ReadUser  | QFile::WriteUser  | QFile::ExeUser
@@ -271,4 +356,3 @@ bool TTSSapi::configOk()
         return false;
     return true;
 }
-

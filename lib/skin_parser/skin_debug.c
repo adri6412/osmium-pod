@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2010 Robert Bieber
  *
@@ -317,7 +316,7 @@ void skin_error_format_message(void)
     char text[128];
     if (!error_line_start)
         return;
-    char* line_end = strchr(error_line_start, '\n');
+    const char* line_end = strchr(error_line_start, '\n');
     int len = MIN(line_end - error_line_start, 80);
     if (!line_end)
         len = strlen(error_line_start);

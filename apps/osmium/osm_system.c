@@ -182,7 +182,7 @@ static void draw_usb(void)
     gfx_present();
 }
 
-void osm_usb_screen(void)
+void osm_usb_screen(intptr_t seqnum)
 {
 #ifdef SIMULATOR
     static bool inside = false;
@@ -192,7 +192,7 @@ void osm_usb_screen(void)
 #endif
     /* the font files stay open: close them while the computer has the card */
     font_disable_all();
-    usb_acknowledge(SYS_USB_CONNECTED_ACK);
+    usb_acknowledge(SYS_USB_CONNECTED_ACK, seqnum);
     while (1)
     {
         draw_usb();

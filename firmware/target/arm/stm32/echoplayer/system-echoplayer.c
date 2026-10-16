@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -19,9 +18,24 @@
  *
  ****************************************************************************/
 #include "system.h"
+#include "button.h"
+#include "nvic-arm.h"
 #include "gpio-stm32h7.h"
-#include "regs/stm32h743/rcc.h"
+#include "timer-stm32h7.h"
+#include "clock-echoplayer.h"
+#include "system-echoplayer.h"
 #include "regs/stm32h743/fmc.h"
+#include "regs/stm32h743/pwr.h"
+#include "regs/stm32h743/rcc.h"
+#include "regs/stm32h743/rtc.h"
+#include "regs/stm32h743/tim.h"
+#include "regs/cortex-m/cm_scb.h"
+
+#ifdef BOOTLOADER
+# define BOOTLOADER_INIT 1
+#else
+# define BOOTLOADER_INIT 0
+#endif
 
 #define F_INPUT      GPIOF_INPUT(GPIO_PULL_DISABLED)
 #define F_INPUT_PU   GPIOF_INPUT(GPIO_PULL_UP)
@@ -32,11 +46,12 @@
 #define F_SDMMC1     GPIOF_FUNCTION(12, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_MEDIUM, GPIO_PULL_UP)
 #define F_SDMMC1CK   GPIOF_FUNCTION(12, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_MEDIUM, GPIO_PULL_DISABLED)
 #define F_SAI1       GPIOF_FUNCTION(6, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_VERYHIGH, GPIO_PULL_DISABLED)
-#define F_SPI5       GPIOF_FUNCTION(5, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_VERYHIGH, GPIO_PULL_DISABLED)
-#define F_LCD_AF14   GPIOF_FUNCTION(14, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_VERYHIGH, GPIO_PULL_DISABLED)
-#define F_LCD_AF9    GPIOF_FUNCTION(9, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_VERYHIGH, GPIO_PULL_DISABLED)
+#define F_SPI5       GPIOF_FUNCTION(5, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_MEDIUM, GPIO_PULL_DISABLED)
+#define F_LCD_AF14   GPIOF_FUNCTION(14, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_MEDIUM, GPIO_PULL_DISABLED)
+#define F_LCD_AF9    GPIOF_FUNCTION(9, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_MEDIUM, GPIO_PULL_DISABLED)
 #define F_LPTIM4_OUT GPIOF_FUNCTION(3, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_DISABLED)
 #define F_LPTIM1_OUT GPIOF_FUNCTION(1, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_VERYHIGH, GPIO_PULL_DISABLED)
+#define F_ANALOG     GPIOF_ANALOG()
 
 #if STM32H743_USBOTG_INSTANCE == STM32H743_USBOTG_INSTANCE_USB1
 # define F_OTG_FS   GPIOF_ANALOG()
@@ -47,6 +62,8 @@
 # define F_ULPI     GPIOF_ANALOG()
 # define F_MCO1     GPIOF_ANALOG()
 #endif
+
+enum echoplayer_boot_reason echoplayer_boot_reason = ECHOPLAYER_BOOT_REASON_NORMAL;
 
 static const struct gpio_setting gpios[] = {
     STM_DEFGPIO(GPIO_BUTTON_A,          F_INPUT_PU),
@@ -63,7 +80,6 @@ static const struct gpio_setting gpios[] = {
     STM_DEFGPIO(GPIO_BUTTON_VOL_DOWN,   F_INPUT_PU),
     STM_DEFGPIO(GPIO_BUTTON_POWER,      F_INPUT_PD),
     STM_DEFGPIO(GPIO_BUTTON_HOLD,       F_INPUT_PU),
-    STM_DEFGPIO(GPIO_CPU_POWER_ON,      F_OUT_LS(1)), /* active high */
     STM_DEFGPIO(GPIO_POWER_1V8,         F_OUT_LS(0)), /* active high */
     STM_DEFGPIO(GPIO_CODEC_AVDD_EN,     F_OUT_LS(1)), /* active low */
     STM_DEFGPIO(GPIO_CODEC_DVDD_EN,     F_OUT_LS(1)), /* active low */
@@ -77,6 +93,8 @@ static const struct gpio_setting gpios[] = {
     STM_DEFGPIO(GPIO_LCD_RESET,         F_OUT_LS(0)), /* active low */
     STM_DEFGPIO(GPIO_BACKLIGHT,         F_LPTIM1_OUT),
     STM_DEFGPIO(GPIO_USB_VBUS,          F_INPUT),     /* active high */
+    STM_DEFGPIO(GPIO_ADC_VBAT,          F_ANALOG),
+    STM_DEFGPIO(GPIO_ADC_VBUS,          F_ANALOG),
 };
 
 /* TODO - replace hex constants - there are probably mistakes here */
@@ -117,28 +135,10 @@ static const struct pingroup_setting pingroups[] = {
     STM_DEFPINS(GPIO_I, 0x06e7, F_LCD_AF14),
 };
 
-void gpio_init(void)
-{
-    /* Enable clocks for all used GPIO banks */
-    reg_writef(RCC_AHB4ENR,
-               GPIOAEN(1), GPIOBEN(1), GPIOCEN(1), GPIODEN(1),
-               GPIOEEN(1), GPIOFEN(1), GPIOGEN(1), GPIOHEN(1), GPIOIEN(1));
-
-    /*
-     * NOTE: I think it's possible to disable clocks for the banks which
-     * we don't need to access at runtime because these are only clocking
-     * register access. Probably a micro-optimization but it supposedly
-     * does save a few uA/MHz.
-     */
-
-    gpio_configure_all(gpios, ARRAYLEN(gpios),
-                       pingroups, ARRAYLEN(pingroups));
-}
-
-void fmc_init(void)
+INIT_ATTR static void fmc_init(void)
 {
     /* configure clock */
-    reg_writef(RCC_D1CCIPR, FMCSEL_V(AHB));
+    reg_writef(RCC_D1CCIPR, FMCSEL_V(PLL1Q));
 
     /* ungate FMC peripheral */
     reg_writef(RCC_AHB3ENR, FMCEN(1));
@@ -180,4 +180,121 @@ void fmc_init(void)
      * -> 937 tCK per row, minus 20 tCK margin from datasheet
      */
     reg_writef(FMC_SDRTR, REIE(0), COUNT(917), CRE(0));
+}
+
+void system_init(void)
+{
+    if (BOOTLOADER_INIT)
+    {
+        /* Enable clocks for all used GPIO banks */
+        reg_writef(RCC_AHB4ENR,
+                   GPIOAEN(1), GPIOBEN(1), GPIOCEN(1), GPIODEN(1),
+                   GPIOEEN(1), GPIOFEN(1), GPIOGEN(1), GPIOHEN(1), GPIOIEN(1));
+
+        /*
+         * NOTE: I think it's possible to disable clocks for the banks which
+         * we don't need to access at runtime because these are only clocking
+         * register access. Probably a micro-optimization but it supposedly
+         * does save a few uA/MHz.
+         */
+    }
+
+    /*
+     * Set cpu_power_on high as early as possible to
+     * ensure we won't brown out if the power button
+     * isn't pressed.
+     */
+    gpio_configure_single(GPIO_CPU_POWER_ON, F_OUT_LS(1));
+
+    /* Set vector table address */
+    extern char __vectors_arm[];
+    reg_var(CM_SCB_VTOR) = (uint32_t)__vectors_arm;
+
+#if defined(DEBUG)
+    system_debug_enable(true);
+#endif
+
+    if (BOOTLOADER_INIT)
+    {
+        /* Enable CPU cache */
+        stm32_enable_caches();
+
+        /* Initialize system clocks */
+        echoplayer_clock_init();
+    }
+
+    /* Enable systick early due to udelay() needed for FMC init */
+    stm32_systick_enable();
+
+    if (BOOTLOADER_INIT)
+    {
+        /* Configure GPIOs and start FMC */
+        gpio_configure_all(gpios, ARRAYLEN(gpios),
+                           pingroups, ARRAYLEN(pingroups));
+        fmc_init();
+
+        /* Read & clear reset source */
+        uint32_t rsr = reg_var(RCC_RSR);
+        reg_assignf(RCC_RSR, RMVF(1));
+
+        /*
+         * Determine boot reason -- SFTRST means a software reset
+         * occurred, which may be a reboot or a power off
+         */
+        if (reg_vreadf(rsr, RCC_RSR, SFTRSTF))
+        {
+            reg_writef(RCC_APB4ENR, RTCAPBEN(1));
+
+            if (reg_readf(RTC_CR, WUTE))
+                echoplayer_boot_reason = ECHOPLAYER_BOOT_REASON_SW_REBOOT;
+            else
+                echoplayer_boot_reason = ECHOPLAYER_BOOT_REASON_SW_POWEROFF;
+        }
+    }
+
+    /* Disable RTC_OUT pin */
+    echoplayer_set_rtcout_mode(ECHOPLAYER_RTCOUT_DISABLED);
+
+    /* Setup for timer API */
+    stm32h7_timer_init(ITA_TIM7, NVIC_IRQN_TIM7, &tim7_ker_clock);
+}
+
+void system_exception_wait(void)
+{
+    while (button_read_device() != (BUTTON_POWER | BUTTON_START));
+}
+
+void echoplayer_set_rtcout_mode(enum echoplayer_rtcout_mode mode)
+{
+    reg_writef(RCC_APB4ENR, RTCAPBEN(1));
+    reg_writef(PWR_CR1, DBP(1));
+
+    reg_writef(RTC_WPR, KEY_V(KEY1));
+    reg_writef(RTC_WPR, KEY_V(KEY2));
+
+    reg_writef(RTC_OR, OUT_RMP(0), ALARM_TYPE_V(PUSH_PULL));
+
+    switch (mode)
+    {
+    case ECHOPLAYER_RTCOUT_REBOOT:
+        /*
+         * Use the inverted wakeup timer output to keep power
+         * enabled during reset. If, somehow, the system does
+         * not reset properly then the wakeup timer will drive
+         * the RTC_OUT pin low after 1 second and cut power.
+         */
+        while (!reg_readf(RTC_ISR, WUTWF));
+        reg_writef(RTC_ISR, WUTF(0));
+        reg_writef(RTC_WUTR, VALUE(STM32_LSE_FREQ / 8));
+        reg_writef(RTC_CR, OSEL_V(WAKEUP), POL(1), WUCKSEL(0), WUTE(1));
+        break;
+
+    case ECHOPLAYER_RTCOUT_DISABLED:
+    default:
+        reg_writef(RTC_CR, OSEL_V(DISABLED), POL(0), WUTE(0));
+        break;
+    }
+
+    reg_writef(RTC_WPR, KEY(0));
+    reg_writef(PWR_CR1, DBP(0));
 }

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Linus Nielsen Feltzing
  * Copyright (C) 2011 by Michael Sevakis
@@ -22,7 +21,11 @@
 #ifndef PCM_INTERNAL_H
 #define PCM_INTERNAL_H
 
+#include <stdbool.h>
+
 #include "config.h"
+#include "pcm.h"
+#include "pcm_sink.h"
 #include "gcc_extensions.h" /* for FORCE_INLINE */
 
 #ifdef HAVE_SW_VOLUME_CONTROL
@@ -42,21 +45,22 @@
 #define PCM_FACTOR_UNITY    (1u << PCM_SW_VOLUME_FRACBITS)
 #endif /* PCM_SW_VOLUME_FRACBITS */
 
+#ifdef HAVE_SDL_AUDIO
 #ifdef PCM_SW_VOLUME_UNBUFFERED
 /* Copies buffer with volume scaling applied */
 void pcm_sw_volume_copy_buffer(void *dst, const void *src, size_t size);
 #define pcm_copy_buffer pcm_sw_volume_copy_buffer
-#else /* !PCM_SW_VOLUME_UNBUFFERED */
-#ifdef HAVE_SDL_AUDIO
+#else /* PCM_SW_VOLUME_UNBUFFERED */
 #define pcm_copy_buffer memcpy
-#endif
+#endif /* PCM_SW_VOLUME_UNBUFFERED */
+#endif /* HAVE_SDL_AUDIO */
+
 #ifndef PCM_PLAY_DBL_BUF_SAMPLES
 #define PCM_PLAY_DBL_BUF_SAMPLES 1024 /* Max 4KByte chunks */
 #endif
 #ifndef PCM_DBL_BUF_BSS
 #define PCM_DBL_BUF_BSS               /* In DRAM, uncached may be better */
 #endif
-#endif /* PCM_SW_VOLUME_UNBUFFERED */
 
 void pcm_sync_pcm_factors(void);
 #endif /* HAVE_SW_VOLUME_CONTROL */
@@ -66,6 +70,20 @@ void pcm_sync_pcm_factors(void);
 #define ALIGN_AUDIOBUF(start, size) \
     ({ (start) = (void *)(((uintptr_t)(start) + 3) & ~3); \
        (size) &= ~3; })
+
+/* Internal PCM API calls for playback */
+void pcm_play_data(pcm_play_callback_type get_more,
+                   pcm_status_callback_type status_cb,
+                   const void *start, size_t size);
+
+void pcm_play_stop(void);
+void pcm_play_stop_int(void); /* requires PCM lock held */
+bool pcm_is_playing(void);
+
+void pcm_set_frequency(unsigned int samplerate);
+unsigned int pcm_get_frequency(void);
+/* apply settings to hardware immediately */
+void pcm_apply_settings(void);
 
 void pcm_do_peak_calculation(struct pcm_peaks *peaks, bool active,
                              const void *addr, int count);
@@ -109,44 +127,26 @@ static FORCE_INLINE enum pcm_dma_status pcm_play_call_status_cb(
 static FORCE_INLINE enum pcm_dma_status
 pcm_play_dma_status_callback(enum pcm_dma_status status)
 {
-#if defined(HAVE_SW_VOLUME_CONTROL) && !defined(PCM_SW_VOLUME_UNBUFFERED)
+#ifdef WANT_SWVOL
     extern enum pcm_dma_status
-        pcm_play_dma_status_callback_int(enum pcm_dma_status status);
-    return pcm_play_dma_status_callback_int(status);
-#else
+        pcm_play_dma_status_callback_int_swvol(enum pcm_dma_status status);
+    if (pcm_current_sink_caps()->volume_type == PCM_SINK_SWVOL)
+        return pcm_play_dma_status_callback_int_swvol(status);
+#endif /* WANT_SWVOL */
     return pcm_play_call_status_cb(status);
-#endif /* HAVE_SW_VOLUME_CONTROL && !PCM_SW_VOLUME_UNBUFFERED */
 }
-
-#if defined(HAVE_SW_VOLUME_CONTROL) && !defined(PCM_SW_VOLUME_UNBUFFERED)
-void pcm_play_dma_start_int(const void *addr, size_t size);
-void pcm_play_dma_stop_int(void);
-void pcm_play_stop_int(void);
-#endif /* HAVE_SW_VOLUME_CONTROL && !PCM_SW_VOLUME_UNBUFFERED */
 
 /* Called by the bottom layer ISR when more data is needed. Returns true
  * if a new buffer is available, false otherwise. */
 bool pcm_play_dma_complete_callback(enum pcm_dma_status status,
                                     const void **addr, size_t *size);
 
-extern unsigned long pcm_curr_sampr;
-extern unsigned long pcm_sampr;
-extern int pcm_fsel;
-
 #ifdef HAVE_PCM_DMA_ADDRESS
 void * pcm_dma_addr(void *addr);
 #endif
 
 extern volatile bool pcm_playing;
-
-void pcm_play_dma_lock(void);
-void pcm_play_dma_unlock(void);
-void pcm_play_dma_init(void) INIT_ATTR;
-void pcm_play_dma_postinit(void);
-void pcm_play_dma_start(const void *addr, size_t size);
-void pcm_play_dma_stop(void);
-
-void pcm_dma_apply_settings(void);
+struct pcm_sink* pcm_get_current_sink(void);
 
 #ifdef HAVE_RECORDING
 

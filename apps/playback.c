@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005-2007 Miika Pekkarinen
  * Copyright (C) 2007-2008 Nicolas Pennequin
@@ -27,6 +26,8 @@
 #include "panic.h"
 #include "core_alloc.h"
 #include "sound.h"
+#include "pcm_sink.h"
+#include "pcm-internal.h"
 #include "codecs.h"
 #include "codec_thread.h"
 #include "voice_thread.h"
@@ -48,6 +49,7 @@
 #include "settings.h"
 #include "audiohw.h"
 #include "general.h"
+#include "iap-usb.h"
 #include <stdio.h>
 
 #ifdef HAVE_TAGCACHE
@@ -66,8 +68,12 @@
 #include <strings.h>  /* For strncasecmp() */
 #endif
 
+#if defined(USB_ENABLE_AUDIO) || defined(HAVE_HOST_USB_AUDIO)
 #ifdef USB_ENABLE_AUDIO
 #include "usbstack/usb_audio.h"
+#endif
+#include "usb.h"
+#include "splash.h"
 #include "lang.h"
 #endif
 
@@ -326,6 +332,7 @@ static unsigned int track_event_flags = TEF_NONE; /* (A, O-) */
 static int skip_offset = 0; /* (A, O) */
 
 static bool track_skip_is_manual = false;
+static bool pause_on_track_change = false;
 
 /* Track change notification */
 static struct
@@ -1249,7 +1256,7 @@ void allocate_playback_log(void)
         playback_log_handle = core_alloc(PLAYBACK_LOG_BUFSZ);
         if (playback_log_handle > 0)
         {
-            DEBUGF("%s Allocated %d bytes\n", __func__, PLAYBACK_LOG_BUFSZ); 
+            DEBUGF("%s Allocated %d bytes\n", __func__, PLAYBACK_LOG_BUFSZ);
             char *buf = core_get_data(playback_log_handle);
             buf[0] = '\0';
         }
@@ -1406,6 +1413,7 @@ static void audio_playlist_track_change(void)
     {
         send_track_event(PLAYBACK_EVENT_TRACK_CHANGE,
                          track_event_flags, id3);
+        iap_on_track_playback_index(playlist_get_display_index() - 1, false);
     }
 
     position_key = pcmbuf_get_position_key();
@@ -1503,7 +1511,7 @@ static bool halt_decoding_track(bool stop)
 
     codec_skip_pending = false;
     codec_seeking = false;
-
+    pause_on_track_change = false;
     return retval;
 }
 
@@ -2314,6 +2322,8 @@ static int audio_finish_load_track(struct track_info *infop)
            by the time PLAYBACK_EVENT_TRACK_CHANGE is sent */
         send_track_event(PLAYBACK_EVENT_CUR_TRACK_READY, 0,
                          id3_get(PLAYING_ID3));
+        /* Also send pending notification */
+        iap_on_track_playback_index(playlist_get_display_index() - 1, true);
     }
 
 #ifdef HAVE_CODEC_BUFFERING
@@ -2674,6 +2684,9 @@ static bool single_mode_do_pause(int id3_hid)
         if (global_settings.single_mode == SINGLE_MODE_TRACK)
             return true;
 
+        if (global_settings.single_mode == SINGLE_MODE_PLAYLIST)
+            return (skip_pending == TRACK_SKIP_AUTO_NEW_PLAYLIST);
+
         char *previous_tag = single_mode_get_id3_tag(id3_get(PLAYING_ID3));
         char *new_tag = single_mode_get_id3_tag(bufgetid3(id3_hid));
         return previous_tag == NULL ||
@@ -2735,10 +2748,15 @@ static void audio_finalise_track_change(void)
         buf_read_cuesheet(info.cuesheet_hid);
         track_id3 = bufgetid3(info.id3_hid);
 
-        if (single_mode_do_pause(info.id3_hid))
+        /* When pause_on_track_change is calculated, next track_info may be missing
+         * (due to a low buffer or an automatic directory change),
+         * so we need to recalculate it. */
+        if (pause_on_track_change || single_mode_do_pause(info.id3_hid))
         {
             play_status = PLAY_PAUSED;
+            iap_on_play_status(play_status);
             pcmbuf_pause(true);
+            pause_on_track_change = false;
         }
     }
     /* Sync the next track information */
@@ -2816,11 +2834,16 @@ static void audio_monitor_end_of_playlist(void)
 }
 
 /* Does this track have an entry allocated? */
-static bool audio_can_change_track(int *trackstat, int *id3_hid)
+static bool audio_can_change_track(int *trackstat, enum pcm_track_change_type *type)
 {
     struct track_info info;
     bool have_track = track_list_advance_current(1, &info);
-    *id3_hid = info.id3_hid;
+
+    pause_on_track_change = have_track && single_mode_do_pause(info.id3_hid);
+    *type = pause_on_track_change
+                ? TRACK_CHANGE_END_OF_DATA
+                : TRACK_CHANGE_AUTO;
+
     if (!have_track || info.audio_hid < 0)
     {
         bool end_of_playlist = false;
@@ -2829,8 +2852,8 @@ static bool audio_can_change_track(int *trackstat, int *id3_hid)
         {
             if (filling == STATE_STOPPED)
             {
-                audio_begin_track_change(TRACK_CHANGE_END_OF_DATA, *trackstat);
-                return false;
+                *type = TRACK_CHANGE_END_OF_DATA;
+                return true;
             }
 
             /* Track load is not complete - it might have stopped on a
@@ -2932,13 +2955,10 @@ static void audio_on_codec_complete(int status)
     track_event_flags = TEF_AUTO_SKIP;
     skip_pending = TRACK_SKIP_AUTO;
 
-    int id3_hid = 0;
-    if (audio_can_change_track(&trackstat, &id3_hid))
+    enum pcm_track_change_type type;
+    if (audio_can_change_track(&trackstat, &type))
     {
-        audio_begin_track_change(
-                single_mode_do_pause(id3_hid)
-                ? TRACK_CHANGE_END_OF_DATA
-                : TRACK_CHANGE_AUTO, trackstat);
+        audio_begin_track_change(type, trackstat);
     }
 }
 
@@ -2973,12 +2993,12 @@ static void audio_on_track_changed(void)
 static void audio_start_playback(const struct audio_resume_info *resume_info,
                                  unsigned int flags)
 {
-/* 
+/*
  * Refuse to start playback if usb audio is active. See gui_wps_show() for
  * a splash message to the user.
  * NOTE: if USBAudio ever gets its own DSP channel, this block can go away!
  */
-#ifdef USB_ENABLE_AUDIO
+#if defined(USB_ENABLE_AUDIO) || defined(HAVE_HOST_USB_AUDIO)
     if (usb_audio_get_active())
     {
         queue_reply(&audio_queue, 0);
@@ -3018,18 +3038,23 @@ static void audio_start_playback(const struct audio_resume_info *resume_info,
         track_event_flags = TEF_NONE;
         ff_rw_mode = false;
 
+        /*
+         * When restarting playback or resuming from a paused state,
+         * the PCM buffer should be cleared to ensure crossfade will
+         * not be performed.
+         */
+        if ((flags & AUDIO_START_RESTART) || old_status == PLAY_PAUSED)
+            pcmbuf_play_stop();
+
         if (flags & AUDIO_START_RESTART)
         {
             /* Clear out some stuff to resume the current track where it
                left off */
-            pcmbuf_play_stop();
-
             resume.elapsed = id3_get(PLAYING_ID3)->elapsed;
             resume.offset = id3_get(PLAYING_ID3)->offset;
             skip_resume_adjustments = id3_get(PLAYING_ID3)->skip_resume_adjustments;
 
             track_list_clear(TRACK_LIST_CLEAR_ALL);
-            pcmbuf_update_frequency();
         }
         else
         {
@@ -3042,7 +3067,6 @@ static void audio_start_playback(const struct audio_resume_info *resume_info,
             pcmbuf_start_track_change(TRACK_CHANGE_MANUAL);
             wipe_track_metadata(true);
         }
-        pcmbuf_update_frequency();
 
         /* Set after track finish event in case skip was in progress */
         skip_pending = TRACK_SKIP_NONE;
@@ -3064,13 +3088,13 @@ static void audio_start_playback(const struct audio_resume_info *resume_info,
 #ifndef PLATFORM_HAS_VOLUME_CHANGE
         sound_set_volume(global_status.volume);
 #endif
-        pcmbuf_update_frequency();
 
         /* Be sure channel is audible */
         pcmbuf_fade(false, true);
 
         /* Update our state */
         play_status = PLAY_PLAYING;
+        iap_on_play_status(play_status);
     }
 
     /* Codec's position should be available as soon as it knows it */
@@ -3158,6 +3182,7 @@ static void audio_stop_playback(void)
     /* Update our state */
     ff_rw_mode = false;
     play_status = PLAY_STOPPED;
+    iap_on_play_status(play_status);
 
     wipe_track_metadata(true);
 #ifdef HAVE_ALBUMART
@@ -3179,6 +3204,7 @@ static void audio_on_pause(bool pause)
         return;
 
     play_status = pause ? PLAY_PAUSED : PLAY_PLAYING;
+    iap_on_play_status(play_status);
 
     if (!pause && codec_skip_pending)
     {
@@ -3820,6 +3846,7 @@ void audio_pcmbuf_position_callback(unsigned long elapsed, off_t offset,
         struct mp3entry *id3 = id3_get(PLAYING_ID3);
         id3->elapsed = elapsed;
         id3->offset = offset;
+        iap_on_track_time_position(elapsed);
     }
 }
 
@@ -3851,7 +3878,7 @@ void audio_pcmbuf_track_change(bool pcmbuf)
 /* May pcmbuf start PCM playback when the buffer is full enough? */
 bool audio_pcmbuf_may_play(void)
 {
-    return play_status == PLAY_PLAYING && !ff_rw_mode;
+    return play_status == PLAY_PLAYING && !ff_rw_mode && !pause_on_track_change;
 }
 
 
@@ -3968,8 +3995,11 @@ void audio_hard_stop(void)
     LOGFQUEUE("audio >| audio Q_AUDIO_STOP: 1");
     audio_queue_send(Q_AUDIO_STOP, 1);
 #ifdef PLAYBACK_VOICE
+    /* Stop voice */
     voice_stop();
 #endif
+    /* Stop PCM */
+    pcm_play_stop();
     audiobuf_handle = core_free(audiobuf_handle);
 }
 
@@ -4229,29 +4259,24 @@ void audio_set_crossfade(int enable)
 #ifdef HAVE_PLAY_FREQ
 static unsigned long audio_guess_frequency(struct mp3entry *id3)
 {
-    switch (id3->frequency)
+    const struct pcm_sink_caps* caps = pcm_sink_caps(pcm_current_sink());
+    bool have_44 = false;
+    bool have_48 = false;
+    for (size_t i = 0; i < caps->num_samprs; i += 1)
     {
-#if HAVE_PLAY_FREQ >= 48
-    case 44100:
-        return SAMPR_44;
-    case 48000:
-        return SAMPR_48;
-#endif
-#if HAVE_PLAY_FREQ >= 96
-    case 88200:
-        return SAMPR_88;
-    case 96000:
-        return SAMPR_96;
-#endif
-#if HAVE_PLAY_FREQ >= 192
-    case 176400:
-        return SAMPR_176;
-    case 192000:
-        return SAMPR_192;
-#endif
-    default:
-        return (id3->frequency % 4000) ? SAMPR_44 : SAMPR_48;
+        if (caps->samprs[i] == SAMPR_44)
+            have_44 = true;
+        if (caps->samprs[i] == SAMPR_48)
+            have_48 = true;
+        /* Always upscale to 44.1 or better */
+        if (id3->frequency >= SAMPR_44 && id3->frequency == caps->samprs[i])
+            return id3->frequency;
     }
+    unsigned long fallback = (id3->frequency % 4000) ? SAMPR_44 : SAMPR_48;
+    if ((fallback == SAMPR_44 && have_44) || (fallback == SAMPR_48 && have_48))
+        return fallback;
+    else
+        return caps->samprs[caps->default_freq];
 }
 
 static bool audio_auto_change_frequency(struct mp3entry *id3, bool play)
@@ -4276,27 +4301,16 @@ static bool audio_auto_change_frequency(struct mp3entry *id3, bool play)
 
 void audio_set_playback_frequency(unsigned int sample_rate_hz)
 {
-    /* sample_rate_hz == 0 is "automatic", and also a sentinel */
-#if HAVE_PLAY_FREQ >= 192
-    static const unsigned int play_sampr[] = {SAMPR_44, SAMPR_48, SAMPR_88, SAMPR_96, SAMPR_176, SAMPR_192, 0 };
-#elif HAVE_PLAY_FREQ >= 96
-    static const unsigned int play_sampr[] = {SAMPR_44, SAMPR_48, SAMPR_88, SAMPR_96, 0 };
-#elif HAVE_PLAY_FREQ >= 48
-    static const unsigned int play_sampr[] = {SAMPR_44, SAMPR_48, 0 };
-#else
-    #error "HAVE_PLAY_FREQ < 48 ??"
-#endif
-    const unsigned int *p_sampr = play_sampr;
     unsigned int sampr = 0;
 
-    while (*p_sampr != 0)
+    const struct pcm_sink_caps* caps = pcm_sink_caps(pcm_current_sink());
+    for (size_t i = 0; i < caps->num_samprs; i += 1)
     {
-        if (*p_sampr == sample_rate_hz)
+        if (caps->samprs[i] == sample_rate_hz)
         {
-            sampr = *p_sampr;
+            sampr = caps->samprs[i];
             break;
         }
-        p_sampr++;
     }
 
     if (sampr == 0)
@@ -4335,7 +4349,6 @@ void INIT_ATTR playback_init(void)
     mutex_init(&id3_mutex);
     track_list_init();
     buffering_init();
-    pcmbuf_update_frequency();
 #ifdef HAVE_CROSSFADE
     /* Set crossfade setting for next buffer init which should be about... */
     pcmbuf_request_crossfade_enable(global_settings.crossfade);

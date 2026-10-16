@@ -2,6 +2,7 @@
 #ifndef OSMIUM_H
 #define OSMIUM_H
 #include <stdbool.h>
+#include <stdint.h>
 #include "gcc_extensions.h"
 #include "osm_strings.h"
 
@@ -21,8 +22,9 @@ void osm_fatal(const char *msg, int code);
 /* the interface: never returns */
 void osm_ui_run(void) NORETURN_ATTR;
 
-/* USB mass storage screen (blocks until unplugged) */
-void osm_usb_screen(void);
+/* USB mass storage screen (blocks until unplugged); seqnum is the data of
+ * the SYS_USB_CONNECTED event (button_get_data()), echoed in the ack */
+void osm_usb_screen(intptr_t seqnum);
 
 /* ── hooks used by the Rockbox core (misc.c, playlist.c) ──────────── */
 /* true if the user pressed Back while a long operation runs */

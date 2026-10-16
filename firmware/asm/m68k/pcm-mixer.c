@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Michael Sevakis
  *
@@ -19,8 +18,6 @@
  *
  ****************************************************************************/
 
-#define MIXER_OPTIMIZED_MIX_SAMPLES
-#define MIXER_OPTIMIZED_WRITE_SAMPLES
 static struct emac_context
 {
     unsigned long saved;

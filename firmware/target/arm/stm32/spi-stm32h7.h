@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -58,7 +57,7 @@ struct stm_spi_config
      * such the kernel clock should not be changed after
      * the SPI peripheral is initialized.
      */
-    enum stm_clock clock;
+    const struct stm32_clock *clock;
     size_t freq;
 
     enum stm_spi_mode mode;
@@ -77,10 +76,11 @@ struct stm_spi_config
 struct stm_spi
 {
     uint32_t regs;
-    enum stm_clock clock;
+    const struct stm32_clock *clock;
     enum stm_spi_mode mode;
     stm_spi_set_cs_t set_cs;
     uint32_t frame_size;
+    uint32_t eot_delay_us;
 
     const void *tx_buf;
     size_t tx_size;

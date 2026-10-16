@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright © 2009 Bertrik Sikken
  *
@@ -32,11 +31,12 @@
 #include "dma-target.h"
 #include "mmu-arm.h"
 #include "cpucache-arm.h"
+#include "pcm_sink.h"
 
 /*  Driver for the IIS/PCM part of the s5l8700 using DMA
 
     Notes:
-    - pcm_play_dma_stop is untested, not sure if implemented the right way
+    - sink_dma_stop is untested, not sure if implemented the right way
     - recording is not implemented
 */
 
@@ -83,7 +83,7 @@ static const struct div_entry {
 };
 
 /* Mask the DMA interrupt */
-void pcm_play_lock(void)
+static void sink_lock(void)
 {
     if (locked++ == 0) {
         INTMSK &= ~(1 << 10);
@@ -91,7 +91,7 @@ void pcm_play_lock(void)
 }
 
 /* Unmask the DMA interrupt if enabled */
-void pcm_play_unlock(void)
+static void sink_unlock(void)
 {
     if (--locked == 0) {
         INTMSK |= (1 << 10);
@@ -141,7 +141,7 @@ void INT_DMA(void)
 
 }
 
-void pcm_play_dma_start(const void* addr, size_t size)
+static void sink_dma_start(const void* addr, size_t size)
 {
     /* DMA channel on */
     nextbuf = addr;
@@ -161,7 +161,7 @@ void pcm_play_dma_start(const void* addr, size_t size)
                (0 << 0);    /* 0 = LRCK on */
 }
 
-void pcm_play_dma_stop(void)
+static void sink_dma_stop(void)
 {
     /* DMA channel off */
     DMACOM0 = 5;
@@ -195,7 +195,7 @@ static void pcm_dma_set_freq(enum hw_freq_indexes idx)
              (div.cdiv - 1);    /* MCLK_DIV_VAL */
 }
 
-void pcm_play_dma_init(void)
+static void sink_dma_init(void)
 {
     /* configure IIS pins */
 #ifdef IPOD_NANO2G
@@ -252,15 +252,10 @@ void pcm_play_dma_init(void)
     audiohw_preinit();
 }
 
-void pcm_play_dma_postinit(void)
-{
-    audiohw_postinit();
-}
-
 /* set the configured PCM frequency */
-void pcm_dma_apply_settings(void)
+static void sink_set_freq(uint16_t freq_idx)
 {
-    pcm_dma_set_freq(pcm_fsel);
+    pcm_dma_set_freq(freq_idx);
 }
 
 #ifdef HAVE_PCM_DMA_ADDRESS
@@ -272,6 +267,23 @@ void * pcm_dma_addr(void *addr)
 }
 #endif
 
+struct pcm_sink builtin_pcm_sink = {
+    .caps = {
+        .samprs       = hw_freq_sampr,
+        .num_samprs   = HW_NUM_FREQ,
+        .default_freq = HW_FREQ_DEFAULT,
+        .volume_type  = PCM_NATIVE_VOLUME_TYPE,
+    },
+    .ops = {
+        .init     = sink_dma_init,
+        .postinit = audiohw_postinit,
+        .set_freq = sink_set_freq,
+        .lock     = sink_lock,
+        .unlock   = sink_unlock,
+        .play     = sink_dma_start,
+        .stop     = sink_dma_stop,
+    },
+};
 
 /****************************************************************************
  ** Recording DMA transfer

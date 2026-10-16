@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -1022,10 +1021,10 @@
   desc: in the equalizer settings menu
   user: core
   <source>
-    *: "Peak Filter %d"
+    *: "Peak Filter"
   </source>
   <dest>
-    *: "피크 필터 %d"
+    *: "피크 필터"
   </dest>
   <voice>
     *: "피크 필터"
@@ -9131,15 +9130,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Bass Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Bass Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "저음 컷오프"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "저음 컷오프"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "저음 컷오프"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "저음 컷오프"
   </voice>
 </phrase>
 <phrase>
@@ -9148,15 +9147,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Treble Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Treble Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "고음 컷오프"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "고음 컷오프"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "고음 컷오프"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "고음 컷오프"
   </voice>
 </phrase>
 <phrase>
@@ -12045,7 +12044,7 @@
 </phrase>
 <phrase>
   id: LANG_USB_MODE
-  desc: in Settings -> General -> System -> USB Mode
+  desc: in Settings -> General -> System -> USB
   user: core
   <source>
     *: "USB Mode"
@@ -14609,11 +14608,11 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_HIDE_ALBUM_TITLE_NEW
-  desc: in the pictureflow settings
+  id: LANG_HIDE_INFO
+  desc: Hide Information
   user: core
   <source>
-    *: "Hide information"
+    *: "Hide Information"
   </source>
   <dest>
     *: "정보 숨기기"
@@ -14684,7 +14683,7 @@
   user: core
   <source>
     *: "Press LEFT to cancel."
-    android,hifietma*,zenvision: "Press BACK to cancel."
+    android,hifietma*: "Press BACK to cancel."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Press POWER to cancel."
     ihifi760,ihifi960: "Double tap RETURN to cancel."
     ihifi770,ihifi770c,ihifi800: "Press HOME to cancel."
@@ -14699,7 +14698,7 @@
   </source>
   <dest>
     *: "취소하려면 왼쪽 버튼을 누르세요."
-    android,hifietma*,zenvision: "취소하려면 뒤로가기 버튼을 누르세요."
+    android,hifietma*: "취소하려면 뒤로가기 버튼을 누르세요."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "취소하려면 전원 버튼을 누르세요."
     ihifi760,ihifi960: "취소하려면 리턴 버튼을 두 번 탭하세요."
     ihifi770,ihifi770c,ihifi800: "취소하려면 홈 버튼을 누르세요."
@@ -14714,7 +14713,7 @@
   </dest>
   <voice>
     *: "취소하려면 왼쪽 버튼을 누르세요."
-    android,hifietma*,zenvision: "취소하려면 뒤로가기 버튼을 누르세요."
+    android,hifietma*: "취소하려면 뒤로가기 버튼을 누르세요."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "취소하려면 전원 버튼을 누르세요."
     ihifi760,ihifi960: "취소하려면 리턴 버튼을 두 번 탭하세요."
     ihifi770,ihifi770c,ihifi800: "취소하려면 홈 버튼을 누르세요."
@@ -14953,20 +14952,6 @@
   </dest>
   <voice>
     *: "플러그인 아님"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_OPEN_PLUGIN_SET_WPS_CONTEXT_PLUGIN
-  desc: open plugin module
-  user: core
-  <source>
-    *: "Set WPS Context Plugin"
-  </source>
-  <dest>
-    *: "재생 중 화면 컨텍스트 플러그인 설정"
-  </dest>
-  <voice>
-    *: "재생 중 화면 컨텍스트 플러그인 설정"
   </voice>
 </phrase>
 <phrase>
@@ -15209,7 +15194,7 @@
 </phrase>
 <phrase>
   id: LANG_VOICED_DATE_FORMAT
-  desc: format string for how dates will be read back. Y == 4-digit year, A == month name, m == numeric month, d == numeric day. For example, "AdY" will read "January 21 2021"
+  desc: format string for how dates will be read back. Y == 4-digit year (grouped), y == 4-digit year (numeric), A == month name, m == numeric month, d == numeric day. For example, for 2021-01-05, "AdY" will be voiced as "January 5 twenty twenty-one" and "dmy" will be voiced as "5 1 two thousand twenty one
   user: core
   <source>
     *: "dAY"
@@ -15818,16 +15803,16 @@
 </phrase>
 <phrase>
   id: LANG_DEFAULT_BROWSER
-  desc: in Settings
+  desc: deprecated
   user: core
   <source>
-    *: "Default Browser"
+    *: ""
   </source>
   <dest>
-    *: "기본 탐색기"
+    *: ""
   </dest>
   <voice>
-    *: "기본 탐색기"
+    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -16958,5 +16943,235 @@
   <voice>
     *: none
     general_purpose_led: "LED 표시기 사용"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ANNOUNCE_STATUS
+  desc: announnnce_status plugin
+  user: core
+  <source>
+    *: "Announce Status"
+  </source>
+  <dest>
+    *: "상태 발표"
+  </dest>
+  <voice>
+    *: "상태 발표"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEEP_DIRECTORY
+  desc: file browser setting
+  user: core
+  <source>
+    *: "Always remember last folder"
+  </source>
+  <dest>
+    *: "항상 마지막 폴더 기억"
+  </dest>
+  <voice>
+    *: "항상 마지막 폴더 기억"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_MENU
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "USB"
+  </source>
+  <dest>
+    *: "~USB"
+  </dest>
+  <voice>
+    *: "~U S B"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILE_NOT_FOUND
+  desc: When file does not exist
+  user: core
+  <source>
+    *: "File not found"
+  </source>
+  <dest>
+    *: "파일을 찾을 수 없음"
+  </dest>
+  <voice>
+    *: "파일을 찾을 수 없음"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SHOW_IN_FILES
+  desc: Reveal item in File Browser
+  user: core
+  <source>
+    *: "Show in Files"
+  </source>
+  <dest>
+    *: "파일에서 표시"
+  </dest>
+  <voice>
+    *: "파일에서 표시"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CHANNEL_SWAP
+  desc: in sound_settings
+  user: core
+  <source>
+    *: "Swap Left & Right"
+  </source>
+  <dest>
+    *: "왼쪽과 오른쪽 바꾸기"
+  </dest>
+  <voice>
+    *: "왼쪽과 오른쪽 바꾸기"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_SET
+  desc: countdown_timer plugin - header shown on the setup screen where the user enters the countdown duration
+  user: core
+  <source>
+    *: "SET TIMER"
+  </source>
+  <dest>
+    *: "타이머 설정"
+  </dest>
+  <voice>
+    *: "타이머 설정"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_RUNNING
+  desc: countdown_timer plugin - status label shown while the countdown is active
+  user: core
+  <source>
+    *: "RUNNING"
+  </source>
+  <dest>
+    *: "실행 중"
+  </dest>
+  <voice>
+    *: "실행 중"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_PAUSED
+  desc: countdown_timer plugin - status label shown while the countdown is paused
+  user: core
+  <source>
+    *: "PAUSED"
+  </source>
+  <dest>
+    *: "일시 중지"
+  </dest>
+  <voice>
+    *: "일시 중지"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_OVERTIME
+  desc: countdown_timer plugin - status label shown when the countdown has passed zero and is counting up
+  user: core
+  <source>
+    *: "OVERTIME"
+  </source>
+  <dest>
+    *: "초과 시간"
+  </dest>
+  <voice>
+    *: "초과 시간"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_FINISHED
+  desc: countdown_timer plugin - status label shown at the moment the countdown expires
+  user: core
+  <source>
+    *: "FINISHED"
+  </source>
+  <dest>
+    *: "완료"
+  </dest>
+  <voice>
+    *: "완료"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_CONTEXT_ITEM
+  desc: WPS context item
+  user: core
+  <source>
+    *: "Set Context Item"
+  </source>
+  <dest>
+    *: "컨텍스트 항목 설정"
+  </dest>
+  <voice>
+    *: "컨텍스트 항목 설정"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_BAND
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter %d"
+  </source>
+  <dest>
+    *: "필터 %d"
+  </dest>
+  <voice>
+    *: "필터"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_FILTER_TYPE
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter Type"
+  </source>
+  <dest>
+    *: "필터 유형"
+  </dest>
+  <voice>
+    *: "필터 유형"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPOSITE_VIDEO_OUTPUT
+  desc: Enables composite video framebuffer mirroring on supported targets
+  user: core
+  <source>
+    *: none
+    videoout: "Composite Video Output"
+  </source>
+  <dest>
+    *: none
+    videoout: "컴포지트 영상 출력"
+  </dest>
+  <voice>
+    *: none
+    videoout: "컴포지트 영상 출력"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_FLICK_SHORTCUTS
+  desc: in settings menu
+  user: core
+  <source>
+    *: none
+    touchscreen: "Touchscreen Flick Shortcuts"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "터치스크린 플릭 바로가기"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "터치스크린 플릭 바로가기"
   </voice>
 </phrase>

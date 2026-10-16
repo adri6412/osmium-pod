@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Catalin Patulea
  *
@@ -23,9 +22,7 @@
 #define SPI_TARGET_H
 
 enum SPI_target {
-#if defined(CREATIVE_ZVx)
-    SPI_target_LTV250QV = 0,
-#elif defined(MROBE_500)
+#if defined(MROBE_500)
     SPI_target_TSC2100 = 0,
     SPI_target_RX5X348AB,
     SPI_target_BACKLIGHT,

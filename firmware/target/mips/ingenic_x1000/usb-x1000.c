@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -25,7 +24,7 @@
 #include "usb_drv.h"
 #include "usb-designware.h"
 #include "irq-x1000.h"
-#include "gpio-x1000.h"
+#include "gpio-ingenic.h"
 #include "x1000/cpm.h"
 
 /*
@@ -171,9 +170,11 @@ void usb_enable(bool on)
 
 void usb_init_device(void)
 {
+#ifndef X1000_USB_NO_DRVVBUS
     /* Disable drvvbus pin -- it is only used when acting as a host,
      * which Rockbox does not support */
     gpio_set_function(GPIO_USB_DRVVBUS, GPIOF_OUTPUT(0));
+#endif
 
     /* Power up the core clocks to allow writing
        to some registers needed to power it down */

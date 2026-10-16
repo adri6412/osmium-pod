@@ -51,7 +51,7 @@ const static struct {
     { RbSettings::InstallManual,        "install_manual",       "false" },
 #if defined(Q_OS_WIN32)
     { RbSettings::Tts,                  "tts",                  "sapi" },
-#elif defined(Q_OS_MACX)
+#elif defined(Q_OS_MACOS)
     { RbSettings::Tts,                  "tts",                  "carbon" },
 #else
     { RbSettings::Tts,                  "tts",                  "espeak" },
@@ -74,10 +74,10 @@ const static struct {
     { RbSettings::EncoderPath,          ":encoder:/encoderpath",        "" },
     { RbSettings::EncoderOptions,       ":encoder:/encoderoptions",     "" },
     { RbSettings::CacheDisabled,        "cachedisable",         "false" },
-    { RbSettings::TtsUseSapi4,          "sapi/useSapi4",        "false" },
     { RbSettings::EncoderNarrowBand,    ":encoder:/narrowband", "false" },
     { RbSettings::WavtrimThreshold,     "wavtrimthreshold",     "500"},
     { RbSettings::TtsSpeed,             ":tts:/speed",          "175" },
+    { RbSettings::TtsVolume,            ":tts:/volume",         "100" },
     { RbSettings::EncoderComplexity,    ":encoder:/complexity", "10" },
     { RbSettings::EncoderQuality,       ":encoder:/quality",    "-1.0" },
     { RbSettings::EncoderVolume,        ":encoder:/volume",     "1.0" },

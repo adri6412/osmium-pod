@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: backlight-nano2g.c 28601 2010-11-14 20:39:18Z theseven $
  *
  * Copyright (C) 2009 by Dave Chapman
  *
@@ -31,7 +30,7 @@
 #include "lcd-s5l8702.h"
 #endif
 
-// TODO: test
+/* The original firmware writes the level to bits 0..4 as well */
 void backlight_hw_brightness(int brightness)
 {
     pmu_write(D1671_REG_LEDCTL,
@@ -44,8 +43,11 @@ void backlight_hw_on(void)
     if (!lcd_active())
         lcd_awake();
 #endif
+    /* As the original firmware turns it on: bits 7 and 6 set,
+     * bit 5 clear. Bit 6's meaning is unknown. */
     pmu_write(D1671_REG_LEDCTL,
-            (pmu_read(D1671_REG_LEDCTL) | D1671_LEDCTL_ENABLE));
+            (pmu_read(D1671_REG_LEDCTL) & ~0x20)
+            | D1671_LEDCTL_ENABLE | D1671_LEDCTL_UNKNOWN);
 }
 
 void backlight_hw_off(void)

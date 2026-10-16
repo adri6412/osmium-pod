@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 by Aidan MacDonald
  *
@@ -41,6 +40,13 @@ static inline void nvic_disable_irq(int nr)
     int bit = nr % 32;
 
     reg_var(CM_NVIC_ICER(reg)) = BIT_N(bit);
+}
+
+static inline void nvic_disable_irq_sync(int nr)
+{
+    nvic_disable_irq(nr);
+    arm_dsb();
+    arm_isb();
 }
 
 static inline void nvic_set_pending_irq(int nr)

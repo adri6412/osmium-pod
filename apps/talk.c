@@ -768,7 +768,7 @@ static int _talk_spell(const char* spell, size_t len, bool enqueue)
     do_enqueue(enqueue); /* cut off all the pending stuff */
 
     const char *last = spell;
-    size_t len0 = len - 1;
+    size_t len0 = len;
     /* Tokenize into UTF8 codepoints */
     while ((spell = utf8decode(spell, &c)), c != '\0')
     {
@@ -1120,7 +1120,7 @@ static int _talk_file(const char* filename,
     {
         return 0;
     }
-    size = filesize(fd);
+    size = ffilesize(fd);
 
     if (size > 0)
     {
@@ -1543,7 +1543,10 @@ int talk_spell(const char* spell, bool enqueue)
 void talk_disable(bool disable)
 {
     if (disable)
+    {
+        talk_force_shutup();
         talk_temp_disable_count++;
+    }
     else
         talk_temp_disable_count--;
 }
@@ -1557,8 +1560,11 @@ void talk_date(const struct tm *tm, bool enqueue)
 
     for (ptr = format ; *ptr ; ptr++) {
         switch(*ptr) {
-	case 'Y':
+	case 'y':
             talk_number(1900 + tm->tm_year, true);
+            break;
+	case 'Y':
+            talk_year(1900 + tm->tm_year, true);
             break;
 	case 'A':
             talk_id(LANG_MONTH_JANUARY + tm->tm_mon, true);

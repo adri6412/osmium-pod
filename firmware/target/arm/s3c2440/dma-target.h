@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright © 2009 by Bob Cousins
  *
@@ -29,14 +28,11 @@
 #ifdef GIGABEAT_F
 #define DMA_CHAN_ATA        0
 #define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
 #else
 #error Unsupported target
 #endif
 
-struct dma_request 
+struct dma_request
 {
     volatile void *source_addr;
     volatile void *dest_addr;
@@ -51,7 +47,7 @@ struct dma_request
 void dma_init(void);
 void dma_enable_channel(int channel, struct dma_request *request);
 
-inline void dma_disable_channel(int channel);
+void dma_disable_channel(int channel);
 
 void dma_retain(void);
 void dma_release(void);

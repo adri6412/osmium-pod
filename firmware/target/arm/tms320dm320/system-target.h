@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007, 2009 by Karl Kurbjun
  *
@@ -37,16 +36,6 @@
 
 void udelay(int usec);
 void mdelay(int msec);
-
-#if defined(CREATIVE_ZVx) && defined(BOOTLOADER)
-    /* hacky.. */
-#define SLEEP_KERNEL_HOOK(ticks) \
-    ({                                              \
-    long _sleep_ticks = current_tick + (ticks) + 1; \
-    while (TIME_BEFORE(current_tick, _sleep_ticks)) \
-        switch_thread(); \
-    true; }) /* handled here */
-#endif
 
 #ifdef BOOTLOADER
 void tick_stop(void);

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright © 2010 Thomas Martitz
  *
@@ -76,9 +75,6 @@ void audiohw_set_prescaler(int value)
 }
 #endif /* AUDIOHW_HAVE_PRESCALER */
 
-#if defined(AUDIOHW_HAVE_BALANCE)
-void audiohw_set_balance(int value)     { (void)value; }
-#endif
 #ifndef HAVE_SW_TONE_CONTROLS
 #if defined(AUDIOHW_HAVE_BASS)
 void audiohw_set_bass(int value)        { (void)value; }

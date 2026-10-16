@@ -36,6 +36,7 @@
 #include "lcd.h"
 #include "font.h"
 #include "power.h"
+#include "rbpaths.h"
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -126,16 +127,23 @@
 #define BUTTON_LEFT   BUTTON_VOL_DOWN
 #define BUTTON_RIGHT  BUTTON_VOL_UP
 #include "bitmaps/hibyicon.h"
+#elif defined(HIDIZS_AP80MAX)
+#define ICON_WIDTH  130
+#define ICON_HEIGHT 130
+#define ICON_NAME bm_hibyicon
+#define OF_NAME "HIBY PLAYER"
+#define BUTTON_UP     BUTTON_PREV
+#define BUTTON_DOWN   BUTTON_NEXT
+#define BUTTON_SELECT BUTTON_PLAY
+/* No volume keys, so the scroll wheel takes left/right */
+#define BUTTON_LEFT   BUTTON_SCROLL_BACK
+#define BUTTON_RIGHT  BUTTON_SCROLL_FWD
+#include "bitmaps/hibyicon.h"
 #else
 #error "must define ICON_WIDTH/HEIGHT"
 #endif
 
 #define BASE_DIR PIVOT_ROOT
-//#ifdef FIIO_M3K_LINUX
-//#define BASE_DIR "/mnt"
-//#else
-//#define BASE_DIR "/mnt/sd_0"
-//#endif
 
 /* images */
 #include "bitmaps/rockboxicon.h"
@@ -246,7 +254,7 @@ static void mount_storage(int enable)
 static enum boot_mode load_boot_mode(enum boot_mode mode)
 {
     mount_storage(true);
-    int fd = open(BASE_DIR "/.rockbox/rb_bl_mode.txt", O_RDONLY);
+    int fd = open(BASE_DIR ROCKBOX_DIR "/rb_bl_mode.txt", O_RDONLY);
     if(fd >= 0)
     {
         read(fd, &mode, sizeof(mode));
@@ -258,7 +266,7 @@ static enum boot_mode load_boot_mode(enum boot_mode mode)
 static void save_boot_mode(enum boot_mode mode)
 {
     mount_storage(true);
-    int fd = open(BASE_DIR "/.rockbox/rb_bl_mode.txt", O_RDWR | O_CREAT | O_TRUNC);
+    int fd = open(BASE_DIR ROCKBOX_DIR "/rb_bl_mode.txt", O_RDWR | O_CREAT | O_TRUNC);
     if(fd >= 0)
     {
         write(fd, &mode, sizeof(mode));
@@ -279,7 +287,7 @@ static enum boot_mode get_boot_mode(void)
     while(true)
     {
         /* on usb detect, immediately boot with last choice */
-#if !defined(HIBY_R3PROII) && !defined(HIBY_R1)
+#if !defined(HIBY_R3PROII) && !defined(HIBY_R1) && !defined(HIDIZS_AP80MAX)
         if(!adb_running && power_input_status() & POWER_INPUT_USB_CHARGER)
         {
             /* save last choice */
@@ -455,9 +463,12 @@ int choice_screen(const char *title, bool center, int nr_choices, const char *ch
 
 void run_file(const char *name)
 {
-    char *dirname = BASE_DIR;
-    char *buf = malloc(strlen(dirname) + strlen(name) + 1);
-    sprintf(buf, "%s%s", dirname, name);
+    const char *dirname = BASE_DIR;
+    size_t path_size = strlen(dirname) + strlen(name) + 2;
+    char *buf = malloc(path_size);
+    if (!buf)
+        return;
+    snprintf(buf, path_size, "%s/%s", dirname, name);
 
     lcd_clear_display();
     lcd_set_foreground(LCD_RGBPACK(255, 201, 0));
@@ -472,6 +483,7 @@ void run_file(const char *name)
     }
     int status;
     waitpid(pid, &status, 0);
+    free(buf);
     if(WIFEXITED(status))
     {
         lcd_set_foreground(LCD_RGBPACK(255, 201, 0));
@@ -526,7 +538,7 @@ static void adb(int start)
     pid_t pid = fork();
     if(pid == 0)
     {
-#if defined(HIBY_R3PROII) || defined(HIBY_R1)
+#if defined(HIBY_R3PROII) || defined(HIBY_R1) || defined(HIDIZS_AP80MAX)
         execlp("/etc/init.d/T90adb", "T90adb", start ? "start" : "stop", NULL);
 #else
         execlp("/etc/init.d/K90adb", "K90adb", start ? "start" : "stop", NULL);
@@ -694,20 +706,24 @@ int main(int argc, char **argv)
         }
         else if(mode == BOOT_ROCKBOX)
         {
-#if defined(HIBY_R3PROII) || defined(HIBY_R1)
+#if defined(HIBY_R3PROII) || defined(HIBY_R1) || defined(HIDIZS_AP80MAX)
             /* Suspend bluetooth as it's not currently supported */
             system("/usr/bin/bt_suspend");
 #endif
+#if defined(HIDIZS_AP80MAX)
+            /* Hidizs bt_suspend has these commented out */
+            system("killall bluealsa bt-agent bluetoothd dbus-daemon 2>/dev/null");
+#endif
             fflush(stdout);
             mount_storage(true);
-            system("/bin/cp " BASE_DIR "/.rockbox/" BOOTFILE " /tmp");
+            system("/bin/cp " BASE_DIR ROCKBOX_DIR "/" BOOTFILE " /tmp");
             system("/bin/chmod +x /tmp/" BOOTFILE);
 #ifdef HIBY_R1
             /* Load libasound from Rockbox directory */
             char *argvr1[] = { "/tmp/" BOOTFILE, 0 };
             char *envpr1[] =
             {
-                "LD_LIBRARY_PATH=/data/mnt/sd_0/.rockbox",
+                "LD_LIBRARY_PATH=" BASE_DIR "/" ROCKBOX_DIR,
                 0
             };
             execve(argvr1[0], &argvr1[0], envpr1);

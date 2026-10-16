@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021-2022 Aidan MacDonald
  *
@@ -100,16 +99,42 @@ struct uimage_header;
 # define BL_QUIT_NAME       "POWER"
 # define BL_SCREENSHOT_NAME "MENU"
 # define BOOTBACKUP_FILE    "/erosqnative-boot.bin"
-# define OF_PLAYER_NAME     "Aigo Player"
+# define OF_PLAYER_NAME     "Hiby Player"
 # define OF_PLAYER_ADDR     0x300000
 # define OF_PLAYER_LENGTH   (6 * 1024 * 1024)
 # define OF_PLAYER_ARGS     OF_RECOVERY_ARGS \
     " init=/linuxrc ubi.mtd=4 root=ubi0:rootfs ubi.mtd=5 rootfstype=ubifs \
 sn_no=00000000000000000000000000000000 bt_mac=xxxxxxxxxxxx wifi_mac=xxxxxxxxxxxx rw"
 # define OF_PLAYER_BTN      BUTTON_PLAY
-# define OF_RECOVERY_NAME   "Aigo Recovery"
+# define OF_RECOVERY_NAME   "HibyOS Recovery"
 # define OF_RECOVERY_ADDR   0x900000
 # define OF_RECOVERY_LENGTH (7 * 1024 * 1024)
+# define OF_RECOVERY_ARGS \
+    "console=ttyS2,115200n8 mem=32M@0x0 no_console_suspend lpj=5009408 ip=off"
+#elif defined(AGPTEK_ROCKER_NATIVE)
+/* VOL- is the recovery key of the OF U-Boot as well */
+# define BL_RECOVERY        BUTTON_VOLDOWN
+# define BL_UP              BUTTON_UP
+# define BL_DOWN            BUTTON_DOWN
+# define BL_SELECT          BUTTON_SELECT
+# define BL_QUIT            BUTTON_POWER
+# define BL_SCREENSHOT      BUTTON_VOLUP
+# define BL_UP_NAME         "UP"
+# define BL_DOWN_NAME       "DOWN"
+# define BL_SELECT_NAME     "SELECT"
+# define BL_QUIT_NAME       "POWER"
+# define BL_SCREENSHOT_NAME "VOL+"
+# define BOOTBACKUP_FILE    "/agptekrocker-boot.bin"
+# define OF_PLAYER_NAME     "Hiby Player"
+# define OF_PLAYER_ADDR     0x300000
+# define OF_PLAYER_LENGTH   (4 * 1024 * 1024)
+# define OF_PLAYER_ARGS     OF_RECOVERY_ARGS \
+    " init=/linuxrc ubi.mtd=4 root=ubi0:rootfs ubi.mtd=5 rootfstype=ubifs \
+sn_no=00000000000000000000000000000000 bt_mac=xxxxxxxxxxxx wifi_mac=xxxxxxxxxxxx rw"
+# define OF_PLAYER_BTN      BUTTON_SELECT
+# define OF_RECOVERY_NAME   "HibyOS Recovery"
+# define OF_RECOVERY_ADDR   0x900000
+# define OF_RECOVERY_LENGTH (5 * 1024 * 1024)
 # define OF_RECOVERY_ARGS \
     "console=ttyS2,115200n8 mem=32M@0x0 no_console_suspend lpj=5009408 ip=off"
 #else

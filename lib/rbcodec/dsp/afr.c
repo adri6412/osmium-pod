@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2014 by Chiwen Chang
  *
@@ -138,7 +137,7 @@ static intptr_t afr_configure(struct dsp_proc_entry *this,
         break;
     }
 
-    return 1;
+    return 0;
 }
 
 /* Database entry */

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: debug-s5l8700.c 28719 2010-12-01 18:35:01Z Buschel $
  *
  * Copyright © 2008 Rafaël Carré
  *
@@ -35,6 +34,9 @@
 #ifdef HAVE_SERIAL
 #include "uart-target.h"
 #include "uc87xx.h"
+#endif
+#ifdef HAVE_MIKEY_REMOTE
+#include "mikey-target.h"
 #endif
 #include "clocking-s5l8702.h"
 
@@ -134,6 +136,14 @@ bool dbg_hw_info(void)
 #ifdef IPOD_ACCESSORY_PROTOCOL
             _DEBUG_PRINTF("accessory present: %s",
                             pmu_accessory_present() ? "true" : "false");
+#endif
+#ifdef HAVE_MIKEY_REMOTE
+            /* r4/r5 are live register reads to help characterize the
+             * remote-ID behavior across units (it varies; see
+             * mikey-6g.c). r4 bit6 = ID bit, r5 = event register. */
+            _DEBUG_PRINTF("mikey remote ctrl: %s r4=%02x r5=%02x",
+                            mikey_present() ? "ok" : "--",
+                            mikey_read(4), mikey_read(5));
 #endif
             line++;
             _DEBUG_PRINTF("ADC:");

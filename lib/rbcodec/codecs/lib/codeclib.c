@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 Dave Chapman
  *
@@ -35,10 +34,10 @@ static unsigned char* mallocbuf = NULL;
 
 int codec_init(void)
 {
-    /* codec_get_buffer() aligns the resulting point to CACHEALIGN_SIZE. */
+    /* codec_get_buffer() aligns the resulting point to MEM_ALIGN_SIZE. */
     mem_ptr = 0;
     mallocbuf = (unsigned char *)ci->codec_get_buffer((size_t *)&bufsize);
-  
+
     return 0;
 }
 
@@ -64,11 +63,11 @@ void* codec_malloc(size_t size)
 
     if (mem_ptr + (long)size > bufsize)
         return NULL;
-    
+
     x=&mallocbuf[mem_ptr];
-    
-    /* Keep memory aligned to CACHEALIGN_SIZE. */
-    mem_ptr += (size + (CACHEALIGN_SIZE-1)) & ~(CACHEALIGN_SIZE-1);
+
+    /* Keep memory aligned to MEM_ALIGN_SIZE. */
+    mem_ptr += MEM_ALIGN_UP(size);
 
     return(x);
 }
@@ -136,6 +135,7 @@ int memcmp(const void *s1, const void *s2, size_t n)
     return(ci->memcmp(s1,s2,n));
 }
 
+#undef memchr
 void* memchr(const void *s, int c, size_t n)
 {
     return(ci->memchr(s,c,n));

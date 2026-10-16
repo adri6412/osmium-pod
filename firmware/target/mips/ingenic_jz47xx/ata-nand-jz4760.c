@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2016 by Roman Stolyarov
  *
@@ -628,11 +627,6 @@ void nand_spindown(int seconds)
 {
     /* null */
     (void)seconds;
-}
-
-void nand_sleep(void)
-{
-    /* null */
 }
 
 void nand_spin(void)

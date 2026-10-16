@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -20,5 +19,9 @@
  ****************************************************************************/
 #ifndef __ECHOPLAYER_ADC_TARGET_H__
 #define __ECHOPLAYER_ADC_TARGET_H__
+
+/* ADC3 channels */
+#define ADC_CHANNEL_VBUS        11
+#define ADC_CHANNEL_BATTERY     16  /* real battery voltage */
 
 #endif /* __ECHOPLAYER_ADC_TARGET_H__ */

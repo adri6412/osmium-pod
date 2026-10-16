@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2025 Aidan MacDonald
  *
@@ -27,37 +26,39 @@
 #include "regs/stm32h743/rcc.h"
 #include "regs/stm32h743/syscfg.h"
 
-#define PLL1Q_FREQ 48000000
+#define PLL1Q_FREQ 240000000
+#define PLL3R_FREQ 6000000
 
 /* Flag to use VOS0 */
 #define STM32H743_USE_VOS0      (CPU_FREQ > 400000000)
 
-static void init_hse(void)
+INIT_ATTR static void init_hse(void)
 {
     reg_writef(RCC_CR, HSEON(1));
 
     while (!reg_readf(RCC_CR, HSERDY));
 }
 
-static void init_pll(void)
+INIT_ATTR static void init_pll(void)
 {
     /* For simplicity, PLL parameters are hardcoded */
     _Static_assert(STM32_HSE_FREQ == 24000000,
                    "HSE frequency not correct");
-    _Static_assert(LCD_DOTCLOCK_FREQ == 6199200,
-                   "PLL3 parameters not correct for dot clock");
-    _Static_assert(PLL1Q_FREQ == 48000000,
+    _Static_assert(LCD_DOTCLOCK_FREQ <= PLL3R_FREQ,
+                   "PLL3R too slow for LCD");
+    _Static_assert(PLL1Q_FREQ == 240000000,
                    "PLL1Q parameters not correct");
 
     /*
      * Use HSE/4 input for PLL1
-     * Use HSE/16 input for PLL3
+     * Use HSE/12 input for PLL3
+     * PLL2 reserved for audio; configured in target PCM code
      */
     reg_writef(RCC_PLLCKSELR,
                PLLSRC_V(HSE),
                DIVM1(4),
                DIVM2(0),
-               DIVM3(16));
+               DIVM3(12));
 
     /* Enable PLL1P, PLL1Q, PLL3R */
     reg_writef(RCC_PLLCFGR,
@@ -80,24 +81,21 @@ static void init_pll(void)
     reg_writef(RCC_PLL1DIVR,
                DIVN(80 - 1), /* 6 * 80 = 480 MHz  */
                DIVP(1 - 1),  /* 480 / 1 = 480 MHz */
-               DIVQ(10 - 1), /* 480 / 10 = 48 MHz  */
+               DIVQ(2 - 1),  /* 480 / 2 = 240 MHz  */
                DIVR(1 - 1));
 
-    reg_writef(RCC_PLL3FRACR, FRACN(1468));
     reg_writef(RCC_PLL3DIVR,
-               DIVN(161 - 1), /* approx 241.768 MHz */
+               DIVN(90 - 1),  /* 2 * 90 = 180 MHz */
                DIVP(1 - 1),
                DIVQ(1 - 1),
-               DIVR(39 - 1)); /* approx 6.1992 MHz */
-
-    reg_writef(RCC_PLLCFGR, PLL3FRACEN(1));
+               DIVR(30 - 1)); /* 180 / 30 = 6 MHz */
 
     reg_writef(RCC_CR, PLL1ON(1), PLL3ON(1));
     while (!reg_readf(RCC_CR, PLL1RDY));
     while (!reg_readf(RCC_CR, PLL3RDY));
 }
 
-static void init_vos(void)
+INIT_ATTR static void init_vos(void)
 {
     reg_writef(PWR_D3CR, VOS_V(VOS1));
     while (!reg_readf(PWR_D3CR, VOSRDY));
@@ -114,7 +112,7 @@ static void init_vos(void)
     }
 }
 
-static void init_system_clock(void)
+INIT_ATTR static void init_system_clock(void)
 {
     /* Enable HCLK /2 divider (CPU is at 480 MHz, HCLK limit is 240 MHz) */
     reg_writef(RCC_D1CFGR, HPRE(8));
@@ -134,7 +132,7 @@ static void init_system_clock(void)
     while (reg_readf(FLASH_ACR, LATENCY) != 4);
 }
 
-static void init_lse(void)
+INIT_ATTR static void init_lse(void)
 {
     /*
      * Skip if LSE and RTC are already enabled.
@@ -161,16 +159,18 @@ static void init_lse(void)
     reg_writef(PWR_CR1, DBP(0));
 }
 
-static void init_periph_clock(void)
+INIT_ATTR static void init_periph_clock(void)
 {
     reg_writef(RCC_D1CCIPR, SDMMCSEL_V(PLL1Q));
-    reg_writef(RCC_D2CCIP1R, SPI45SEL_V(HSE));
+    reg_writef(RCC_D2CCIP1R, SAI1SEL_V(PLL2P), SPI45SEL_V(HSE));
+    reg_writef(RCC_D2CCIP2R, I2C123SEL_V(HSI));
+    reg_writef(RCC_D3CCIPR, ADCSEL_V(PLL3R));
 
     /* Enable AXI SRAM in sleep mode to allow DMA'ing out of it */
     reg_writef(RCC_AHB3LPENR, AXISRAMEN(1));
 }
 
-void stm_target_clock_init(void)
+void echoplayer_clock_init(void)
 {
     init_hse();
     init_pll();
@@ -180,43 +180,42 @@ void stm_target_clock_init(void)
     init_periph_clock();
 }
 
-void stm_target_clock_enable(enum stm_clock clock, bool enable)
-{
-    switch (clock)
-    {
-    case STM_CLOCK_SPI5_KER:
-        reg_writef(RCC_APB2ENR, SPI5EN(enable));
-        reg_writef(RCC_APB2LPENR, SPI5EN(enable));
-        break;
+const struct stm32_clock sdmmc1_ker_clock = {
+    .frequency = PLL1Q_FREQ,
+    .en_reg = ITA_RCC_AHB3ENR,
+    .en_bit = BM_RCC_AHB3ENR_SDMMC1EN,
+    .lpen_reg = ITA_RCC_AHB3LPENR,
+    .lpen_bit = BM_RCC_AHB3LPENR_SDMMC1EN,
+};
 
-    case STM_CLOCK_LTDC_KER:
-        reg_writef(RCC_APB3ENR, LTDCEN(enable));
-        reg_writef(RCC_APB3LPENR, LTDCEN(enable));
-        break;
+const struct stm32_clock ltdc_ker_clock = {
+    .frequency = PLL3R_FREQ,
+    .en_reg = ITA_RCC_APB3ENR,
+    .en_bit = BM_RCC_APB3ENR_LTDCEN,
+    .lpen_reg = ITA_RCC_APB3LPENR,
+    .lpen_bit = BM_RCC_APB3ENR_LTDCEN,
+};
 
-    case STM_CLOCK_SDMMC1_KER:
-        reg_writef(RCC_AHB3ENR, SDMMC1EN(enable));
-        reg_writef(RCC_AHB3LPENR, SDMMC1EN(enable));
-        break;
+const struct stm32_clock spi5_ker_clock = {
+    .frequency = STM32_HSE_FREQ,
+    .en_reg = ITA_RCC_APB2ENR,
+    .en_bit = BM_RCC_APB2ENR_SPI5EN,
+    .lpen_reg = ITA_RCC_APB2LPENR,
+    .lpen_bit = BM_RCC_APB2ENR_SPI5EN,
+};
 
-    default:
-        panicf("%s: unsupported clock %d", __func__, (int)clock);
-        break;
-    }
-}
+const struct stm32_clock i2c1_ker_clock = {
+    .frequency = STM32_HSI_FREQ,
+    .en_reg = ITA_RCC_APB1LENR,
+    .en_bit = BM_RCC_APB1LENR_I2C1EN,
+    .lpen_reg = ITA_RCC_APB1LLPENR,
+    .lpen_bit = BM_RCC_APB1LENR_I2C1EN,
+};
 
-size_t stm_target_clock_get_frequency(enum stm_clock clock)
-{
-    switch (clock)
-    {
-    case STM_CLOCK_SPI5_KER:
-        return STM32_HSE_FREQ;
-
-    case STM_CLOCK_SDMMC1_KER:
-        return PLL1Q_FREQ;
-
-    default:
-        panicf("%s: unsupported clock %d", __func__, (int)clock);
-        return 0;
-    }
-}
+const struct stm32_clock tim7_ker_clock = {
+    .frequency = TIMER_FREQ,
+    .en_reg = ITA_RCC_APB1LENR,
+    .en_bit = BM_RCC_APB1LENR_TIM7EN,
+    .lpen_reg = ITA_RCC_APB1LLPENR,
+    .lpen_bit = BM_RCC_APB1LENR_TIM7EN,
+};

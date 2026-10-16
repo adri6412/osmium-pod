@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Linus Nielsen Feltzing
  *
@@ -39,3 +38,4 @@ int load_raw_firmware(unsigned char* buf, char* firmware, int buffer_size);
 #ifdef ROCKBOX_HAS_LOGF
 void display_logf(void);
 #endif
+void show_logo(void);

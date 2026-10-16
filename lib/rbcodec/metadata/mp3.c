@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Daniel Stenberg
  *
@@ -163,7 +162,7 @@ static int getsonglength(int fd, struct mp3entry *entry)
 bool get_mp3_metadata(int fd, struct mp3entry *entry)
 {
     entry->title = NULL;
-    entry->filesize = filesize(fd);
+    entry->filesize = ffilesize(fd);
     entry->id3v1len = getid3v1len(fd);
     entry->id3v2len = getid3v2len(fd);
 

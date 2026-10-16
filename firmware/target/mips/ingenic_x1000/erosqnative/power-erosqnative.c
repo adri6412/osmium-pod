@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald, Dana Conrad
  *
@@ -30,7 +29,7 @@
 #endif
 #include "axp-pmu.h"
 #include "axp-2101.h"
-#include "i2c-x1000.h"
+#include "i2c-ingenic.h"
 #include "devicedata.h"
 
 unsigned short battery_level_disksafe = 3470;

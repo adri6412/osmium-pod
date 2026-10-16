@@ -383,7 +383,7 @@ static int fill_dir(struct playlist_insert_context *ctx, void *data)
 {
     (void)ctx;
     /* folders are added by the playlist itself (recursive) */
-    return playlist_insert_directory(NULL, data, PLAYLIST_INSERT_LAST, false, true) >= 0;
+    return playlist_insert_directory(NULL, data, PLAYLIST_INSERT_LAST, false, true, NULL) >= 0;
 }
 
 /* the tracks an item stands for, loaded into lib_items */
@@ -423,7 +423,7 @@ void browse_play_item(const struct lib_item *it, bool shuffle)
     {
         if (playlist_create(it->path, NULL) >= 0)
         {
-            playlist_insert_directory(NULL, it->path, PLAYLIST_INSERT_LAST, false, true);
+            playlist_insert_directory(NULL, it->path, PLAYLIST_INSERT_LAST, false, true, NULL);
             global_settings.playlist_shuffle = shuffle;
             int start = shuffle && playlist_amount() > 0 ?
                         playlist_shuffle(current_tick, rand() % playlist_amount()) : 0;

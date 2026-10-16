@@ -20,8 +20,9 @@
 #include <QProgressDialog>
 #include <QFileDialog>
 #include <QUrl>
-#if defined(QT_MULTIMEDIA_LIB) && (QT_VERSION < 0x060000)
-#include <QSound>
+
+#if defined(QT_MULTIMEDIA_LIB)
+#include <QSoundEffect>
 #endif
 
 #include "version.h"
@@ -38,7 +39,9 @@
 #include "comboboxviewdelegate.h"
 #if defined(Q_OS_WIN32)
 #if defined(UNICODE)
+#ifndef _UNICODE
 #define _UNICODE
+#endif
 #endif
 #include <tchar.h>
 #include <windows.h>
@@ -449,7 +452,7 @@ void Config::updateTtsState(int index)
     {
         ui.configTTSstatus->setText(tr("Configuration OK"));
         ui.configTTSstatusimg->setPixmap(QPixmap(QString::fromUtf8(":/icons/go-next.svg")));
-#if defined(QT_MULTIMEDIA_LIB) && (QT_VERSION < 0x060000)
+#if defined(QT_MULTIMEDIA_LIB)
         ui.testTTS->setEnabled(true);
 #else
         ui.testTTS->setEnabled(false);
@@ -581,7 +584,10 @@ QString Config::languageName(const QString &qmFile)
 
     QString file = "rbutil_" + qmFile;
     if(!translator.load(file, programPath))
-        translator.load(file, ":/lang");
+        if (!translator.load(file, ":/lang")) {
+            LOG_ERROR() << "Failed to load translation:" << file;
+            return ("Failed to load translation:" + file);
+        }
 
     return translator.translate("Configure", "English",
         "This is the localized language name, i.e. your language.");
@@ -608,10 +614,16 @@ void Config::updateLanguage()
     QString absolutePath = QCoreApplication::instance()->applicationDirPath();
 
     if(!translator->load("rbutil_" + language, absolutePath))
-        translator->load("rbutil_" + language, ":/lang");
+        if (!translator->load("rbutil_" + language, ":/lang")) {
+            LOG_ERROR() << "Failed to load translation:" << ("rbutil_" + language);
+            return;
+        }
     if(!qttrans->load("qt_" + language,
-                QLibraryInfo::location(QLibraryInfo::TranslationsPath)))
-        qttrans->load("qt_" + language, ":/lang");
+                QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
+        if (!qttrans->load("qt_" + language, ":/lang")) {
+            LOG_ERROR() << "Failed to load translation:" << ("qt_" + language);
+            return;
+        }
 
     qApp->installTranslator(translator);
     qApp->installTranslator(qttrans);
@@ -785,7 +797,7 @@ void Config::autodetect()
                 if(PlayerBuildInfo::instance()->value(
                             PlayerBuildInfo::BootloaderMethod, detected.at(0).device) == "ipod") {
                     msg = tr("%1 \"MacPod\" found!\n"
-                            "Rockbox needs a FAT formatted Ipod (so-called \"WinPod\") "
+                            "Rockbox needs a FAT formatted iPod (so-called \"WinPod\") "
                             "to run. ").arg(PlayerBuildInfo::instance()->value(
                                                 PlayerBuildInfo::DisplayName,
                                                 detected.at(0).device).toString());
@@ -899,7 +911,7 @@ void Config::configTts()
 
 void Config::testTts()
 {
-#if defined(QT_MULTIMEDIA_LIB) && (QT_VERSION < 0x060000)
+#if defined(QT_MULTIMEDIA_LIB)
     QString errstr;
     int index = ui.comboTts->currentIndex();
     TTSBase* tts;
@@ -927,17 +939,20 @@ void Config::testTts()
     }
 
     QString filename;
-    QTemporaryFile file(this);
+    QTemporaryDir* tempDir = nullptr;
     // keep filename empty if the TTS can do speaking for itself.
     if(!(tts->capabilities() & TTSBase::CanSpeak)) {
-        file.open();
-        filename = file.fileName();
-        file.close();
+        // SAPI's SpFileStream requires a filename with a wave extension.
+        // Give the engine a path that does not exist yet, matching normal
+        // voice-file generation, and keep its directory until playback ends.
+        tempDir = new QTemporaryDir();
+        filename = tempDir->filePath("tts-test.wav");
     }
 
     if(tts->voice(tr("Rockbox Utility Voice Test"),filename,&errstr) == FatalError)
     {
         tts->stop();
+        delete tempDir;
         QMessageBox::warning(this,tr("Could not voice test string."),
                 tr("Could not voice test string.\n") + errstr
                 + tr("\nPlease configure TTS engine."));
@@ -945,13 +960,28 @@ void Config::testTts()
         return;
     }
     tts->stop();
-    if(!filename.isEmpty()) {
-        QSound::play(filename);
-    }
     ui.testTTS->setEnabled(true);
     delete tts; /* Config objects are never deleted (in fact, they are
                    leaked..), so we can't rely on QObject, since that would
                    delete the TTSBase instance on application exit */
+    if(tempDir != nullptr) {
+        QSoundEffect* effect = new QSoundEffect(this);
+        connect(effect, &QObject::destroyed, [tempDir]() {
+            delete tempDir;
+        });
+        connect(effect, &QSoundEffect::playingChanged, effect, [effect]() {
+            if(!effect->isPlaying())
+                effect->deleteLater();
+        });
+        connect(effect, &QSoundEffect::statusChanged, effect, [effect]() {
+            if(effect->status() == QSoundEffect::Error)
+                effect->deleteLater();
+        });
+        effect->setSource(QUrl::fromLocalFile(filename));
+        effect->setLoopCount(1);
+        effect->setVolume(1.0f);
+        effect->play();
+    }
 #endif
 }
 
@@ -986,4 +1016,3 @@ void Config::changeEvent(QEvent *e)
         QWidget::changeEvent(e);
     }
 }
-

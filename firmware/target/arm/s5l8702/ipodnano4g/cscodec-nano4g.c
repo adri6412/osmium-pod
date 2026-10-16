@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: wmcodec-s5l8700.c 22025 2009-07-25 00:49:13Z dave $
  *
  * S5L8702-specific code for Cirrus codecs
  *
@@ -55,6 +54,7 @@ void cscodec_power(bool state)
 
 void cscodec_reset(bool state)
 {
+    (void)state;
     // TODO: not tested
     // if (state) PDAT(3) &= ~8;
     // else PDAT(3) |= 8;

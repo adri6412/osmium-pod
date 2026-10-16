@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Daniel Stenberg
  *
@@ -609,7 +608,7 @@ int get_mp3file_info(int fd, struct mp3info *info)
         if(result)
             return result;
 
-        info->byte_count = filesize(fd) - getid3v1len(fd) - offset - bytecount;
+        info->byte_count = ffilesize(fd) - getid3v1len(fd) - offset - bytecount;
     }
 
     return bytecount;

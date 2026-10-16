@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005-2007 Miika Pekkarinen
  * Copyright (C) 2007-2008 Nicolas Pennequin
@@ -101,7 +100,7 @@ static void NORETURN_ATTR audio_thread(void)
         case SYS_USB_CONNECTED:
             LOGFQUEUE("audio < SYS_USB_CONNECTED");
             voice_stop();
-            usb_acknowledge(SYS_USB_CONNECTED_ACK);
+            usb_acknowledge(SYS_USB_CONNECTED_ACK, ev.data);
             usb_wait_for_disconnect(&audio_queue);
             break;
         }

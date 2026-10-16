@@ -1,4 +1,3 @@
-% $Id$ %
 \chapter{\label{ref:config_file_options}Config file options}
 \begin{center}
 % define a local version of endhead, as using the output distinction adds
@@ -37,7 +36,7 @@
     repeat          & off, all, one, shuffle, ab
                                         & N/A\\
     play selected   & on, off           & N/A\\
-    single mode     & off, track, album, album artist, artist, composer, work, genre
+    single mode     & off, track, album, album artist, artist, composer, work, genre, playlist
                     & N/A\\
     party mode      & on, off           & N/A\\
     scan min step   & 1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 30, 45, 60
@@ -52,6 +51,7 @@
     sort case       & on, off           & N/A\\
     show files      & all, supported, music, playlists & N/A\\
     show filename exts & off, on, unknown, view\_all & N/A\\
+    keep directory  & on, off           & N/A\\
     follow playlist & on, off           & N/A\\
     playlist viewer icons
                     & on, off           & N/A\\
@@ -85,6 +85,9 @@
     backlight on button hold & normal, off, on & N/A\\
     caption backlight & on, off & N/A\\
     brightness      & \fixme{devise a way to get ranges from config-*.h} & N/A\\
+    \opt{compositevideoout}{
+      composite video output & off, auto, on & N/A\\
+    }
     disk spindown   & 3 to 254          & s\\
     battery capacity & \fixme{devise a way to get ranges from config-*.h} & mAh\\
     \opt{HAVE_CAR_ADAPTER_MODE}{
@@ -251,7 +254,6 @@
       tagcache\_ram & on, off           & N/A\\
       database path & path to a directory & N/A\\
       database scan paths & one or more paths, each separated by a colon  & N/A\\
-      default browser & files, database, playlists & N/A\\
 
     \opt{touchpad}{
       \opt{GIGABEAT_PAD}{

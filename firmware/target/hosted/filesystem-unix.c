@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2010 by Thomas Martitz
  *
@@ -54,7 +53,7 @@ int os_modtime(const char *path, time_t modtime)
     return utime(path, &times);
 }
 
-off_t os_filesize(int osfd)
+off_t os_ffilesize(int osfd)
 {
     struct stat sb;
 

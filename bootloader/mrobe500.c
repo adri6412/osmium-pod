@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Karl Kurbjun
  *
@@ -61,7 +60,9 @@ void main(void)
     backlight_init();
     font_init();
     button_init();
+#ifdef HAVE_BOOTLOADER_USB_MODE
     usb_init();
+#endif
 
 
     power_init();
@@ -79,6 +80,7 @@ void main(void)
     printf("Rockbox boot loader");
     printf("Version %s", rbversion);
 
+#ifdef HAVE_BOOTLOADER_USB_MODE
     /* Enter USB mode without USB thread */
     if(usb_detect() == USB_INSERTED)
     {
@@ -104,6 +106,7 @@ void main(void)
         reset_screen();
         lcd_update();
     }
+#endif
 
     sleep(50);
 

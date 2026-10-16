@@ -5,7 +5,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # Copyright (C) 2010 by Maurus Cuelenaere
 #
@@ -20,7 +19,7 @@
 #
 # Invoke this as "./gnuplot.sh < logf.txt"
 
-TMP=`tempfile`
+TMP=$(mktemp)
 
 awk 'BEGIN {
     FS=","

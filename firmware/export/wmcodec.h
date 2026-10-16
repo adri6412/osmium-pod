@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2006 by Marcoen Hirschberg
  *
@@ -20,4 +19,10 @@
  ****************************************************************************/
 
 void wmcodec_write(int reg, int data);
+
+#ifdef HAVE_WM1870
+/* SAMPCTRL for a sample rate, which depends on the MCLK the target feeds
+ * the codec. Zero if the target cannot make that rate. */
+unsigned short wmcodec_sampctrl(unsigned long rate);
+#endif
 

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Based upon code (C) 2002 by Björn Stenberg
  * Copyright (C) 2011 by Thomas Jarosch
@@ -24,7 +23,7 @@
 #include <sys/time.h>
 #if !defined(WIN32)
 #include <sys/ioctl.h>
-#if !defined(__APPLE__) && !defined(CTRU)
+#if !defined(__APPLE__) && !defined(N3DS)
 #include <linux/rtc.h>
 #endif
 #include <fcntl.h>
@@ -49,7 +48,7 @@ int rtc_read_datetime(struct tm *tm)
 
 int rtc_write_datetime(const struct tm *tm)
 {
-#if !defined(WIN32) && !defined(__APPLE__) && !defined(CTRU)
+#if !defined(WIN32) && !defined(__APPLE__) && !defined(N3DS)
     struct timeval tv;
     struct tm *tm_time;
 

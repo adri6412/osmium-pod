@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg
  *
@@ -34,7 +33,7 @@ void (*tick_funcs[MAX_NUM_TICK_TASKS+1])(void);
 
 #if !defined(CPU_PP) || !defined(BOOTLOADER) || \
     defined(HAVE_BOOTLOADER_USB_MODE)
-volatile long current_tick SHAREDDATA_ATTR = 0;
+volatile long current_tick SHAREDBSS_ATTR;
 #endif
 
 /* - Timer initialization and interrupt handler is defined at

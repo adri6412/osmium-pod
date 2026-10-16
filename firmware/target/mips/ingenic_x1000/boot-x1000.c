@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2022 Aidan MacDonald
  *
@@ -22,8 +21,8 @@
 #include "system.h"
 #include "usb.h"
 #include "boot-x1000.h"
-#include "nand-x1000.h"
-#include "gpio-x1000.h"
+#include "nand-ingenic.h"
+#include "gpio-ingenic.h"
 #include "clk-x1000.h"
 #include "x1000/cpm.h"
 #include "x1000/lcd.h"

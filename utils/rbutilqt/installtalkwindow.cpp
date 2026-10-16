@@ -27,7 +27,6 @@
 InstallTalkWindow::InstallTalkWindow(QWidget *parent) : QDialog(parent)
 {
     ui.setupUi(this);
-    talkcreator = new TalkFileCreator(this);
 
     connect(ui.change,&QAbstractButton::clicked,this,&InstallTalkWindow::change);
 
@@ -47,6 +46,7 @@ InstallTalkWindow::InstallTalkWindow(QWidget *parent) : QDialog(parent)
     ui.treeView->setHeaderHidden(true);
 
     updateSettings();
+    ui.treeView->setFocus(Qt::OtherFocusReason);
 }
 
 
@@ -88,6 +88,9 @@ void InstallTalkWindow::change()
 
 void InstallTalkWindow::accept()
 {
+    if(workerThread)
+        return;
+
     saveSettings();
     QStringList foldersToTalk
         = RbSettings::value(RbSettings::TalkFolders).toStringList();
@@ -103,30 +106,41 @@ void InstallTalkWindow::accept()
     connect(logger,&ProgressLoggerGui::closed,this,&QWidget::close);
     logger->show();
 
+    workerThread = new QThread(this);
+    talkcreator = new TalkFileCreator(nullptr);
+
     talkcreator->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
+    talkcreator->setDirs(foldersToTalk);
 
     talkcreator->setGenerateOnlyNew(ui.GenerateOnlyNew->isChecked());
     talkcreator->setRecursive(ui.recursive->isChecked());
     talkcreator->setStripExtensions(ui.StripExtensions->isChecked());
     talkcreator->setTalkFolders(ui.talkFolders->isChecked());
     talkcreator->setTalkFiles(ui.talkFiles->isChecked());
-#if QT_VERSION >= 0x050e00
-    talkcreator->setIgnoreFiles(ui.ignoreFiles->text().split(",", Qt::SkipEmptyParts));
-#else
-    talkcreator->setIgnoreFiles(ui.ignoreFiles->text().split(",", QString::SkipEmptyParts));
-#endif
+    talkcreator->setIgnoreFiles(ui.ignoreEnabled->isChecked()
+            ? ui.ignoreFiles->text().split(",", Qt::SkipEmptyParts)
+            : QStringList());
 
     connect(talkcreator, &TalkFileCreator::done, logger, &ProgressLoggerGui::setFinished);
     connect(talkcreator, &TalkFileCreator::logItem, logger, &ProgressLoggerGui::addItem);
     connect(talkcreator, &TalkFileCreator::logProgress, logger, &ProgressLoggerGui::setProgress);
-    connect(logger,&ProgressLoggerGui::aborted,talkcreator,&TalkFileCreator::abort);
+    connect(logger, &ProgressLoggerGui::aborted,
+            talkcreator, &TalkFileCreator::abort, Qt::DirectConnection);
 
-    for(int i = 0; i < foldersToTalk.size(); i++) {
-        LOG_INFO() << "creating talk files for folder"
-                   << foldersToTalk.at(i);
-        talkcreator->setDir(foldersToTalk.at(i));
-        talkcreator->createTalkFiles();
-    }
+    talkcreator->moveToThread(workerThread);
+    connect(workerThread, &QThread::started,
+            talkcreator, &TalkFileCreator::createTalkFiles);
+    connect(talkcreator, &TalkFileCreator::done,
+            workerThread, &QThread::quit);
+    connect(talkcreator, &TalkFileCreator::done,
+            talkcreator, &QObject::deleteLater);
+    connect(workerThread, &QThread::finished,
+            workerThread, &QObject::deleteLater);
+    connect(workerThread, &QThread::finished, this, [this]() {
+        talkcreator = nullptr;
+        workerThread = nullptr;
+    });
+    workerThread->start(QThread::LowPriority);
 }
 
 
@@ -185,4 +199,3 @@ void InstallTalkWindow::changeEvent(QEvent *e)
         QWidget::changeEvent(e);
     }
 }
-

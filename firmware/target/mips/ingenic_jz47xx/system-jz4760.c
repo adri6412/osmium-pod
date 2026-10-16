@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2016 by Roman Stolyarov
  *
@@ -732,12 +731,6 @@ void power_off(void)
 
 void system_init(void)
 {
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

@@ -32,8 +32,6 @@
  */
 #define LOAD_SIZE 0x700000
 
-extern void show_logo( void );
-
 /* This function setup bare minimum
  * and jumps to rom in order to activate
  * hardcoded rkusb mode
@@ -69,7 +67,7 @@ static void enter_rkusb(void)
         "ldr     r1, [r0] \n"
         "ldr     r2, =0xa1000604 \n"
         "cmp     r1, r2 \n"
-        "bne     rk27xx_new \n"
+        "bne     2f \n"
 
         /* Setup stacks in unmapped
          * iram just as rom will do.
@@ -79,16 +77,16 @@ static void enter_rkusb(void)
          * but memory addresses are slightly
          * different.
          */
-        "rk27xx_old: \n"
+        "1: \n"  /* rk27xx_old */
         "ldr     r1, =0x18200258 \n"
         "ldr     r0, =0xaf0 \n"
-        "b       jump_to_rom \n"
+        "b       3f \n"
 
-        "rk27xx_new: \n"
+        "2: \n"  /* rk27xx_new */
         "ldr     r1, =0x18200274 \n"
         "ldr     r0, =0xec0 \n"
 
-        "jump_to_rom: \n"
+        "3: \n"  /* jump to ROM */
         "msr     cpsr, #0xd2 \n"
         "add     r1, r1, #0x200 \n"
         "mov     sp, r1 \n"
@@ -137,8 +135,20 @@ void main(void)
     if ((btn & ~POWEROFF_BUTTON))
         boot = of;
 
-    /* if we are woken up by USB insert boot into OF */
+#ifndef FTL_ALLOW_WRITE
+    /* if we are woken up by USB insert boot into OF: only it can give
+     * the host write access to the NAND
+     */
     if (DEV_INFO & (1<<20))
+        boot = of;
+#endif
+
+    /* The OF asks for a mode before it resets itself, e.g. at the end of
+     * a firmware update, and the cell survives the reset. Rockbox never
+     * sets it, so after a cold start it reads 0: anything else is a
+     * request from the OF, which expects to come back up.
+     */
+    if (GPIO1_BOOTMODE & 0xff)
         boot = of;
 
     lcd_clear_display();
@@ -153,9 +163,9 @@ void main(void)
         error(EDISK, ret, true);
 
     loadbuffer = (unsigned char*)DRAM_ORIG; /* DRAM */
-   
+
     if (boot == rb)
-        snprintf(filename,sizeof(filename), BOOTDIR "/%s", BOOTFILE);    
+        snprintf(filename,sizeof(filename), BOOTDIR "/%s", BOOTFILE);
     else if (boot == of)
         snprintf(filename,sizeof(filename), BOOTDIR "/%s", "BASE.RKW");
 
@@ -170,7 +180,7 @@ void main(void)
 
         /* if we boot rockbox we shutdown on error
          * if we boot OF we fall back to rkusb mode on error
-         */        
+         */
         if (boot == rb)
         {
             power_off();
@@ -213,7 +223,7 @@ void main(void)
         lcd_update();
 
         enter_rkusb();
-    }   
+    }
 
     /* hang */
     while(1);

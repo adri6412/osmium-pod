@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Linus Nielsen Feltzing
  * Copyright (C) 2007 by Christian Gmeiner
@@ -29,10 +28,6 @@
 #ifndef BOOTLOADER
 #include "settings.h" /* sound_current */
 #endif
-
-#ifdef HAVE_SW_VOLUME_CONTROL
-#include "pcm_sw_volume.h"
-#endif /* HAVE_SW_VOLUME_CONTROL */
 
 /* Define sound_setting_entries table */
 #define AUDIOHW_SOUND_SETTINGS_ENTRIES
@@ -201,7 +196,6 @@ int sound_current(int setting)
     } /* switch(setting)  */
 }/* sound_current */
 
-#if !defined(AUDIOHW_HAVE_CLIPPING)
 /*
  * The prescaler compensates for any kind of boosts, to prevent clipping.
  *
@@ -309,7 +303,6 @@ static void set_prescaled_volume(void)
     audiohw_set_lineout_volume(0, 0);
 #endif /* AUDIOHW_HAVE_LINEOUT */
 }
-#endif /* AUDIOIHW_HAVE_CLIPPING */
 
 void sound_set_volume(int value)
 {
@@ -317,15 +310,21 @@ void sound_set_volume(int value)
         return;
 
 #ifndef BOOTLOADER
+    /* Apply limits */
+    const int min_vol = sound_min(SOUND_VOLUME);
+    const int max_vol = sound_max(SOUND_VOLUME);
+    if (value < min_vol)
+        value = min_vol;
+    if (value > max_vol)
+        value = max_vol;
+    if (value > global_settings.volume_limit)
+        value = global_settings.volume_limit;
+
     global_status.volume = value;
 #endif
 
-#if defined(AUDIOHW_HAVE_CLIPPING)
-    audiohw_set_volume(value);
-#else
     sound_prescaler.volume = sound_value_to_cb(SOUND_VOLUME, value);
     set_prescaled_volume();
-#endif
 }
 
 void sound_set_balance(int value)
@@ -333,12 +332,8 @@ void sound_set_balance(int value)
     if (!audio_is_initialized)
         return;
 
-#if defined(AUDIOHW_HAVE_BALANCE)
-    audiohw_set_balance(value);
-#else
     sound_prescaler.balance = value;
     set_prescaled_volume();
-#endif
 }
 
 #if defined(AUDIOHW_HAVE_BASS)
@@ -349,10 +344,8 @@ void sound_set_bass(int value)
 
     audiohw_set_bass(value);
 
-#if !defined(AUDIOHW_HAVE_CLIPPING)
     sound_prescaler.bass = sound_value_to_cb(SOUND_BASS, value);
     set_prescaled_volume();
-#endif
 }
 #endif /* AUDIOHW_HAVE_BASS */
 
@@ -364,10 +357,8 @@ void sound_set_treble(int value)
 
     audiohw_set_treble(value);
 
-#if !defined(AUDIOHW_HAVE_CLIPPING)
     sound_prescaler.treble = sound_value_to_cb(SOUND_TREBLE, value);
     set_prescaled_volume();
-#endif
 }
 #endif /* AUDIOHW_HAVE_TREBLE */
 
@@ -512,11 +503,9 @@ static void sound_set_hw_eq_band_gain(unsigned int band, int value)
 
     audiohw_set_eq_band_gain(band, value);
 
-#if !defined (AUDIOHW_HAVE_CLIPPING)
     int setting = sound_enum_hw_eq_band_setting(band, AUDIOHW_EQ_GAIN);
     sound_prescaler.eq_gain[band] = sound_value_to_cb(setting, value);
     set_prescaled_volume();
-#endif /* AUDIOHW_HAVE_CLIPPING */
 }
 
 void sound_set_hw_eq_band1_gain(int value)

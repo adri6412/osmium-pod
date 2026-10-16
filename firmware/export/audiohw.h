@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Christian Gmeiner
  *
@@ -29,19 +28,17 @@
 /* define some audiohw caps */
 #define TREBLE_CAP            (1 << 0)
 #define BASS_CAP              (1 << 1)
-#define BALANCE_CAP           (1 << 2)
-#define CLIPPING_CAP          (1 << 3)
-#define PRESCALER_CAP         (1 << 4)
-#define BASS_CUTOFF_CAP       (1 << 5)
-#define TREBLE_CUTOFF_CAP     (1 << 6)
-#define EQ_CAP                (1 << 7)
-#define DEPTH_3D_CAP          (1 << 8)
-#define LINEOUT_CAP           (1 << 9)
-#define MONO_VOL_CAP          (1 << 10)
-#define LIN_GAIN_CAP          (1 << 11)
-#define MIC_GAIN_CAP          (1 << 12)
-#define FILTER_ROLL_OFF_CAP   (1 << 13)
-#define POWER_MODE_CAP        (1 << 14)
+#define PRESCALER_CAP         (1 << 2)
+#define BASS_CUTOFF_CAP       (1 << 3)
+#define TREBLE_CUTOFF_CAP     (1 << 4)
+#define EQ_CAP                (1 << 5)
+#define DEPTH_3D_CAP          (1 << 6)
+#define LINEOUT_CAP           (1 << 7)
+#define MONO_VOL_CAP          (1 << 8)
+#define LIN_GAIN_CAP          (1 << 9)
+#define MIC_GAIN_CAP          (1 << 10)
+#define FILTER_ROLL_OFF_CAP   (1 << 11)
+#define POWER_MODE_CAP        (1 << 12)
 
 /* Used by every driver to export its min/max/default values for its audio
    settings. */
@@ -172,7 +169,7 @@ struct sound_settings_info
 #include "wm8751.h"
 #elif defined(HAVE_WM8978)
 #include "wm8978.h"
-#elif defined(HAVE_WM8975)
+#elif defined(HAVE_WM8975) || defined(HAVE_WM1870)
 #include "wm8975.h"
 #elif defined(HAVE_WM8985)
 #include "wm8985.h"
@@ -219,13 +216,15 @@ struct sound_settings_info
 #include "nwzlinux_codec.h"
 #elif defined(HAVE_CS4398)
 #include "cs4398.h"
+#elif defined(HAVE_CS42L51)
+#include "cs42l51.h"
 #elif defined(HAVE_ES9018)
 #include "es9018.h"
 #elif defined(HAVE_ES9218)
 #include "es9218.h"
 #elif (CONFIG_PLATFORM & PLATFORM_ANDROID)
 #include "android_codec.h"
-#elif ((CONFIG_PLATFORM & (PLATFORM_SDL | PLATFORM_CTRU)) | defined(RG_NANO))
+#elif ((CONFIG_PLATFORM & PLATFORM_SDL) | defined(RG_NANO))
 #include "sdl_codec.h"
 #elif defined(DX50)
 #include "codec-dx50.h"
@@ -241,10 +240,12 @@ struct sound_settings_info
 #include "fiiolinux_codec.h"
 #elif defined(HAVE_EROSQ_LINUX_CODEC)
 #include "erosqlinux_codec.h"
-#elif defined(HAVE_TLV320AIC3104)
-#include "tlv320aic3104_codec.h"
+#elif defined(HAVE_ECHOPLAYER_CODEC)
+#include "echoplayer_codec.h"
 #elif defined(HAVE_HIBY_LINUX_CODEC)
 #include "hibylinux_codec.h"
+#elif defined(HAVE_TEAKLITE_CODEC)
+#include "teaklite_codec.h"
 #endif
 
 #if defined(HAVE_X1000_ICODEC_REC) && !defined(HAVE_X1000_ICODEC_PLAY)
@@ -269,14 +270,6 @@ struct sound_settings_info
 
 #if (AUDIOHW_CAPS & TREBLE_CUTOFF_CAP)
 #define AUDIOHW_HAVE_TREBLE_CUTOFF
-#endif
-
-#if (AUDIOHW_CAPS & BALANCE_CAP)
-#define AUDIOHW_HAVE_BALANCE
-#endif
-
-#if (AUDIOHW_CAPS & CLIPPING_CAP)
-#define AUDIOHW_HAVE_CLIPPING
 #endif
 
 #if (AUDIOHW_CAPS & PRESCALER_CAP)
@@ -461,7 +454,7 @@ void audiohw_close(void);
  * Set new volume value
  * @param val to set in centibels.
  * NOTE: AUDIOHW_CAPS need to contain
- *          CLIPPING_CAP
+ *          MONO_VOL_CAP
  */
 void audiohw_set_volume(int val);
 #else /* Stereo volume */
@@ -482,7 +475,6 @@ void audiohw_set_volume(int vol_l, int vol_r);
 void audiohw_set_lineout_volume(int vol_l, int vol_r);
 #endif
 
-#ifndef AUDIOHW_HAVE_CLIPPING
 #if defined(AUDIOHW_HAVE_BASS) || defined(AUDIOHW_HAVE_TREBLE) \
     || defined(AUDIOHW_HAVE_EQ)
 /**
@@ -492,17 +484,6 @@ void audiohw_set_lineout_volume(int vol_l, int vol_r);
  *          PRESCALER_CAP
  */
 void audiohw_set_prescaler(int val);
-#endif
-#endif /* !AUDIOHW_HAVE_CLIPPING */
-
-#ifdef AUDIOHW_HAVE_BALANCE
-/**
- * Set new balance value
- * @param val to set.
- * NOTE: AUDIOHW_CAPS need to contain
- *          BALANCE_CAP
- */
-void audiohw_set_balance(int val);
 #endif
 
 #ifdef AUDIOHW_HAVE_TREBLE
@@ -674,6 +655,7 @@ enum AUDIOHW_CHANNEL_CONFIG
     SOUND_CHAN_MONO_LEFT,
     SOUND_CHAN_MONO_RIGHT,
     SOUND_CHAN_KARAOKE,
+    SOUND_CHAN_SWAP,
     SOUND_CHAN_NUM_MODES,
 };
 
@@ -716,6 +698,14 @@ AUDIOHW_SETTING(STEREO_WIDTH, "%", 0, 5,    0, 250, 100)
 /* if not otherwise defined, set to 16 */
 #if !defined(PCM_NATIVE_BITDEPTH)
 # define PCM_NATIVE_BITDEPTH 16
+#endif
+
+#ifndef PCM_NATIVE_VOLUME_TYPE
+#if !defined(HAVE_SW_VOLUME_CONTROL) || defined(PCM_SW_VOLUME_UNBUFFERED)
+#define PCM_NATIVE_VOLUME_TYPE PCM_SINK_HWVOL
+#else
+#define PCM_NATIVE_VOLUME_TYPE PCM_SINK_SWVOL
+#endif
 #endif
 
 #endif /* _AUDIOHW_H_ */

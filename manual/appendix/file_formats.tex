@@ -1,4 +1,3 @@
-% $Id$ %
 \newcommand{\includeicon}{\Ifpdfoutput{\includegraphics[width=0.37cm]}{\includegraphics}}
 \chapter{File formats}
 \section{\label{ref:Supportedfileformats}Supported file formats}
@@ -89,7 +88,7 @@
         & \fname{.aac}, \fname{.m4a}, \fname{.m4b}, \fname{.mp4}, \fname{.rm}, \fname{.ra}, \fname{.rmvb}
         \opt{codec_aac_he}{
             & Supports AAC-LC, -HEv1, and -HEv2 profiles\\}
-        \nopt{codec_aac_he}{ % low memory (CODEC_SIZE <= 512 KB) or slow cpu targets 
+        \nopt{codec_aac_he}{ % low memory (CODEC_SIZE <= 512 KB) or slow cpu targets
             & Supports AAC-LC profile\\}
     MPEG audio
         & \fname{.mpa}, \fname{.mpga}, \fname{.mp1}, \fname{.mp2}, \fname{.mp3}
@@ -120,6 +119,10 @@
     Windows Media Audio Professional
         & \fname{.wma}, \fname{.wmv}, \fname{.asf}
         & \\
+    Direct Stream Digital (DSD)
+        & \fname{.dsf}, \fname{.dff}, \fname{.iso}
+        & DSD64 and beyond are decodable but may require downsampling.
+        Also supports SACD ISOs \\
   \end{rbtabular}
 
   \note{AAC-HE profiles \opt{codec_aac_he}{might not play in realtime on all devices}\nopt{codec_aac_he}{are disabled on this device} due to CPU
@@ -146,7 +149,7 @@
         & Linear PCM 8/16/24/32 bit, IEEE float 32/64 bit, ITU-T G.711 a-law/$\mu$-law\\
     Free Lossless Audio
         & \fname{.flac}
-        & Multichannel and/or high-resolution files will be downmixed to 16-bit stereo. 
+        & Multichannel and/or high-resolution files will be downmixed to 16-bit stereo.
 	\opt{ipod,iriverh10,sansaclip,sansam200v4,sansac200v2,iriverh100,iriverh300,iaudiox5,iaudiom5,iaudiom3,mpiohd200,mpiphd300,cowond2}{
 	    \nopt{ipodnano2g,ipod6g}{Due to resource constraints, files with large block sizes are not supported, and realtime playback may not be possible where downmixing is necessary.}}
 	\\
@@ -240,6 +243,7 @@
     Musepack                                    & x & x & x \\
     OGG/Vorbis                                  & x & x & x \\
     Sony Audio                                  & x & x &   \\
+    Direct Stream Digital                       & x & x & x \\
     RealAudio                                   & x & x &   \\
     Dialogic telephony type                     & x & x &   \\
     Windows Media Audio Standard                & x & x &   \\
@@ -288,7 +292,8 @@
     \begin{rbtabular}{\textwidth}{lX}%
     {\textbf{Tag type} & \textbf{File extension}}{}{}
       ID3               & \fname{.mp1}, \fname{.mpa}, \fname{.mp2}, \fname{.mp3},
-                          \fname{.rm}, \fname{.ra}, \fname{.rmvb}, \fname{.tta} \\
+                          \fname{.rm}, \fname{.ra}, \fname{.rmvb}, \fname{.tta},
+                          \fname{.dsf} \\
       APE               & \fname{.mpc}, \fname{.ape}, \fname{.mac}, \fname{.wv} \\
       Vorbis            & \fname{.ogg}, \fname{.oga}, \fname{.spx}, \fname{.flac} \\
       MP4               & \fname{.m4a}, \fname{.m4b}, \fname{.mp4} \\
@@ -301,7 +306,7 @@
                           \fname{.snd}, \fname{.shn}, \fname{.vox}, \fname{.w64},
                           \fname{.wav}, \fname{.cmc}, \fname{.cm3}, \fname{.cmr},
                           \fname{.cms}, \fname{.dmc}, \fname{.dlt}, \fname{.mpt},
-                          \fname{.mpd}, \fname{.hes}, \fname{.vgz} \\
+                          \fname{.mpd}, \fname{.hes}, \fname{.vgz}, \fname{.dff} \\
     \end{rbtabular}
 
     \subsection{Featureset for generic metadata tags}
@@ -376,5 +381,15 @@
         \item Overall there are 300 bytes available to load metadata strings.
         \item The maximum size of each metadata item (e.g. Artists) is limited
               to 90 bytes.
+    }
+    \opt{utf8proc}{
+        \item All textual metadata is normalized into most compact Unicode
+              NFC form. This simplifies font/glpyh rendering, and makes
+              it possible to compare/sort strings that use different
+              normalization forms.
+    }
+    \nopt{utf8proc}{
+        \item Due to RAM limitations, the \playertype does not process or
+              normalize textual metadata in any way.
     }
     \end{enumerate}

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Alan Korr
  * Copyright (C) 2008 by Frank Gevaerts
@@ -30,7 +29,6 @@ struct storage_info;
 
 void nand_enable(bool on);
 void nand_spindown(int seconds);
-void nand_sleep(void);
 void nand_sleepnow(void);
 bool nand_disk_is_active(void);
 int  nand_soft_reset(void);
@@ -46,6 +44,9 @@ int  nand_spinup_time(void); /* ticks */
 
 #ifdef STORAGE_GET_INFO
 void nand_get_info(IF_MD(int drive,) struct storage_info *info);
+#endif
+#ifdef HAVE_STORAGE_READONLY
+bool nand_readonly(IF_MD_NONVOID(int drive));
 #endif
 
 long nand_last_disk_activity(void);

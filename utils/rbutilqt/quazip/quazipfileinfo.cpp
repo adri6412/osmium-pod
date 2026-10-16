@@ -1,20 +1,20 @@
 /*
 Copyright (C) 2005-2014 Sergey A. Tachenov
 
-This file is part of QuaZIP.
+This file is part of QuaZip.
 
-QuaZIP is free software: you can redistribute it and/or modify
+QuaZip is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 2.1 of the License, or
 (at your option) any later version.
 
-QuaZIP is distributed in the hope that it will be useful,
+QuaZip is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with QuaZIP.  If not, see <http://www.gnu.org/licenses/>.
+along with QuaZip.  If not, see <http://www.gnu.org/licenses/>.
 
 See COPYING file for the full LGPL text.
 
@@ -24,11 +24,13 @@ see quazip/(un)zip.h files for details. Basically it's the zlib license.
 
 #include "quazipfileinfo.h"
 
+#include "quazip_qt_compat.h"
+
 #include <QtCore/QDataStream>
 
 static QFile::Permissions permissionsFromExternalAttr(quint32 externalAttr) {
     quint32 uPerm = (externalAttr & 0xFFFF0000u) >> 16;
-    QFile::Permissions perm = QFile::Permissions();
+    QFile::Permissions perm;
     if ((uPerm & 0400) != 0)
         perm |= QFile::ReadOwner;
     if ((uPerm & 0200) != 0)
@@ -115,9 +117,11 @@ static QDateTime getNTFSTime(const QByteArray &extra, int position,
     timeReader.device()->seek(position);
     quint64 time;
     timeReader >> time;
-    QDateTime base(QDate(1601, 1, 1), QTime(0, 0), Qt::UTC);
+    if (time == 0)
+        return dateTime;
+    QDateTime base = quazip_since_epoch_ntfs();
     dateTime = base.addMSecs(time / 10000);
-    if (fineTicks != NULL) {
+    if (fineTicks != nullptr) {
         *fineTicks = static_cast<int>(time % 10000);
     }
     return dateTime;
@@ -159,7 +163,7 @@ QDateTime QuaZipFileInfo64::getExtTime(const QByteArray &extra, int flag)
         qint32 time;
         input >> time;
         if (nextFlag == flag) {
-            QDateTime base(QDate(1970, 1, 1), QTime(0, 0), Qt::UTC);
+            QDateTime base = quazip_since_epoch();
             dateTime = base.addSecs(time);
             return dateTime;
         }

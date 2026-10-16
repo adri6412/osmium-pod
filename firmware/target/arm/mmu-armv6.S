@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2006,2007 by Greg White
  *
@@ -247,8 +246,18 @@ commit_discard_dcache:
 commit_discard_idcache:
     mov     r0, #0                  @
     mcr     p15, 0, r0, c7, c14, 0  @ Clean and invalidate entire DCache
+    @ ARM1136/1156/1176 erratum 411920: Invalidate entire ICache can leave
+    @ lines valid. Issue it four times with interrupts off, then 11 NOPs.
+    mrs     r1, cpsr                @
+    cpsid   if                      @
     mcr     p15, 0, r0, c7, c5, 0   @ Invalidate entire ICache
-                                    @ Also flushes the branch target cache
+    mcr     p15, 0, r0, c7, c5, 0   @ Also flushes the branch target cache
+    mcr     p15, 0, r0, c7, c5, 0   @
+    mcr     p15, 0, r0, c7, c5, 0   @
+    msr     cpsr_c, r1              @
+    .rept   11                      @
+    nop                             @
+    .endr                           @
     mcr     p15, 0, r0, c7, c10, 4  @ Data synchronization barrier
     mcr     p15, 0, r0, c7, c5, 4   @ Flush prefetch buffer (IMB)
     bx      lr                      @

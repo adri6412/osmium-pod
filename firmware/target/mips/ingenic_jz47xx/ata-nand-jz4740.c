@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 by Maurus Cuelenaere
  *
@@ -84,7 +83,7 @@ struct nand_param
  *
  */
 
-static volatile sector_t nand_address;
+static volatile unsigned long nand_address;
 #define NAND_DATAPORT      (nand_address)
 #define NAND_ADDRPORT      (nand_address+0x10000)
 #define NAND_COMMPORT      (nand_address+0x08000)
@@ -693,11 +692,6 @@ void nand_spindown(int seconds)
 {
     /* null */
     (void)seconds;
-}
-
-void nand_sleep(void)
-{
-    /* null */
 }
 
 void nand_spin(void)

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg
  *
@@ -444,6 +443,7 @@ int disk_mount(int drive)
         {
             if (pinfo[i].type == 0x05 ||
                 pinfo[i].type == 0x0f ||
+                pinfo[i].type == 0x3f ||
                 (i != 0 && pinfo[i].type == 0))
                 continue;  /* skip free/extended partitions */
 
@@ -484,8 +484,12 @@ int disk_mount(int drive)
         }
 
 #if defined(MAX_VIRT_SECTOR_SIZE) && defined(MAX_PHYS_SECTOR_SIZE)
+#if (CONFIG_STORAGE & STORAGE_ATA)
         if (mounted)
             ata_set_phys_sector_mult(disk_sector_multiplier[IF_MD_DRV(drive)]);
+#else
+#error "MAX_VIRT_SECTOR_SIZE + MAX_PHYS_SECTOR_SIZE on non-ATA device; is this intentional?"
+#endif
 #endif
     }
 
@@ -509,9 +513,7 @@ int disk_mount_all(void)
 
     for (int i = 0; i < NUM_DRIVES; i++)
     {
-    #ifdef HAVE_HOTSWAP
         if (storage_present(i))
-    #endif
             mounted += disk_mount(i);
     }
 
@@ -555,9 +557,7 @@ int disk_unmount_all(void)
 
     for (int i = 0; i < NUM_DRIVES; i++)
     {
-    #ifdef HAVE_HOTSWAP
         if (storage_present(i))
-    #endif
             unmounted += disk_unmount(i);
     }
 

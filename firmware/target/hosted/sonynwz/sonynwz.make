@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 INCLUDES += -I$(FIRMDIR)/include -I$(FIRMDIR)/export $(TARGET_INC) -I$(BUILDDIR) -I$(APPSDIR)
@@ -50,7 +49,8 @@ $(BUILDDIR)/bootloader.elf : $$(OBJ) $(FIRMLIB) $(CORE_LIBS)
 		-L$(BUILDDIR)/lib $(call a2lnk,$(CORE_LIBS)) \
 		$(LDOPTS) $(GLOBAL_LDOPTS) -Wl,--gc-sections -Wl,-Map,$(BUILDDIR)/bootloader.map
 
-$(BUILDDIR)/$(BINARY): $(BUILDDIR)/bootloader.elf $(BUILDDIR)/bootloader.fnt
+$(BUILDDIR)/$(BINARY): $(BUILDDIR)/bootloader.elf \
+        $(BUILDDIR)/bootloader.fnt $(MKFIRMWARE_TOOL)
 # NOTE: the install script will call a command like
 #   tar -C $(ROOTFS_MOUNT_POINT) -f bootloader.tar
 # thus the names in the archive must be of the form ./absolute/path

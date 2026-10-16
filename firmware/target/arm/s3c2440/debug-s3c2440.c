@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Karl Kurbjun
  *
@@ -31,8 +30,6 @@
 
 #ifdef GIGABEAT_F
 #define DEBUG_CANCEL  BUTTON_POWER
-#elif defined(MINI2440)
-#define DEBUG_CANCEL  BUTTON_MENU
 #endif
 
 bool dbg_hw_info(void)

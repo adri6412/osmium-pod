@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -1350,6 +1349,7 @@
   user: core
   <source>
     *: none
+    rtc: "OFF = Revert"
     aigoerosq,erosqnative,gigabeats,sansafuzeplus,xduoox3*: "BACK = Revert"
     gigabeatfx,mrobe500: "POWER = Revert"
     gogearsa9200: "LEFT = Revert"
@@ -1358,12 +1358,12 @@
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
     mrobe100: "DISPLAY = Revert"
-    rtc: "OFF = Revert"
     samsungyh*: "REW = Revert"
     vibe500: "CANCEL = Revert"
   </source>
   <dest>
     *: none
+    rtc: "OFF = Anulează"
     aigoerosq,erosqnative,gigabeats,sansafuzeplus,xduoox3*: "ÎNAPOI = Anulează"
     gigabeatfx,mrobe500: "POWER = Anulează"
     gogearsa9200: "STÎNGA = Anulează"
@@ -1372,7 +1372,6 @@
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Anulează"
     iriverh100,iriverh120,iriverh300: "STOP = Anulează"
     mrobe100: "DISPLAY = Anulează"
-    rtc: "OFF = Anulează"
     samsungyh*: "REW = Anulează"
     vibe500: "C = Anulează"
   </dest>
@@ -2232,15 +2231,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Bass Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Bass Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Retezare basuri"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tăiere bas"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Retezare basuri"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tăiere bas"
   </voice>
 </phrase>
 <phrase>
@@ -2309,11 +2308,11 @@
   </source>
   <dest>
     *: none
-    lcd_color: "Culoare primară "
+    lcd_color: "Culoare primară"
   </dest>
   <voice>
     *: none
-    lcd_color: "Culoare primară "
+    lcd_color: "Culoare primară"
   </voice>
 </phrase>
 <phrase>
@@ -4037,22 +4036,22 @@
   user: core
   <source>
     *: none
+    rtc: "ON = Set"
     aigoerosq,erosqnative,gogearsa9200,samsungyh*,xduoox3*: "PLAY = Set"
     gigabeat*,iaudiom5,iaudiox5,ipod*,iriverh10,iriverh10_5gb,mrobe100,sansac200*,sansaclip*,sansaconnect,sansae200*,sansafuze*: "SELECT = Set"
     iriverh100,iriverh120,iriverh300: "NAVI = Set"
     mpiohd300: "ENTER = Set"
     mrobe500: "HEART = Set"
-    rtc: "ON = Set"
     vibe500: "OK = Set"
   </source>
   <dest>
     *: none
+    rtc: "ON = Setează"
     aigoerosq,erosqnative,gogearsa9200,samsungyh*,xduoox3*: "REDARE = Setează"
     gigabeat*,iaudiom5,iaudiox5,ipod*,iriverh10,iriverh10_5gb,mrobe100,sansac200*,sansaclip*,sansaconnect,sansae200*,sansafuze*: "SELECTARE = Setează"
     iriverh100,iriverh120,iriverh300: "NAVI = Setează"
     mpiohd300: "ENTER = Setează"
     mrobe500: "INIMĂ = Setează"
-    rtc: "ON = Setează"
     vibe500: "OK = Setează"
   </dest>
   <voice>
@@ -6842,10 +6841,10 @@
     *: "%d Hz Band Gain"
   </source>
   <dest>
-    *: "%d Hz bandă amplificare"
+    *: "Cîștig bandă %d Hz"
   </dest>
   <voice>
-    *: "hertz bandă amplificare"
+    *: "Cîștig bandă"
   </voice>
 </phrase>
 <phrase>
@@ -8147,10 +8146,10 @@
     *: "High Shelf Filter"
   </source>
   <dest>
-    *: "Filtru frecvențe ridicate"
+    *: "Filtru frecvențe înalte"
   </dest>
   <voice>
-    *: "Filtru frecvențe ridicate"
+    *: "Filtru frecvențe înalte"
   </voice>
 </phrase>
 <phrase>
@@ -8280,15 +8279,15 @@
   user: core
   <source>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Treble Cutoff"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Treble Cutoff"
   </source>
   <dest>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Tăiere inalte"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tăiere inalte"
   </dest>
   <voice>
     *: none
-    gigabeatfx,ipod6g,ipodvideo,mpiohd200,mpiohd300,mrobe100: "Tăiere inalte"
+    gigabeatfx,ipod6g,ipodnano3g,ipodnano4g,ipodvideo,mpiohd200,mpiohd300,mrobe100,samsungypcp3: "Tăiere inalte"
   </voice>
 </phrase>
 <phrase>
@@ -8846,13 +8845,13 @@
   desc: in the equalizer settings menu
   user: core
   <source>
-    *: "Peak Filter %d"
+    *: "Peak Filter"
   </source>
   <dest>
-    *: "Filtru vîrfuri %d"
+    *: "Filtru vîrf"
   </dest>
   <voice>
-    *: "Filtru vîrfuri"
+    *: "Filtru vîrf"
   </voice>
 </phrase>
 <phrase>
@@ -10588,7 +10587,7 @@
   </dest>
   <voice>
     *: none
-    remote: "aparte pentru bara de stare "
+    remote: "aparte pentru bara de stare"
   </voice>
 </phrase>
 <phrase>
@@ -11174,7 +11173,7 @@
   </dest>
   <voice>
     *: none
-    histogram: "Interval histogramă "
+    histogram: "Interval histogramă"
   </voice>
 </phrase>
 <phrase>
@@ -12162,7 +12161,7 @@
 </phrase>
 <phrase>
   id: LANG_USB_MODE
-  desc: in Settings -> General -> System -> USB Mode
+  desc: in Settings -> General -> System -> USB
   user: core
   <source>
     *: "USB Mode"
@@ -14712,11 +14711,11 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_HIDE_ALBUM_TITLE_NEW
-  desc: in the pictureflow settings
+  id: LANG_HIDE_INFO
+  desc: Hide Information
   user: core
   <source>
-    *: "Hide information"
+    *: "Hide Information"
   </source>
   <dest>
     *: "Ascunde informațiile"
@@ -14787,7 +14786,7 @@
   user: core
   <source>
     *: "Press LEFT to cancel."
-    android,hifietma*,zenvision: "Press BACK to cancel."
+    android,hifietma*: "Press BACK to cancel."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Press POWER to cancel."
     ihifi760,ihifi960: "Double tap RETURN to cancel."
     ihifi770,ihifi770c,ihifi800: "Press HOME to cancel."
@@ -14802,7 +14801,7 @@
   </source>
   <dest>
     *: "Apasă STÎNGA pentru a anula."
-    android,hifietma*,zenvision: "Apasă ÎNAPOI pentru a anula."
+    android,hifietma*: "Apasă ÎNAPOI pentru a anula."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Apasă PORNIRE pentru a anula."
     ihifi760,ihifi960: "Atinge de 2 ori ÎNAPOI pentru a anula."
     ihifi770,ihifi770c,ihifi800: "Apasă ACASĂ pentru a anula."
@@ -14817,7 +14816,7 @@
   </dest>
   <voice>
     *: "Apasă STÎNGA pentru a anula."
-    android,hifietma*,zenvision: "Apasă ÎNAPOI pentru a anula."
+    android,hifietma*: "Apasă ÎNAPOI pentru a anula."
     cowond2,creativezenxfi2,ibassodx50,ibassodx90,mrobe500,ondavx747: "Apasă PORNIRE pentru a anula."
     ihifi760,ihifi960: "Atinge de 2 ori ÎNAPOI pentru a anula."
     ihifi770,ihifi770c,ihifi800: "Apasă ACASĂ pentru a anula."
@@ -15056,20 +15055,6 @@
   </dest>
   <voice>
     *: "Nu este un plaghin"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_OPEN_PLUGIN_SET_WPS_CONTEXT_PLUGIN
-  desc: open plugin module
-  user: core
-  <source>
-    *: "Set WPS Context Plugin"
-  </source>
-  <dest>
-    *: "Alege plugin implicit"
-  </dest>
-  <voice>
-    *: "Alege plaghin implicit"
   </voice>
 </phrase>
 <phrase>
@@ -15312,13 +15297,13 @@
 </phrase>
 <phrase>
   id: LANG_VOICED_DATE_FORMAT
-  desc: format string for how dates will be read back. Y == 4-digit year, A == month name, m == numeric month, d == numeric day. For example, "AdY" will read "January 21 2021"
+  desc: format string for how dates will be read back. Y == 4-digit year (grouped), y == 4-digit year (numeric), A == month name, m == numeric month, d == numeric day. For example, for 2021-01-05, "AdY" will be voiced as "January 5 twenty twenty-one" and "dmy" will be voiced as "5 1 two thousand twenty one
   user: core
   <source>
     *: "dAY"
   </source>
   <dest>
-    *: "dAY"
+    *: "~dAY"
   </dest>
   <voice>
     *: ""
@@ -15921,16 +15906,16 @@
 </phrase>
 <phrase>
   id: LANG_DEFAULT_BROWSER
-  desc: in Settings
+  desc: deprecated
   user: core
   <source>
-    *: "Default Browser"
+    *: ""
   </source>
   <dest>
-    *: "Navigator implicit"
+    *: ""
   </dest>
   <voice>
-    *: "Navigator implicit"
+    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -16949,5 +16934,235 @@
   <voice>
     *: none
     general_purpose_led: "Folosește indicatori led"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ANNOUNCE_STATUS
+  desc: announnnce_status plugin
+  user: core
+  <source>
+    *: "Announce Status"
+  </source>
+  <dest>
+    *: "Anunțare stare"
+  </dest>
+  <voice>
+    *: "Anunțare stare"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEEP_DIRECTORY
+  desc: file browser setting
+  user: core
+  <source>
+    *: "Always remember last folder"
+  </source>
+  <dest>
+    *: "Ține minte mereu ultimul dosar"
+  </dest>
+  <voice>
+    *: "Ține minte mereu ultimul dosar"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_MENU
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "USB"
+  </source>
+  <dest>
+    *: "~USB"
+  </dest>
+  <voice>
+    *: "u se be"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILE_NOT_FOUND
+  desc: When file does not exist
+  user: core
+  <source>
+    *: "File not found"
+  </source>
+  <dest>
+    *: "Fișierul nu a fost găsit"
+  </dest>
+  <voice>
+    *: "Fișierul nu a fost găsit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SHOW_IN_FILES
+  desc: Reveal item in File Browser
+  user: core
+  <source>
+    *: "Show in Files"
+  </source>
+  <dest>
+    *: "Arată în fișiere"
+  </dest>
+  <voice>
+    *: "Arată în fișiere"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CHANNEL_SWAP
+  desc: in sound_settings
+  user: core
+  <source>
+    *: "Swap Left & Right"
+  </source>
+  <dest>
+    *: "Interschimbă stînga cu dreapta"
+  </dest>
+  <voice>
+    *: "Interschimbă stînga cu dreapta"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_SET
+  desc: countdown_timer plugin - header shown on the setup screen where the user enters the countdown duration
+  user: core
+  <source>
+    *: "SET TIMER"
+  </source>
+  <dest>
+    *: "SETEAZĂ TEMPORIZATOR"
+  </dest>
+  <voice>
+    *: "Setează temporizator"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_RUNNING
+  desc: countdown_timer plugin - status label shown while the countdown is active
+  user: core
+  <source>
+    *: "RUNNING"
+  </source>
+  <dest>
+    *: "RULEAZĂ"
+  </dest>
+  <voice>
+    *: "Rulează"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_PAUSED
+  desc: countdown_timer plugin - status label shown while the countdown is paused
+  user: core
+  <source>
+    *: "PAUSED"
+  </source>
+  <dest>
+    *: "ÎNTRERUPT"
+  </dest>
+  <voice>
+    *: "Întrerupt"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_OVERTIME
+  desc: countdown_timer plugin - status label shown when the countdown has passed zero and is counting up
+  user: core
+  <source>
+    *: "OVERTIME"
+  </source>
+  <dest>
+    *: "TIMP DEPĂȘIT"
+  </dest>
+  <voice>
+    *: "Timp depășit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COUNTDOWN_TIMER_FINISHED
+  desc: countdown_timer plugin - status label shown at the moment the countdown expires
+  user: core
+  <source>
+    *: "FINISHED"
+  </source>
+  <dest>
+    *: "FINALIZAT"
+  </dest>
+  <voice>
+    *: "Finalizat"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_CONTEXT_ITEM
+  desc: WPS context item
+  user: core
+  <source>
+    *: "Set Context Item"
+  </source>
+  <dest>
+    *: "Setează element context"
+  </dest>
+  <voice>
+    *: "Setează element context"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_BAND
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter %d"
+  </source>
+  <dest>
+    *: "Filtru %d"
+  </dest>
+  <voice>
+    *: "Filtru"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_EQUALIZER_FILTER_TYPE
+  desc: in the equalizer settings menu
+  user: core
+  <source>
+    *: "Filter Type"
+  </source>
+  <dest>
+    *: "Tip filtru"
+  </dest>
+  <voice>
+    *: "Tip filtru"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPOSITE_VIDEO_OUTPUT
+  desc: Enables composite video framebuffer mirroring on supported targets
+  user: core
+  <source>
+    *: none
+    videoout: "Composite Video Output"
+  </source>
+  <dest>
+    *: none
+    videoout: "Ieșire video compozit"
+  </dest>
+  <voice>
+    *: none
+    videoout: "Ieșire video compozit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_FLICK_SHORTCUTS
+  desc: in settings menu
+  user: core
+  <source>
+    *: none
+    touchscreen: "Touchscreen Flick Shortcuts"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Scurtături gesturi touchscreen"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Scurtături gesturi taciscrin"
   </voice>
 </phrase>

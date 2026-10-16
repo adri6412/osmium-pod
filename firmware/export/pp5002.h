@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2004 by Thom Johansen 
  *
@@ -23,9 +22,11 @@
 
 /* Much info gleaned and/or copied from the iPodLinux project. */
 
-#define CACHEALIGN_BITS (4) /* 2^4 = 16 bytes */
+#define CACHEALIGN_BITS (4)  /* 2^4 = 16 bytes */
+#define CACHEALIGN_SIZE (16)
 
 #define DRAM_START       0x28000000
+#define NOCACHE_BASE     0x28000000
 
 /* LCD bridge */
 #define LCD1_BASE        0xc0001000

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 Thom Johansen 
  * Copyright (C) 2010 Andree Buschmann
@@ -212,7 +211,7 @@ bool get_musepack_metadata(int fd, struct mp3entry *id3)
         return false;
     }
 
-    id3->filesize = filesize(fd);
+    id3->filesize = ffilesize(fd);
     id3->bitrate = id3->filesize * 8 / id3->length;
 
     read_ape_tags(fd, id3);

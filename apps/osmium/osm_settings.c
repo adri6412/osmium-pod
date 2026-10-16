@@ -187,12 +187,17 @@ static const struct cfg_item cfg_items[] =
 
 /* ── defaults ───────────────────────────────────────────────────────── */
 
+/* a low shelf, eight peaks and a high shelf, as Rockbox always had */
+#define EQ_PK EQ_FILTER_PEAK
 static const struct eq_band_setting eq_defaults[EQ_NUM_BANDS] =
 {
-    { 32, 7, 0 },   { 64, 10, 0 },   { 125, 10, 0 },  { 250, 10, 0 },
-    { 500, 10, 0 }, { 1000, 10, 0 }, { 2000, 10, 0 }, { 4000, 10, 0 },
-    { 8000, 10, 0 },{ 16000, 7, 0 },
+    { EQ_FILTER_LOW_SHELF, 32, 7, 0 },
+    { EQ_PK, 64, 10, 0 },   { EQ_PK, 125, 10, 0 },  { EQ_PK, 250, 10, 0 },
+    { EQ_PK, 500, 10, 0 },  { EQ_PK, 1000, 10, 0 }, { EQ_PK, 2000, 10, 0 },
+    { EQ_PK, 4000, 10, 0 }, { EQ_PK, 8000, 10, 0 },
+    { EQ_FILTER_HIGH_SHELF, 16000, 7, 0 },
 };
+#undef EQ_PK
 
 void settings_reset(void)
 {

@@ -5,7 +5,6 @@
 *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 *                     \/            \/     \/    \/            \/
-* $Id: $
 *
 * Copyright (C) 2011-2021 by Tomasz Moń
 *
@@ -838,7 +837,7 @@ void avr_thread(void)
         if (ev.id == SYS_USB_CONNECTED)
         {
             /* Allow USB to gain exclusive storage access */
-            usb_acknowledge(SYS_USB_CONNECTED_ACK);
+            usb_acknowledge(SYS_USB_CONNECTED_ACK, ev.data);
             disk_access_available = false;
         }
         else if (ev.id == SYS_USB_DISCONNECTED)

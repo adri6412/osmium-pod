@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 INCLUDES += -I$(APPSDIR)
@@ -23,7 +22,7 @@ EXTRA_SPECIAL_LIBS = $(call a2lnk, $(CORE_LIBS))
 
 $(BOOTLINK): $(BOOTLDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
-	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
+	$(call preprocess2file,$<,$@,)
 
 $(BUILDDIR)/bootloader.elf: $$(OBJ) $(FIRMLIB) $(CORE_LIBS) $$(BOOTLINK)
 	$(call PRINTS,LD $(@F))$(CC) $(GCCOPTS) -Os -nostdlib -o $@ $(OBJ) \
@@ -35,5 +34,5 @@ $(BUILDDIR)/bootloader.elf: $$(OBJ) $(FIRMLIB) $(CORE_LIBS) $$(BOOTLINK)
 $(BUILDDIR)/bootloader.bin : $(BUILDDIR)/bootloader.elf
 	$(call PRINTS,OC $(@F))$(call objcopy,$<,$@)
 
-$(BUILDDIR)/$(BINARY) : $(BUILDDIR)/bootloader.bin
+$(BUILDDIR)/$(BINARY) : $(BUILDDIR)/bootloader.bin $(MKFIRMWARE_TOOL)
 	$(call PRINTS,Build bootloader file)$(MKFIRMWARE) $< $@

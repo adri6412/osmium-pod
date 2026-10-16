@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Andrew Ryabinin, Dana Conrad
  *
@@ -32,8 +31,8 @@
 // #define LOGF_ENABLE
 #include "logf.h"
 
-#include "gpio-x1000.h"
-#include "i2c-x1000.h"
+#include "gpio-ingenic.h"
+#include "i2c-ingenic.h"
 
 int es9018k2m_present_flag = 0;
 

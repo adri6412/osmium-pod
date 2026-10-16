@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 Nicolas Pennequin, Jonathan Gordon
  *
@@ -43,7 +42,8 @@ static bool search_for_cuesheet(const char *path, struct cuesheet_file *cue_file
 {
     size_t len;
     char cuepath[MAX_PATH];
-    char *dot, *slash, *slash_cuepath;
+    char *dot, *slash_cuepath;
+    const char *slash;
 
     cue_file->pos = 0;
     cue_file->size = 0;
@@ -278,7 +278,7 @@ bool parse_cuesheet(struct cuesheet_file *cue_file, struct cuesheet *cue)
         }
         s = skip_whitespace(line);
 
-/*   RECOGNIZED  TAGS *********************** 
+/*   RECOGNIZED  TAGS ***********************
 *    eCS_TRACK = 0, eCS_INDEX_01, eCS_TITLE,
 *    eCS_PERFORMER, eCS_SONGWRITER, eCS_FILE,
 */
@@ -303,7 +303,7 @@ bool parse_cuesheet(struct cuesheet_file *cue_file, struct cuesheet *cue)
             cue->tracks[cue->track_count-1].offset = parse_cue_index(s);
 #endif
         }
-        else if (option != eCS_NOTFOUND) 
+        else if (option != eCS_NOTFOUND)
         {
             char *dest = NULL;
             char *string = get_string(s);

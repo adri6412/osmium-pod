@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id:$
  *
  * Copyright (C) 2015 by Cástor Muñoz
  *
@@ -30,7 +29,7 @@
 #define BIN_OFFSET      (CERT_OFFSET + ((CERT_SIZE + 0x3) & ~ 0x3))
 #define MAX_PAYLOAD     (DFU_MAXSIZE - BIN_OFFSET)
 
-#ifndef ASM
+#ifndef __ASSEMBLER__
 #include <stddef.h>
 #include <stdint.h>
 
@@ -40,6 +39,8 @@ extern "C" {
 
 #define IM3_IDENT       "8702"
 #define IM3_VERSION     "1.0"
+#define IMG1_IDENT      "8720"
+#define IMG1_VERSION    "2.0"
 #define IM3HDR_SZ       0x800
 #define IM3INFO_SZ      (sizeof(struct Im3Info))
 #define IM3INFOSIGN_SZ  (offsetof(struct Im3Info, info_sign))
@@ -48,8 +49,8 @@ extern "C" {
 
 struct Im3Info
 {
-    uint8_t ident[4];
-    uint8_t version[3];
+    uint8_t ident[4] __attribute__((nonstring));
+    uint8_t version[3] __attribute__((nonstring));
     uint8_t enc_type;
     uint8_t entry[4];   /* LE */
     uint8_t data_sz[4]; /* LE */
@@ -59,13 +60,13 @@ struct Im3Info
             uint8_t _reserved[32];
         } enc12;
         struct {
-            uint8_t sign_off[4]; /* LE */
-            uint8_t cert_off[4]; /* LE */
-            uint8_t cert_sz[4];  /* LE */
+            uint8_t sign_off[4] __attribute__((nonstring)); /* LE */
+            uint8_t cert_off[4] __attribute__((nonstring)); /* LE */
+            uint8_t cert_sz[4] __attribute__((nonstring));  /* LE */
             uint8_t _reserved[36];
         } enc34;
     } u;
-    uint8_t info_sign[SIGN_SZ];
+    uint8_t info_sign[SIGN_SZ] __attribute__((nonstring));
 } __attribute__ ((packed));
 
 struct Im3Hdr
@@ -79,6 +80,7 @@ struct Im3Hdr
 enum {
     MODEL_UNKNOWN = -1,
     MODEL_IPOD6G = 0,
+    MODEL_IPODNANO3G,
     /* new models go here */
 
     NUM_MODELS
@@ -109,13 +111,18 @@ enum {
     DFU_INST,           /* RB installer */
     DFU_INST_SINGLE,    /* RB installer (single) */
     DFU_UNINST,         /* RB uninstaller */
-    DFU_RAW             /* raw binary */
+    DFU_RAW,            /* raw binary */
+    DFU_N4G             /* Nano 4G IMG1 */
 };
 
 unsigned char *mkdfu(int dfu_type, char *dfu_arg, int* dfu_size,
                                 char* errstr, int errstrsize);
+unsigned char *mkdfu_n4g(char *filename, int *dfu_size,
+                                char* errstr, int errstrsize);
 
 int ipoddfu_send(int pid, unsigned char *buf, int size,
+                                char* errstr, int errstrsize);
+int ipoddfu_send_n4g(int pid, unsigned char *buf, int size,
                                 char* errstr, int errstrsize);
 int ipoddfu_scan(int pid, int *state, int reset,
                                 char* errstr, int errstrsize);
@@ -124,6 +131,6 @@ void ipoddfu_debug(int debug);
 #ifdef __cplusplus
 };
 #endif
-#endif /* ASM */
+#endif /* __ASSEMBLER__ */
 
 #endif /* __MK6GBOOT_H__ */

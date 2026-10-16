@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 Dave Chapman
  *
@@ -48,10 +47,6 @@ int nand_write_sectors(IF_MD(int drive,) sector_t start, int count,
 void nand_spindown(int seconds)
 {
     (void)seconds;
-}
-
-void nand_sleep(void)
-{
 }
 
 void nand_sleepnow(void)

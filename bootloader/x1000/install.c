@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021-2022 Aidan MacDonald
  *
@@ -22,7 +21,7 @@
 #include "x1000bootloader.h"
 #include "kernel.h"
 #include "button.h"
-#include "installer-x1000.h"
+#include "installer-ingenic.h"
 #include <stdio.h>
 
 enum {

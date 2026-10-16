@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Alan Korr
  *
@@ -28,7 +27,7 @@
 #endif
 
 #ifndef __MINGW32__
-#if defined(__APPLE__) || defined(CTRU)
+#if defined(__APPLE__) || defined(N3DS)
 #include <sys/types.h>
 #else
 #include <endian.h>

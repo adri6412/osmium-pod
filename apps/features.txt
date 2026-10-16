@@ -82,6 +82,10 @@ lcd_sleep
 morse_input
 #endif
 
+#if defined(HAVE_KBD_POINT_MODE)
+kbd_point_mode
+#endif
+
 #if defined(HAVE_PITCHCONTROL)
 pitchscreen
 #endif
@@ -313,6 +317,14 @@ codec_aac_he
 lto
 #endif
 
-#if defined(USB_ENABLE_AUDIO)
+#if defined(USB_ENABLE_AUDIO) || defined(HAVE_HOST_USB_AUDIO)
 usbdac
+#endif
+
+#if defined(UTF8PROC_EXPORTS)
+utf8proc
+#endif
+
+#if defined(HAVE_COMPOSITE_VIDEO_OUT)
+videoout
 #endif

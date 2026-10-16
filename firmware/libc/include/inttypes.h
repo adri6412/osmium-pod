@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2005 by Dave Chapman
  *
@@ -18,11 +17,11 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
- 
 #ifndef __INTTYPES_H__
 #define __INTTYPES_H__
 
 #include <stdint.h>
+#include <limits.h>
 
 /* could possibly have (f)scanf format specifiers here */
 

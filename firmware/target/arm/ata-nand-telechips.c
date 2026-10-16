@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2008 Rob Purchase
  *
@@ -1008,10 +1007,6 @@ int nand_init(void)
 long nand_last_disk_activity(void)
 {
     return last_disk_activity;
-}
-
-void nand_sleep(void)
-{
 }
 
 void nand_spin(void)

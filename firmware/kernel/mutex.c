@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 by Björn Stenberg
  *
@@ -75,7 +74,7 @@ void mutex_lock(struct mutex *m)
 /* Release ownership of a mutex object - only owning thread must call this */
 void mutex_unlock(struct mutex *m)
 {
-#ifndef CTRU
+#ifndef N3DS
     /* FIXME: synchronization primitives does not behave
        correctly between different cores */
     /* unlocker not being the owner is an unlocking violation */

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Tomasz Moń
  * Copyright (C) 2007 by Karl Kurbjun
@@ -27,9 +26,6 @@
 #include "system-arm.h"
 #include "spi.h"
 #include "i2c.h"
-#ifdef CREATIVE_ZVx
-#include "dma-target.h"
-#endif
 #ifdef MROBE_500
 #include "usb-mr500.h"
 #endif
@@ -370,10 +366,6 @@ void system_init(void)
     IO_GIO_BITCLR2 = 0x0001;
 #endif
 
-#ifdef CREATIVE_ZVx
-    dma_init();
-#endif
-
 #ifdef SANSA_CONNECT
 #ifndef HAVE_WIFI
     /* keep WIFI CS and reset high to save power */
@@ -399,12 +391,6 @@ void system_init(void)
     IO_GIO_DIR1 &= ~(1 << 12);
     IO_GIO_BITCLR1 = (1 << 12);
 #endif
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

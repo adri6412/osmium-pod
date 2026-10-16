@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Karl Kurbjun
  *
@@ -210,6 +209,7 @@
 #define CONFIG_USBOTG       USBOTG_M66591
 
 #define HAVE_USBSTACK
+#define HAVE_BOOTLOADER_USB_MODE
 //#define HAVE_USB_POWER
 //#define USBPOWER_BUTTON     BUTTON_POWER
 //#define USBPOWER_BTN_IGNORE BUTTON_TOUCH

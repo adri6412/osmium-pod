@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  *
@@ -22,7 +21,7 @@
 #include "lcd.h"
 #include "system.h"
 #include "lcd-x1000.h"
-#include "gpio-x1000.h"
+#include "gpio-ingenic.h"
 
 /* LCD controller is probably an RM68090.
  */

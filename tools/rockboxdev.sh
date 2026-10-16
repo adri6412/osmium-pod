@@ -391,15 +391,22 @@ buildtool () {
         cflags='-U_FORTIFY_SOURCE -fgnu89-inline -O2'
         if [ "$tool" == "glibc" ]; then
             cflags="$cflags -fcommon"  # glibc < 2.30 needs -fcommon for gcc10+
-	elif [ "$tool" == "glib" ]; then
-            run_cmd "$logfile" $SED -i -e 's/m4_copy/m4_copy_force/g' "$cfg_dir/m4macros/glib-gettext.m4"
-            run_cmd "$logfile" autoreconf -fiv "$cfg_dir"
+        elif [ "$tool" == "glib" ]; then
+            # glib < 2.47.5 requires this hack on newer systems to fix legacy python related build failure
+            # Note: autoreconf call adds dependency on gtk-doc-tools
+            if version_lt "$version" "2.47.5"; then
+                run_cmd "$logfile" $SED -i -e 's/m4_copy/m4_copy_force/g' "$cfg_dir/m4macros/glib-gettext.m4"
+                run_cmd "$logfile" $SED -i 's/tests//' "$cfg_dir/gio/Makefile.am"
+                run_cmd "$logfile" autoreconf -fiv "$cfg_dir"
+                config_opt="$config_opt --disable-gtk-doc"
+            fi
+
             cflags="$cflags -Wno-format-nonliteral -Wno-format-overflow"
         fi
         # NOTE glibc requires to be compiled with optimization
         CFLAGS="$cflags" CXXFLAGS="$CXXFLAGS" run_cmd "$logfile" \
             "$cfg_dir/configure" "--prefix=$prefix" \
-            --disable-docs $config_opt
+            --disable-docs --disable-tests $config_opt
     fi
 
     if [ "$make_opts" != "NO_MAKE" ]; then
@@ -845,7 +852,7 @@ do
 	    #
             glibcopts="--enable-kernel=2.6.23 --enable-oldest-abi=2.4"
             build_linux_toolchain "arm-rockbox-linux-gnueabi" "2.38" "" "" "9.5.0" \
-                "$gccopts" "2.6.32.71" "" "2.20" "$glibcopts" "glibc-220-make44.patch glibc-2.20-gcc10.patch"
+                "$gccopts" "2.6.32.71" "" "2.20" "$glibcopts" "glibc-220-make44.patch glibc-2.20-gcc10.patch glibc-220-texinfo.patch"
             # build alsa-lib
             # we need to set the prefix to how it is on device (/usr) and then
             # tweak install dir at make install step
@@ -875,7 +882,7 @@ do
             glibcopts="--enable-kernel=3.2 --enable-oldest-abi=2.16 --disable-werror"
             # FIXME: maybe add -mhard-float?
             build_linux_toolchain "mipsel-rockbox-linux-gnu" "2.38" "" "binutils-c23.patch" "9.5.0" \
-                "$gccopts" "3.10.108" "linux-c23.patch" "2.27" "$glibcopts" "glibc-227-make44.patch"
+                "$gccopts" "3.10.108" "linux-c23.patch" "2.27" "$glibcopts" "glibc-227-make44.patch glibc-227-texinfo.patch"
             # build alsa-lib
             # we need to set the prefix to how it is on device (/usr) and then
             # tweak install dir at make install step

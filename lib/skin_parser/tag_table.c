@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2010 Robert Bieber
  *
@@ -163,9 +162,11 @@ static const struct tag_info legal_tags[] =
     TAG(SKIN_TOKEN_TRACK_STARTING,        "pS" , "|D", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_TRACK_ENDING,          "pE" , "|D", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_PLAYLIST_POSITION,     "pp", "", SKIN_REFRESH_STATIC),
+    TAG(SKIN_TOKEN_PLAYLIST_PERCENT,      "pP", BAR_PARAMS, SKIN_REFRESH_STATIC),
     TAG(SKIN_TOKEN_PLAYLIST_ENTRIES,      "pe", "", SKIN_REFRESH_STATIC),
     TAG(SKIN_TOKEN_PLAYLIST_NAME,         "pn", "", SKIN_REFRESH_STATIC),
     TAG(SKIN_TOKEN_PLAYLIST_SHUFFLE,      "ps", "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_PLAYLIST_ELAPSED_PERCENT, "pX", BAR_PARAMS, SKIN_REFRESH_DYNAMIC),
 
     TAG(SKIN_TOKEN_DATABASE_PLAYCOUNT,    "rp", "", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_DATABASE_RATING,       "rr", "", SKIN_REFRESH_DYNAMIC),
@@ -251,6 +252,13 @@ static const struct tag_info legal_tags[] =
     TAG(SKIN_TOKEN_REC_SECONDS,   "Rs"   , "", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_REC_MINUTES,   "Rn"   , "", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_REC_HOURS,     "Rh"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_SIZE,      "RS"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_PRERECORD, "RP"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_CLIPCOUNT, "Rc"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_TRIGGER,   "Rt"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_WARNING,   "Rw"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_SOURCE,    "Ri"   , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_REC_GAIN,      "Rg"   , "", SKIN_REFRESH_DYNAMIC),
 
     /* Skin variables */
     TAG(SKIN_TOKEN_VAR_SET,       "vs",   "SSi|I", SKIN_REFRESH_DYNAMIC),
@@ -329,3 +337,4 @@ const struct tag_info* find_tag(const char *name)
     }
     return tag;
 }
+

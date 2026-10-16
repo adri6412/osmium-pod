@@ -4,7 +4,6 @@
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
 #   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
 #                     \/            \/     \/    \/            \/
-# $Id$
 #
 
 include $(TOOLSDIR)/functions.make
@@ -23,6 +22,9 @@ TOOLS = $(TOOLSDIR)/rdf2binary $(TOOLSDIR)/convbdf \
 	$(TOOLSDIR)/uclpack $(TOOLSDIR)/mkboot $(TOOLSDIR)/iaudio_bl_flash.c \
 	$(TOOLSDIR)/iaudio_bl_flash.h
 TOOLS += $(foreach tool,$(TOOLSET),$(TOOLSDIR)/$(tool))
+# MKFIRMWARE can be a command plus options (or a system command such as cp).
+# Depend on its executable when it is one of our build tools.
+MKFIRMWARE_TOOL = $(filter $(TOOLSDIR)/%,$(firstword $(MKFIRMWARE)))
 
 ifeq (,$(PREFIX))
 ifdef APP_TYPE
@@ -96,10 +98,12 @@ ifndef APP_TYPE
   endif
 endif
 
-ifeq (,$(findstring bootloader,$(APPSDIR)))
-  ifeq (,$(findstring checkwps,$(APP_TYPE)))
-    include $(ROOTDIR)/lib/fixedpoint/fixedpoint.make
-  endif
+ifeq (,$(NO_UTF8PROC))
+  include $(ROOTDIR)/lib/utf8proc/utf8proc.make
+endif
+
+ifeq (,$(findstring checkwps,$(APP_TYPE)))
+  include $(ROOTDIR)/lib/fixedpoint/fixedpoint.make
 endif
 
 ifneq (,$(findstring bootloader,$(APPSDIR)))
@@ -172,10 +176,11 @@ else # core
   endif
 
   ifneq (,$(findstring rgnano, $(MODELNAME)))
-	include $(ROOTDIR)/packaging/rgnano/rgnano.make
+   include $(ROOTDIR)/packaging/rgnano/rgnano.make
   endif
-  ifneq (,$(findstring ctru, $(APP_TYPE)))
-  include $(ROOTDIR)/packaging/ctru/ctru.make
+
+  ifneq (,$(findstring 3ds-homebrew, $(APP_TYPE)))
+    include $(ROOTDIR)/packaging/3ds/3ds.make
   endif
 
 endif # bootloader
@@ -234,7 +239,8 @@ clean::
 		$(LINKRAM) $(LINKROM) rockbox.elf rockbox.map rockbox.bin \
 		make.dep rombox.elf rombox.map rombox.bin romstart.txt \
 		$(BINARY) $(FLASHFILE) uisimulator bootloader flash $(BOOTLINK) \
-		rockbox.apk lang_enum.h rbversion.h fontbundle.h
+		rockbox.apk lang_enum.h rbversion.h fontbundle.h themeassets.h 3ds rockbox.3dsx \
+		rockbox.bnr rockbox.cia rockbox.icn rockbox.smdh
 
 #### linking the binaries: ####
 
@@ -260,11 +266,11 @@ LINKROM := $(BUILDDIR)/rom.link
 
 $(LINKRAM): $(RAMLDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
-	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
+	$(call preprocess2file,$<,$@,)
 
 $(LINKROM): $(ROMLDS)
 	$(call PRINTS,PP $(@F))
-	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
+	$(call preprocess2file,$<,$@,)
 
 # Note: make sure -Wl,--gc-sections comes before -T in the linker options.
 # Having the latter first caused crashes on (at least) mini2g.
@@ -290,7 +296,7 @@ $(BUILDDIR)/rockbox.bin : $(BUILDDIR)/rockbox.elf
 $(BUILDDIR)/rombox.bin : $(BUILDDIR)/rombox.elf
 	$(call PRINTS,OC $(@F))$(call objcopy,$<,$@)
 
-$(BUILDDIR)/$(BINARY) : $(BUILDDIR)/rockbox.bin $(FLASHFILE)
+$(BUILDDIR)/$(BINARY) : $(BUILDDIR)/rockbox.bin $(FLASHFILE) $(MKFIRMWARE_TOOL)
 	$(call PRINTS,SCRAMBLE $(notdir $@)) $(MKFIRMWARE) $< $@
 
 $(MAXOUTFILE):
@@ -301,7 +307,7 @@ $(MAXOUTFILE):
 	$(SILENT)rm $(MAXINFILE)
 
 # iriver
-$(BUILDDIR)/rombox.iriver: $(BUILDDIR)/rombox.bin
+$(BUILDDIR)/rombox.iriver: $(BUILDDIR)/rombox.bin $(MKFIRMWARE_TOOL)
 	$(call PRINTS,Build ROM file)$(MKFIRMWARE) $< $@
 
 endif # !APP_TYPE
@@ -348,6 +354,9 @@ $(BUILDDIR)/rockbox.zip: build
 endif
 	$(call PRINTS,ZIP rockbox$(ZIPFILESUFFIX).zip)
 	$(SILENT)$(TOOLSDIR)/buildzip.pl $(VERBOSEOPT) --app=$(APPLICATION) -m \"$(MODELNAME)\" -i \"$(TARGET_ID)\" -o $(BUILDDIR)/rockbox$(ZIPFILESUFFIX).zip -r "$(ROOTDIR)" --rbdir="$(RBDIR)" $(BUILDZIPOPTS) $(TARGET) $(BINARY)
+ifneq ($(REPRODUCIBLE_ZIP),)
+	$(SILENT)strip-nondeterminism $(BUILDDIR)/rockbox$(ZIPFILESUFFIX).zip
+endif
 
 mapzip:
 	$(SILENT)find . -name "*.map" | xargs zip rockbox-maps.zip
@@ -420,8 +429,8 @@ talkclips-force: talkclips
 
 endif
 
-ifeq (,$(findstring android, $(APP_TYPE)))
-
+# only simulators get a 'make install'
+ifneq (,$(findstring sdl,$(APP_TYPE)))
 simext1:
 	$(SILENT)mkdir -p $@
 

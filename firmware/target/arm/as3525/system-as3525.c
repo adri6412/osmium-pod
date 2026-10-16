@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Rob Purchase
  * Copyright © 2008 Rafaël Carré
@@ -32,6 +31,10 @@
 #include "button.h"
 #include "backlight-target.h"
 #include "lcd.h"
+
+#if defined(SANSA_CLIPPLUS) && CONFIG_TUNER
+#include "fmradio.h"
+#endif
 
 struct mutex cpufreq_mtx;
 
@@ -395,12 +398,6 @@ void system_exception_wait(void)
     while(!button_read_device());
 }
 
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
-}
-
 /* usecs may be at most 2^32/248 (17 seconds) for 248MHz max cpu freq */
 void udelay(unsigned usecs)
 {
@@ -522,6 +519,12 @@ void set_cpu_frequency(long frequency)
 #if defined(SANSA_CLIPZIP)
         ascodec_write_pmu(0x17, 1, 0x80 | 20);
 #elif defined(SANSA_CLIPPLUS)
+#if CONFIG_TUNER
+
+        if (get_radio_status()== FMRADIO_PLAYING) /* FS#13947 Noise in FM radio when unboosted */
+            ascodec_write_pmu(0x17, 1, 0x80 | 35);
+        else
+#endif
         if (amsv2_variant)
             ascodec_write_pmu(0x17, 1, 0x80 | 22);
         else

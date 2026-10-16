@@ -14,14 +14,15 @@ else
 CFLAGS += -O0 -ggdb
 endif
 
-LIBSOURCES := src/buffer.c src/context.c src/device_info.c \
-			  src/identify_file.c src/ucl_unpack.c src/usb.c src/x1000.c
+LIBSOURCES := src/boot_file.c src/buffer.c src/context.c src/device_info.c \
+			  src/identify_file.c src/ucl_unpack.c src/usb.c src/x1000.c \
+			  src/x1600.c
 SOURCES    := $(LIBSOURCES) jztool.c
 EXTRADEPS  := libucl.a libmicrotar.a
 
 CPPDEFINES := $(shell echo foo | $(CROSS)$(CC) -dM -E -)
 
-ifeq ($(findstring WIN32,$(CPPDEFINES)),WIN32)
+ifeq ($(findstring __WIN32__,$(CPPDEFINES)),__WIN32__)
 # TODO: support Windows
 else
 ifeq ($(findstring APPLE,$(CPPDEFINES)),APPLE)

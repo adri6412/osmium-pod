@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Michael Sevakis
  *
@@ -18,9 +17,6 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-
-#define MIXER_OPTIMIZED_WRITE_SAMPLES
-#define MIXER_OPTIMIZED_MIX_SAMPLES
 
 /* Mix channels' samples and apply gain factors */
 static FORCE_INLINE void mix_samples(void *out,

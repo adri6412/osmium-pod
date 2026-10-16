@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2021 Aidan MacDonald
  * Copyright (C) 2021 Dana Conrad
@@ -27,9 +26,9 @@
 #include "kernel.h"
 #include "backlight.h"
 #include "powermgmt.h"
-#include "gpio-x1000.h"
+#include "gpio-ingenic.h"
 #include "irq-x1000.h"
-#include "i2c-x1000.h"
+#include "i2c-ingenic.h"
 #include <stdbool.h>
 
 #ifndef BOOTLOADER

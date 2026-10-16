@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2006-2007 Robert Keevil
  *
@@ -108,7 +107,7 @@ static void piezo_thread(void)
                 /*logf("USB: Piezo core");*/
                 piezo_hw_stop();
                 queue_clear(&piezo_queue);
-                usb_acknowledge(SYS_USB_CONNECTED_ACK);
+                usb_acknowledge(SYS_USB_CONNECTED_ACK, ev.data);
                 usb_wait_for_disconnect(&piezo_queue);
                 break ;
 #endif

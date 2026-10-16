@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Michael Sevakis
  *
@@ -89,7 +88,7 @@ static bool scroll_process_message(int delay)
         case SYS_TIMEOUT:
             return false;
         case SYS_USB_CONNECTED:
-            usb_acknowledge(SYS_USB_CONNECTED_ACK);
+            usb_acknowledge(SYS_USB_CONNECTED_ACK, ev.data);
             usb_wait_for_disconnect(&scroll_queue);
             sync_display_ticks();
             return true;

@@ -43,6 +43,7 @@
 /** Setting values defines **/
 #define MAX_FILENAME 32
 #define MAX_PATHNAME 80
+#define MAX_PATHLIST (MAX_PATHNAME*2)
 
 #ifdef HAVE_CROSSFADE
 enum {
@@ -83,7 +84,8 @@ enum {
     SINGLE_MODE_ARTIST,
     SINGLE_MODE_COMPOSER,
     SINGLE_MODE_GROUPING,
-    SINGLE_MODE_GENRE
+    SINGLE_MODE_GENRE,
+    SINGLE_MODE_PLAYLIST,
 };
 
 #ifdef HAVE_ALBUMART
@@ -157,7 +159,7 @@ struct system_status
 #endif
     int last_volume_change; /* tick the last volume change happened */
     int font_id[NB_SCREENS]; /* font id of the UI font for each screen */
-    bool resume_modified; /* playlist is modified (=> warn before erase) */
+    int resume_modified; /* playlist is modified (=> warn before erase) */
 };
 
 struct user_settings
@@ -294,9 +296,9 @@ struct user_settings
     bool tagcache_autoupdate;
     bool autoresume_enable;
     int autoresume_automatic;
-    unsigned char autoresume_paths[MAX_PATHNAME+1];
+    unsigned char autoresume_paths[MAX_PATHLIST+1];
     bool runtimedb;
-    unsigned char tagcache_scan_paths[MAX_PATHNAME+1];
+    unsigned char tagcache_scan_paths[MAX_PATHLIST+1];
     unsigned char tagcache_db_path[MAX_PATHNAME+1];
 #endif
     int default_codepage;
@@ -333,10 +335,10 @@ struct user_settings
 #ifdef HAVE_USB_CHARGING_ENABLE
     int usb_charging;
 #endif
-#ifdef USB_ENABLE_AUDIO
+#if defined(USB_ENABLE_AUDIO) || defined(HAVE_HOST_USB_AUDIO)
     int usb_audio;
 #endif
-#if defined(HAVE_USB_POWER) && !defined(USB_NONE) && !defined(SIMULATOR)
+#if !defined(SIMULATOR) && !defined(USB_NONE) && (defined(HAVE_USB_ADB) || defined(HAVE_USB_POWER))
     int usb_mode;
 #endif
 #if CONFIG_TUNER

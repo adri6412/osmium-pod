@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2002 - 2007 by Björn Stenberg
  *
@@ -81,12 +80,11 @@ void usage(void)
            "\t-iaudiox5v iAudio X5V format\n"
            "\t-iaudiom5 iAudio M5 format\n"
            "\t-iaudiom3 iAudio M3 format\n");
-    printf("\t-ipod3g ipod firmware partition format (3rd Gen)\n"
-           "\t-ipod4g ipod firmware partition format (4th Gen, Mini, Nano, Photo/Color)\n"
-           "\t-ipod5g ipod firmware partition format (5th Gen - aka Video)\n"
+    printf("\t-ipod3g iPod firmware partition format (3rd Gen)\n"
+           "\t-ipod4g iPod firmware partition format (4th Gen, Mini, Nano, Photo/Color)\n"
+           "\t-ipod5g iPod firmware partition format (5th Gen - aka Video)\n"
            "\t-creative=X [-no-ciff] Creative firmware structure format\n"
-           "\t            (X values: zvm, zvm60, zenvision, zenv, zen,\n"
-           "\t             zenxfi, zenmozaic)\n");
+           "\t            (X values: zenv, zen, zenxfi, zenmozaic)\n");
     printf("\t-gigabeat Toshiba Gigabeat F/X format\n"
            "\t-gigabeats Toshiba Gigabeat S format\n"
            "\t-mi4v2  PortalPlayer .mi4 format (revision 010201)\n"
@@ -336,6 +334,8 @@ int main (int argc, char** argv)
             modelnum = 115;
         else if (!strcmp(&argv[1][5], "erosqnative")) /* Aigo Eros Q Native */
             modelnum = 116;
+        else if (!strcmp(&argv[1][5], "rkrn")) /* Agptek Rocker Native */
+            modelnum = 133;
         else if (!strcmp(&argv[1][5], "nn3g")) /* iPod Nano 3rd Gen */
             modelnum = 117;
         else if (!strcmp(&argv[1][5], "nn4g")) /* iPod Nano 4th Gen */
@@ -416,13 +416,7 @@ int main (int argc, char** argv)
             iname = argv[2];
             oname = argv[3];
         }
-        if(!strcmp(&argv[1][10], "zvm"))
-            return zvm_encode(iname, oname, ZENVISIONM, creative_enable_ciff);
-        else if(!strcmp(&argv[1][10], "zvm60"))
-            return zvm_encode(iname, oname, ZENVISIONM60, creative_enable_ciff);
-        else if(!strcmp(&argv[1][10], "zenvision"))
-            return zvm_encode(iname, oname, ZENVISION, creative_enable_ciff);
-        else if(!strcmp(&argv[1][10], "zenv"))
+        if(!strcmp(&argv[1][10], "zenv"))
             return zvm_encode(iname, oname, ZENV, creative_enable_ciff);
         else if(!strcmp(&argv[1][10], "zen"))
             return zvm_encode(iname, oname, ZEN, creative_enable_ciff);

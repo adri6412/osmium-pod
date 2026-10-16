@@ -13,12 +13,7 @@
 # KIND, either express or implied.
 #
 
-find_package(QuaZip-Qt${QT_VERSION_MAJOR} QUIET)
-if(QuaZip-Qt${QT_VERSION_MAJOR}_FOUND)
-  set(QUAZIP_LIBRARY QuaZip::QuaZip)
-else()
-  set(QUAZIP_LIBRARY quazip)
-endif()
+add_compile_definitions(QT_NO_USE_NODISCARD_FILE_OPEN)
 
 add_executable(RockboxThemeEditor WIN32 MACOSX_BUNDLE
     graphics/rbalbumart.cpp
@@ -117,11 +112,21 @@ set_target_properties(RockboxThemeEditor PROPERTIES AUTOMOC ON)
 set_target_properties(RockboxThemeEditor PROPERTIES AUTORCC ON)
 set_target_properties(RockboxThemeEditor PROPERTIES AUTOUIC ON)
 
+target_compile_features(RockboxThemeEditor PRIVATE cxx_std_17 c_std_11)
+
 target_link_libraries(RockboxThemeEditor
     Qt${QT_VERSION_MAJOR}::Network Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Core
     skin_parser z ${QUAZIP_LIBRARY})
 target_include_directories(RockboxThemeEditor PRIVATE models graphics gui qtfindreplacedialog quazip)
 target_compile_definitions(RockboxThemeEditor PRIVATE FINDREPLACE_NOLIB)
+
+# This is an issue with the code produced by QT's MOC
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    check_cxx_compiler_flag(-Wsfinae-incomplete=0 HAVE_SFINAE_INCOMPLETE)
+    if (HAVE_SFINAE_INCOMPLETE)
+        target_compile_options(RockboxThemeEditor PRIVATE -Wsfinae-incomplete=0)
+    endif()
+endif()
 
 if(APPLE)
     # MacOS Application Bundle specifics.

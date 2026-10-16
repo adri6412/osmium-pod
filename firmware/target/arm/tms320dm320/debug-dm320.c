@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2011 by Tomasz Moń
  * Copyright (C) 2007, 2009 by Karl Kurbjun
@@ -370,17 +369,6 @@ bool dbg_hw_info(void)
         button = button_get_w_tmo(1);
         if(button & BUTTON_POWER)
             done = true;
-#if defined(CREATIVE_ZVx)
-        else if(button & BUTTON_LEFT)
-            lcd_set_direct_fb(false);
-        else if(button & BUTTON_RIGHT)
-            lcd_set_direct_fb(true);
-
-        lcd_puts(0, line++, "LCD info:");
-        lcd_putsf(0, line++, " LCD direct FB access? %s", 
-            (lcd_get_direct_fb() ? "yes" : "no"));
-        line++;
-#endif
 #endif
         lcd_puts(0, line++, "[Rockbox info]");
         lcd_putsf(0, line++, "current tick: %08x Seconds running: %08d",

@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2007 by Rob Purchase
  *
@@ -35,12 +34,6 @@
 #if   defined(IPOD_NANO2G)
     #define MIUSDPARA_BOOST   0x006A49A5
     #define MIUSDPARA_UNBOOST 0x006124D1
-#elif defined(MEIZU_M3)
-    #define MIUSDPARA_BOOST   0x006A491D
-    #define MIUSDPARA_UNBOOST 0x0061248D
-#elif defined(MEIZU_M6SP)
-    #define MIUSDPARA_BOOST   0x006A4965
-    #define MIUSDPARA_UNBOOST 0x00612491
 #endif
 
 #define default_interrupt(name) \
@@ -212,12 +205,6 @@ void system_exception_wait(void)
 {
     post_mortem_stub();
     while(1);
-}
-
-int system_memory_guard(int newmode)
-{
-    (void)newmode;
-    return 0;
 }
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ

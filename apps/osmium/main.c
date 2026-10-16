@@ -43,6 +43,7 @@
 #include "bootchart.h"
 #include "bootdata.h"
 #include "rbunicode.h"
+#include "general.h"
 #include "audio_thread.h"
 #include "playback.h"
 #include "pathfuncs.h"
@@ -165,6 +166,7 @@ static void init(void)
 #ifdef SIMULATOR
     sim_tasks_init();
 #endif
+    prng_init();
     lang_init(core_language_builtin, language_strings,
               LANG_LAST_INDEX_IN_ARRAY);
     storage_init();
@@ -244,6 +246,7 @@ static void INIT_ATTR init(void)
 #if CONFIG_RTC
     rtc_init();
 #endif
+    prng_init();  /* after the RTC: the seed uses the time */
     adc_init();
     usb_init();
     OSM_TRACE("usb_init");
@@ -280,7 +283,7 @@ static void INIT_ATTR init(void)
         osm_boot_message(osm_str(S_BOOT_NO_PARTITION), -1, -1);
         usb_start_monitoring();
         while (button_get(true) != SYS_USB_CONNECTED) {}
-        osm_usb_screen();
+        osm_usb_screen(button_get_data());
 #endif
         system_reboot();
     }
