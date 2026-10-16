@@ -123,9 +123,14 @@ a **GitHub release** with `osmium-pod-fiiom3k-<version>.zip`:
 Each release also carries `bootloader.m3k` (see "Rockbox in flash"), and
 `.github/workflows/pages.yml` then publishes the **web installer**
 (`site/`) on GitHub Pages: <https://adri6412.github.io/osmium-pod/>. From
-Chrome or Edge it copies the release to the microSD card and loads the
-bootloader into the player's RAM over USB (WebUSB, the same protocol as
-jztool), with no tools to install. The page serves the release files from
+Chrome or Edge it installs everything in one click, with no tools and no
+card needed: it puts the player's USB boot mode to use (WebUSB, the same
+protocol as jztool) to load `installer.m3k` together with a package
+holding the bootloader and the `.rockbox` folder. The installer, shown on
+the player's screen, saves a backup of the FiiO firmware on the card if
+one is in, writes the bootloader, the Rockbox image and the internal
+storage, and restarts. Updates go the same way, keeping settings and
+library. The page serves the release files from
 its own origin, because GitHub release downloads cannot be fetched by a
 web page. The workflow publishes to the `gh-pages` branch: for a first
 deployment, set *Settings → Pages → Source* to *Deploy from a branch*,

@@ -220,8 +220,18 @@ export async function getCpuInfo(dev) {
   return new TextDecoder().decode(r.data).replace(/\0.*$/s, "");
 }
 
-// Load the bootloader into RAM and start it (jz_x1000_boot())
-export async function usbBoot(dev, boot, log = () => {}) {
+// send in pieces: one bulk transfer per MiB
+async function sendLarge(dev, addr, data, progress) {
+  const CHUNK = 1024 * 1024;
+  for (let off = 0; off < data.length; off += CHUNK) {
+    await send(dev, addr + off, data.subarray(off, off + CHUNK));
+    progress?.(Math.min(off + CHUNK, data.length) / data.length);
+  }
+}
+
+// Load the bootloader into RAM and start it (jz_x1000_boot()). With a
+// package (USB installer), it goes to PACKAGE_ADDR first.
+export async function usbBoot(dev, boot, log = () => {}, pkg = null, progress = null) {
   await dev.open();
   if (dev.configuration === null) await dev.selectConfiguration(1);
   await dev.claimInterface(0);
@@ -238,6 +248,11 @@ export async function usbBoot(dev, boot, log = () => {}) {
   // the SPL needs a moment to set up the clocks and the DRAM
   await sleep(500);
 
+  if (pkg) {
+    log(`Package: ${(pkg.length / 1048576).toFixed(1)} MB at 0x${PACKAGE_ADDR.toString(16)}`);
+    await sendLarge(dev, PACKAGE_ADDR, pkg, progress);
+  }
+
   log(`Stage 2: bootloader, ${boot.bootloader.length} bytes at 0x${boot.loadAddr.toString(16)}`);
   await send(dev, boot.loadAddr, boot.bootloader);
   await vendorOut(dev, VR_FLUSH_CACHES, 0);
@@ -245,6 +260,72 @@ export async function usbBoot(dev, boot, log = () => {}) {
 
   // the player now runs the bootloader and leaves USB boot mode
   try { await dev.close(); } catch { /* already gone */ }
+}
+
+// ---------------------------------------------------------------- package
+
+// The USB installer (bootloader build type U) looks for the package here:
+// X1000_USB_INSTALLER_PAYLOAD_ADDR in firmware/export/x1000.h
+export const PACKAGE_ADDR = 0x82800000;
+export const PACKAGE_MAX = 24 * 1024 * 1024;
+export const PACKAGE_ALLOW_NO_BACKUP = 0x01;
+
+let crcTable = null;
+export function crc32(buf) {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// ustar archive of [{name, data}] (names under 100 bytes)
+export function writeTar(files) {
+  const enc = new TextEncoder();
+  let size = 1024;
+  for (const f of files) size += 512 + Math.ceil(f.data.length / 512) * 512;
+  const out = new Uint8Array(size);
+  let off = 0;
+  const field = (h, at, len, str) => h.set(enc.encode(str).subarray(0, len), at);
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    if (name.length >= 100) throw new Error(`name too long for tar: ${f.name}`);
+    const h = out.subarray(off, off + 512);
+    h.set(name, 0);
+    field(h, 100, 8, "0000644\0");
+    field(h, 108, 8, "0000000\0");
+    field(h, 116, 8, "0000000\0");
+    field(h, 124, 12, f.data.length.toString(8).padStart(11, "0") + "\0");
+    field(h, 136, 12, "00000000000\0");
+    h[156] = 0x30;                                 // regular file
+    field(h, 257, 8, "ustar\x0000");
+    h.fill(0x20, 148, 156);                        // checksum: spaces first
+    const sum = h.reduce((a, b) => a + b, 0);
+    field(h, 148, 8, sum.toString(8).padStart(6, "0") + "\0 ");
+    out.set(f.data, off + 512);
+    off += 512 + Math.ceil(f.data.length / 512) * 512;
+  }
+  return out;
+}
+
+// The package for the USB installer: bootloader.m3k and the .rockbox files
+export function buildPackage(bootloaderM3k, files, flags = 0) {
+  const tar = writeTar([{ name: "bootloader.m3k", data: bootloaderM3k }, ...files]);
+  if (tar.length + 32 > PACKAGE_MAX) throw new Error("the package is too big");
+  const pkg = new Uint8Array(32 + tar.length);
+  const dv = new DataView(pkg.buffer);
+  pkg.set(new TextEncoder().encode("OSMINST1"), 0);
+  dv.setUint32(8, tar.length, true);
+  dv.setUint32(12, crc32(tar), true);
+  dv.setUint32(16, flags, true);
+  pkg.set(tar, 32);
+  return pkg;
 }
 
 // ---------------------------------------------------------------- zip

@@ -60,17 +60,23 @@ jobs:
         if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'bootloader.m3k'; then
           echo "::warning::release $TAG has no bootloader.m3k: the installer stays disabled"
         fi
+        if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'installer.m3k'; then
+          echo "::warning::release $TAG has no installer.m3k: no direct install"
+        fi
         mv osmium-pod-fiiom3k-*.zip osmium-pod-fiiom3k.zip
 
         BOOTLOADER=null
+        INSTALLER=null
         [ -f bootloader.m3k ] && BOOTLOADER='"firmware/bootloader.m3k"'
+        [ -f installer.m3k ] && INSTALLER='"firmware/installer.m3k"'
         gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,publishedAt,url \
-          | jq --argjson bl "$BOOTLOADER" '{
+          | jq --argjson bl "$BOOTLOADER" --argjson inst "$INSTALLER" '{
               version: .tagName,
               published: .publishedAt,
               url: .url,
               package: "firmware/osmium-pod-fiiom3k.zip",
-              bootloader: $bl
+              bootloader: $bl,
+              installer: $inst
             }' > manifest.json
         cat manifest.json
         ls -l

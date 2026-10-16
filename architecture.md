@@ -133,6 +133,32 @@ card as drive 0 and the NAND as drive 1 (the bootloader stays SD only).
   playlists, resume), then writes `rockbox.m3k` to flash if it changed and
   restarts. The bootloader cannot read the internal drive.
 
+### USB installer
+
+`tools/configure --type=U` builds the bootloader with
+`X1000_USB_INSTALLER` (`installer.m3k` in releases). It is only ever
+loaded over USB boot, by the web installer (`site/lib.js`), which first
+sends a package to the top of DRAM (`X1000_USB_INSTALLER_PAYLOAD_ADDR`,
+24 MiB; `app.lds` gives that memory to `pluginbuf` so the heap stops
+before it). The package is a 32-byte header (`OSMINST1`, length, zlib
+CRC-32, flags) and a ustar archive: `bootloader.m3k`, then the release's
+`.rockbox` files. This build has the internal storage too.
+
+`bootloader/x1000/usbinstall.c` runs before the recovery menu:
+1. if the FiiO kernel is still at `ROCKBOX_FLASH_ADDR`, a backup to the
+   card (`fiiom3k-boot.bin` unless it exists, `flash.img`), or the
+   package's "no backup" flag;
+2. the bootloader into block 0 (`install_bootloader_mem()`, read back):
+   from then on whatever fails, a Rockbox bootloader starts;
+3. the Rockbox image (`rbflash_write_buffer()`);
+4. the internal storage: formatted if it holds no file system, a system on
+   the card copied over first, then the release files on top; the card's
+   `.rockbox` becomes `.rockbox.bak`, else it would be taken as an update;
+5. `storage_flush()` and a restart.
+
+On failure it says why and falls back to the recovery menu. Loaded with no
+package, it is just the bootloader.
+
 Host tests (not in the tree) ran the driver and Dhara on a simulated NAND
 with bad blocks, through random writes, two full fills, 40 power cuts in
 the middle of writes and a block failing to erase, and checked the FAT16

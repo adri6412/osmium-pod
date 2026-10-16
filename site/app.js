@@ -1,6 +1,9 @@
 // Osmium Pod web installer: page logic. Formats and USB live in lib.js.
 
-import { parseBootloader, readZip, usbBoot, USB_FILTER } from "./lib.js";
+import {
+  buildPackage, parseBootloader, readZip, usbBoot,
+  PACKAGE_ALLOW_NO_BACKUP, USB_FILTER,
+} from "./lib.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -31,6 +34,15 @@ function setStatus(id, text, kind = "") {
   el.className = `status ${kind}`;
 }
 
+function logger(id) {
+  const log = $(id);
+  log.textContent = "";
+  return (line) => {
+    log.hidden = false;
+    log.textContent += `${line}\n`;
+  };
+}
+
 // ---------------------------------------------------------------- release
 
 async function loadManifest() {
@@ -56,11 +68,78 @@ async function loadManifest() {
   $("release").append(a, date);
 
   for (const id of ["zip-link", "zip-link-top"]) $(id).href = manifest.package;
+  $("install-button").disabled = !hasUsb || !manifest.installer;
+  $("rescue-button").disabled = !hasUsb;
   $("sd-button").disabled = !hasFolders;
-  $("usb-button").disabled = !hasUsb;
+  if (!manifest.installer)
+    setStatus("install-status",
+      "This release has no installer: use the other ways below.", "error");
 }
 
-// ---------------------------------------------------------------- step 1
+async function pickDevice() {
+  try {
+    return await navigator.usb.requestDevice({ filters: [USB_FILTER] });
+  } catch {
+    return null; /* no device picked */
+  }
+}
+
+// ---------------------------------------------------------------- install
+
+async function installPlayer() {
+  const noBackup = $("no-backup").checked;
+  const ok = confirm(
+    `Install Osmium Pod ${manifest.version} on the player?\n\n` +
+    "The FiiO firmware is replaced. " +
+    (noBackup ? "No backup of it will be kept."
+              : "If it is still there, a backup goes to the card in the player."));
+  if (!ok) return;
+
+  const dev = await pickDevice();
+  if (!dev) return;
+
+  const say = logger("install-log");
+  const btn = $("install-button");
+  const bar = $("install-progress");
+  btn.disabled = true;
+  bar.hidden = false;
+  bar.value = 0;
+  try {
+    setStatus("install-status", "Downloading the release…");
+    const [zip, bl, inst] = await Promise.all([
+      fetchBytes(manifest.package),
+      fetchBytes(manifest.bootloader),
+      fetchBytes(manifest.installer),
+    ]);
+    parseBootloader(bl); /* refuse a broken download */
+    const installer = parseBootloader(inst);
+    say(`Installer ${installer.version}`);
+
+    setStatus("install-status", "Preparing the package…");
+    const files = [];
+    for (const e of readZip(zip))
+      if (e.name.startsWith(".rockbox/"))
+        files.push({ name: e.name, data: await e.data() });
+    const pkg = buildPackage(bl, files, noBackup ? PACKAGE_ALLOW_NO_BACKUP : 0);
+    say(`${files.length} files`);
+
+    setStatus("install-status", "Sending to the player…");
+    await usbBoot(dev, installer, say, pkg, (f) => { bar.value = f; });
+    say("Started.");
+    setStatus("install-status",
+      "The player is installing: follow its screen. It restarts by itself " +
+      "when it is done, then you can unplug it.", "ok");
+  } catch (e) {
+    say(`Error: ${e.message}`);
+    setStatus("install-status",
+      "Sending failed. Unplug the player, enter USB boot mode again and retry.", "error");
+    try { await dev.close(); } catch { /* ignore */ }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------- card
 
 async function writeFile(root, path, data) {
   const parts = path.split("/");
@@ -120,24 +199,14 @@ async function prepareCard() {
   }
 }
 
-// ---------------------------------------------------------------- step 2
+// ---------------------------------------------------------------- rescue
 
-async function bootPlayer() {
-  const log = $("usb-log");
-  const say = (line) => {
-    log.hidden = false;
-    log.textContent += `${line}\n`;
-  };
-  log.textContent = "";
+async function rescueBoot() {
+  const dev = await pickDevice();
+  if (!dev) return;
 
-  let dev;
-  try {
-    dev = await navigator.usb.requestDevice({ filters: [USB_FILTER] });
-  } catch {
-    return; /* no device picked */
-  }
-
-  const btn = $("usb-button");
+  const say = logger("rescue-log");
+  const btn = $("rescue-button");
   btn.disabled = true;
   try {
     const file = $("bl-file").files[0];
@@ -149,11 +218,10 @@ async function bootPlayer() {
 
     await usbBoot(dev, boot, say);
     say("Started.");
-    setStatus("usb-status",
-      "The recovery menu should now be on the player's screen. Go on with step 3.", "ok");
+    setStatus("rescue-status", "The recovery menu should now be on the player's screen.", "ok");
   } catch (e) {
     say(`Error: ${e.message}`);
-    setStatus("usb-status",
+    setStatus("rescue-status",
       "Loading failed. Unplug the player, enter USB boot mode again and retry.", "error");
     try { await dev.close(); } catch { /* ignore */ }
   } finally {
@@ -161,22 +229,10 @@ async function bootPlayer() {
   }
 }
 
-// ---------------------------------------------------------------- step 3
-
-function setupChecklist() {
-  for (const box of document.querySelectorAll("[data-check]")) {
-    const key = `osmium-check-${box.dataset.check}`;
-    try { box.checked = localStorage.getItem(key) === "1"; } catch { /* no storage */ }
-    box.addEventListener("change", () => {
-      try { localStorage.setItem(key, box.checked ? "1" : "0"); } catch { /* ignore */ }
-    });
-  }
-}
-
 // ---------------------------------------------------------------- init
 
-$("browser-warning").hidden = hasUsb && hasFolders;
+$("browser-warning").hidden = hasUsb;
+$("install-button").addEventListener("click", installPlayer);
 $("sd-button").addEventListener("click", prepareCard);
-$("usb-button").addEventListener("click", bootPlayer);
-setupChecklist();
+$("rescue-button").addEventListener("click", rescueBoot);
 loadManifest();

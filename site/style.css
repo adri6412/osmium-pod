@@ -166,9 +166,6 @@ details {
 summary { cursor: pointer; font-weight: 600; }
 details[open] summary { margin-bottom: 8px; }
 
-.checklist { list-style: decimal; }
-.checklist label { cursor: pointer; }
-.checklist input { margin-right: 6px; accent-color: var(--accent); }
 .danger { color: var(--error); font-weight: 600; }
 
 footer {
@@ -183,3 +180,15 @@ footer {
   .step { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
   h1 { font-size: 1.6rem; }
 }
+
+.option {
+  display: block;
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.option input { margin-right: 6px; accent-color: var(--accent); }
+
+button.small { padding: 8px 14px; font-size: 0.95rem; }

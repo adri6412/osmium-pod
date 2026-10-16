@@ -128,6 +128,16 @@ jobs:
           echo "bootloader.ucl is $size bytes, over the 102 KiB limit"; exit 1
         fi
 
+    - name: Build the USB installer
+      run: |
+        # the bootloader built as type U: the web installer loads it over
+        # USB boot with a package to install; it never goes to flash
+        mkdir -p build-installer
+        cd build-installer
+        ../tools/configure --target=fiiom3k --type=U
+        make -j$(nproc)
+        ls -l bootloader.m3k
+
     - name: Assemble the package
       run: |
         PKG=osmium-pod-fiiom3k-${{ steps.version.outputs.name }}
@@ -144,12 +154,14 @@ jobs:
         # The bootloader (Rockbox in flash) is a separate release file, so
         # copying the package to the card never changes it by accident.
         cp build-bootloader/bootloader.m3k bootloader.m3k
+        cp build-installer/bootloader.m3k installer.m3k
 
         cat > release/INSTALL.txt <<'EOF'
         Osmium Pod - Osmium Sound for the FiiO M3K
         ==========================================
 
-        Easiest: use the web installer, from Chrome or Edge:
+        Easiest: use the web installer, from Chrome or Edge. It installs
+        everything into the player over USB, with no card needed:
           https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
 
         Update (Rockbox bootloader already on the player):
@@ -178,6 +190,7 @@ jobs:
         path: |
           release/
           bootloader.m3k
+          installer.m3k
         include-hidden-files: true
 
     - name: Publish the release
@@ -199,12 +212,14 @@ jobs:
           player.
 
           `bootloader.m3k` puts Rockbox in the player's internal flash, in
-          place of the FiiO firmware. The package also works with the
+          place of the FiiO firmware; `installer.m3k` is what the web installer
+          loads over USB to install everything. The package also works with the
           official Rockbox bootloader (https://download.rockbox.org/), which
           starts it from the card. See `INSTALL.txt`.
         files: |
           ${{ env.PKG }}.zip
           bootloader.m3k
+          installer.m3k
 
   # Point the web installer at the release just published (not for
   # pre-releases). The tag is passed on: right after publishing, GitHub
