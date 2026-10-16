@@ -101,21 +101,153 @@ void osm_boot_trace(const char *step)
 }
 #endif
 
-static void draw_logo_screen(const char *line, int step, int steps)
+/* The boot animation of the Osmium Sound appliance (its Plymouth theme),
+ * at the same 25 frames a second:
+ *
+ *   frames  8..17  a gold dot grows into the first bar
+ *          22..44  the other six bars slide out of it to their places
+ *          43..64  O S M I U M come in from the left, one after the other
+ *          61..77  S O U N D fades in underneath
+ *          80..    a light runs over the bars every 2.2 s (55 frames)
+ *
+ * The timings are measured on the appliance's frames. */
+#define BA_FPS      25
+#define BA_INTRO    80          /* the mark is complete */
+#define BA_LOOP     55
+#define BA_PALE     0xFFF8EBB8u /* the bars at the top of the light */
+
+/* the first bar's height, frames 8..17, 1/1000 of full */
+static const short ba_grow[] = { 128, 397, 603, 731, 808, 885, 910, 936, 962, 987 };
+#define BA_GROW_FIRST 8
+
+/* bars 1..6 on their way out, frames 22..44, 1/1000 of the way */
+static const short ba_open[][BRAND_BARS - 1] = {
+    {    0,    0,    0,    0,    0,    0 }, /* 22 */
+    {    0,    0,    0,    0,    0,   63 },
+    {    0,    0,    0,   32,  112,  193 },
+    {    0,    0,   79,  161,  241,  324 }, /* 25 */
+    {   67,  115,  209,  291,  370,  451 },
+    {  157,  257,  339,  419,  495,  570 },
+    {  306,  386,  466,  541,  608,  673 },
+    {  434,  511,  583,  649,  704,  757 },
+    {  553,  622,  683,  738,  779,  820 }, /* 30 */
+    {  658,  715,  765,  806,  835,  867 },
+    {  744,  789,  825,  857,  877,  902 },
+    {  809,  842,  871,  894,  908,  928 },
+    {  858,  883,  904,  922,  931,  947 },
+    {  894,  912,  928,  942,  948,  961 }, /* 35 */
+    {  921,  935,  947,  958,  961,  972 },
+    {  942,  952,  961,  969,  970,  980 },
+    {  955,  963,  971,  978,  978,  986 },
+    {  966,  973,  979,  986,  984,  991 },
+    {  975,  980,  986,  990,  988,  995 }, /* 40 */
+    {  982,  986,  989,  994,  991,  997 },
+    {  987,  990,  993,  997,  993,  999 },
+    {  991,  992,  996,  999,  995, 1000 },
+    {  993,  995,  997, 1000,  996, 1000 }, /* 44 */
+};
+#define BA_OPEN_FIRST 22
+
+/* each letter starts a little after the one on its left (1/10 frame) */
+static const short ba_letter_delay[BRAND_LETTERS] = { 0, 19, 39, 58, 71, 88 };
+#define BA_LETTERS_START 425    /* 1/10 frame */
+#define BA_LETTERS_LEN   111    /* 1/10 frame */
+#define BA_LETTERS_SLIDE 192    /* from the left, 1/1000 of the cap height */
+
+/* S O U N D, frames 61..77 */
+static const unsigned char ba_sound[] = {
+    23, 46, 69, 87, 107, 128, 145, 161, 179, 194, 207, 219, 230, 240, 245, 250,
+};
+#define BA_SOUND_FIRST 61
+
+/* the light: a Gaussian (sigma 3.8 frames) by 1/4 frame, and when it
+ * peaks on each bar (1/4 frame after the loop starts) */
+static const unsigned char ba_light[] = {
+    255, 254, 253, 250, 246, 242, 236, 229, 222, 214, 205, 196, 187, 177, 167,
+    157, 147, 136, 126, 117, 107,  98,  89,  81,  73,  66,  59,  53,  47,  41,
+     36,  32,  28,  24,  21,  18,  15,  13,  11,   9,   8,   7,   6,   5,   4,
+      3,   3,   2,   2,
+};
+static const unsigned char ba_light_peak[BRAND_BARS] = { 28, 40, 48, 55, 61, 65, 68 };
+
+static int ease_out_cubic(int t1000)
 {
+    if (t1000 <= 0)
+        return 0;
+    if (t1000 >= 1000)
+        return 1000;
+    int u = 1000 - t1000;
+    return 1000 - u * u / 1000 * u / 1000;
+}
+
+static color_t mix(color_t a, color_t b, int w255)
+{
+    int r = ((a >> 16) & 0xFF) + ((((int)(b >> 16) & 0xFF) - (int)((a >> 16) & 0xFF)) * w255) / 255;
+    int g = ((a >> 8) & 0xFF) + ((((int)(b >> 8) & 0xFF) - (int)((a >> 8) & 0xFF)) * w255) / 255;
+    int bl = (a & 0xFF) + (((int)(b & 0xFF) - (int)(a & 0xFF)) * w255) / 255;
+    return 0xFF000000u | (r << 16) | (g << 8) | bl;
+}
+
+/* the mark at frame f (-1: complete, still); returns the opacity of SOUND */
+static int boot_look(int f, struct gfx_brand_look *look)
+{
+    if (f < 0)
+        f = BA_INTRO - 1;
+
+    int grow = f - BA_GROW_FIRST;
+    look->bars_h1000 = grow < 0 ? 0 :
+                       grow < (int)ARRAYLEN(ba_grow) ? ba_grow[grow] : 1000;
+
+    int open = f - BA_OPEN_FIRST;
+    look->bars_open[0] = 1000;
+    for (int i = 1; i < BRAND_BARS; i++)
+        look->bars_open[i] = open < 0 ? 0 :
+                             open < (int)ARRAYLEN(ba_open) ? ba_open[open][i - 1] : 1000;
+
+    for (int i = 0; i < BRAND_BARS; i++)
+    {
+        int w = 0;
+        if (f >= BA_INTRO)
+        {
+            int d = (f - BA_INTRO) % BA_LOOP * 4 - ba_light_peak[i];
+            if (d < 0)
+                d = -d;
+            w = d < (int)ARRAYLEN(ba_light) ? ba_light[d] : 0;
+        }
+        look->bars_color[i] = mix(C_GOLD, BA_PALE, w);
+    }
+
+    for (int i = 0; i < BRAND_LETTERS; i++)
+    {
+        int t = (f * 10 - BA_LETTERS_START - ba_letter_delay[i]) * 1000 / BA_LETTERS_LEN;
+        int e = ease_out_cubic(t);
+        look->letters_alpha[i] = t <= 0 ? 0 : e * 255 / 1000;
+        look->letters_dx[i] = -BA_LETTERS_SLIDE * (1000 - e) / 1000;
+    }
+
+    int s = f - BA_SOUND_FIRST;
+    return s < 0 ? 0 : s < (int)ARRAYLEN(ba_sound) ? ba_sound[s] : 255;
+}
+
+/* the boot screen: the mark at frame f (-1: complete), and the message
+ * and progress of what the player is doing */
+static void draw_logo_screen(int f, const char *line, int step, int steps)
+{
+    struct gfx_brand_look look;
+    int sound_a = boot_look(f, &look);
+
     gfx_noclip();
     gfx_clear(C_DARK);
-    /* a soft gold halo behind the mark */
-    for (int r = 110; r > 0; r -= 10)
-        gfx_circle(SCR_W / 2, SCR_H / 2 - 18, r, GOLD_A(0.012));
     /* the stacked mark: bars and OSMIUM, SOUND spread underneath */
     int cap = 16;
     int w = gfx_brand(0, -100, cap, false);        /* measure */
     int x = (SCR_W - w) / 2, y = SCR_H / 2 - 34;
-    gfx_brand(x, y, cap, false);
+    gfx_brand_ex(x, y, cap, false, &look);
     const char *sound = "S O U N D";
     int sw = gfx_text_width_ls(OSM_FONT_B12, sound, 16 * 3);
-    gfx_text_ls(OSM_FONT_B12, x + w - sw, y + cap + 10, sound, C_INK, 16 * 3);
+    if (sound_a > 0)
+        gfx_text_ls(OSM_FONT_B12, x + w - sw, y + cap + 10, sound,
+                    (C_INK & 0x00FFFFFFu) | ((color_t)sound_a << 24), 16 * 3);
     if (line)
     {
         gfx_text_fit(OSM_FONT_R12, 16, SCR_H - 62, SCR_W - 32, line, SILVER_A(0.8),
@@ -133,25 +265,95 @@ static void draw_logo_screen(const char *line, int step, int steps)
     gfx_present();
 }
 
+/* While the system starts, a thread of its own plays the animation: the
+ * boot itself blocks for seconds at a time (scanning the card, loading the
+ * database). It owns the screen until osm_boot_splash_end(); the boot
+ * messages only leave it the text to show. */
+static struct {
+    unsigned int thread;
+    long start;                 /* tick of frame 0 */
+    volatile bool finish;       /* stop once the mark is complete */
+    volatile bool stop;         /* stop now */
+    struct mutex lock;          /* the message below */
+    char line[96];
+    bool has_line;
+    int step, steps;
+} boot;
+static long boot_stack[(16 * 1024) / sizeof(long)];
+
+static void boot_draw(int f)
+{
+    char line[sizeof boot.line];
+    bool has_line;
+    int step, steps;
+    mutex_lock(&boot.lock);
+    has_line = boot.has_line;
+    strmemccpy(line, boot.line, sizeof line);
+    step = boot.step;
+    steps = boot.steps;
+    mutex_unlock(&boot.lock);
+    draw_logo_screen(f, has_line ? line : NULL, step, steps);
+}
+
+static void boot_thread(void)
+{
+    while (!boot.stop)
+    {
+        int f = (current_tick - boot.start) * BA_FPS / HZ;
+        if (boot.finish && f >= BA_INTRO)
+            break;
+        boot_draw(f);
+        long next = boot.start + (f + 1) * HZ / BA_FPS;
+        sleep(MAX(1, next - current_tick));
+    }
+}
+
 void osm_boot_splash(void)
 {
     gfx_init();
-    draw_logo_screen(NULL, 0, 0);
-#ifdef SIMULATOR
-    sleep(HZ / 2);
+    mutex_init(&boot.lock);
+    boot.start = current_tick;
+#ifdef OSM_BOOT_TRACE
+    /* the trace writes on the screen: no animation over it */
+    draw_logo_screen(-1, NULL, 0, 0);
+#else
+    draw_logo_screen(0, NULL, 0, 0);
+    boot.thread = create_thread(boot_thread, boot_stack, sizeof boot_stack, 0,
+                                "osm boot" IF_PRIO(, PRIORITY_USER_INTERFACE)
+                                IF_COP(, CPU));
 #endif
+}
+
+void osm_boot_splash_end(bool complete)
+{
+    if (!boot.thread)
+        return;
+    boot.finish = true;
+    if (!complete)
+        boot.stop = true;
+    thread_wait(boot.thread);
+    boot.thread = 0;
 }
 
 void osm_boot_message(const char *msg, int step, int steps)
 {
-    draw_logo_screen(msg, step, steps);
+    mutex_lock(&boot.lock);
+    boot.has_line = msg != NULL;
+    if (msg)
+        strmemccpy(boot.line, msg, sizeof boot.line);
+    boot.step = step;
+    boot.steps = steps;
+    mutex_unlock(&boot.lock);
+    if (!boot.thread)
+        draw_logo_screen(-1, msg, step, steps);
 }
 
 void osm_fatal(const char *msg, int code)
 {
     char buf[64];
     snprintf(buf, sizeof buf, "%s (%d)", msg, code);
-    draw_logo_screen(buf, 0, 0);
+    osm_boot_splash_end(false);
+    draw_logo_screen(-1, buf, 0, 0);
     sleep(HZ * 5);
     system_reboot();
 }
@@ -190,6 +392,8 @@ void osm_usb_screen(intptr_t seqnum)
         return;
     inside = true;
 #endif
+    /* USB at boot (no usable partition): the screen is ours now */
+    osm_boot_splash_end(false);
     /* the font files stay open: close them while the computer has the card */
     font_disable_all();
     usb_acknowledge(SYS_USB_CONNECTED_ACK, seqnum);
@@ -220,7 +424,7 @@ void osm_usb_screen(intptr_t seqnum)
 
 void osm_shutdown_screen(bool reboot, bool battery_low)
 {
-    draw_logo_screen(battery_low ? osm_str(S_BATTERY_LOW) :
+    draw_logo_screen(-1, battery_low ? osm_str(S_BATTERY_LOW) :
                      osm_str(reboot ? S_RESTARTING : S_SHUTTING_DOWN), 0, 0);
 }
 

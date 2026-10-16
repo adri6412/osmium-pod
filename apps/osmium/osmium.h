@@ -16,6 +16,9 @@ void osm_boot_trace(const char *step);
 #else
 #define OSM_TRACE(step) do { } while (0)
 #endif
+/* the animation runs until this: `complete` waits for the mark to be whole
+ * (at most 3.2 s after the splash started), else it stops at once */
+void osm_boot_splash_end(bool complete);
 void osm_boot_message(const char *msg, int step, int steps);
 void osm_fatal(const char *msg, int code);
 

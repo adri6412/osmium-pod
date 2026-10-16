@@ -976,6 +976,34 @@ int gfx_text_wrap(int font, int x, int y, int maxw, int lines, int lh,
 
 int gfx_brand(int x, int y, int cap, bool sound)
 {
+    return gfx_brand_ex(x, y, cap, sound, NULL);
+}
+
+/* OSMIUM a letter at a time: each with its opacity and offset */
+static void brand_letters(int font, int x, int y, int fcap, int spacing16,
+                          const struct gfx_brand_look *look)
+{
+    const struct osm_font *f = &osm_fonts[font];
+    const char *word = "OSMIUM";
+    int pen16 = x << 4;
+    for (int i = 0; word[i]; i++)
+    {
+        const struct osm_glyph *g = find_glyph(f, (unsigned char)word[i]);
+        if (!g)
+            continue;
+        int a = look->letters_alpha[i];
+        if (a > 0 && g->w)
+        {
+            int px = (pen16 + look->letters_dx[i] * fcap * 16 / 1000) >> 4;
+            mask4(f->bits + g->off, g->w, g->h, px + g->xoff, y + g->yoff,
+                  (C_GOLD & 0x00FFFFFFu) | ((color_t)MIN(a, 255) << 24));
+        }
+        pen16 += (g->adv << 4) + spacing16;
+    }
+}
+
+int gfx_brand_ex(int x, int y, int cap, bool sound, const struct gfx_brand_look *look)
+{
     /* DejaVu Sans Bold: the cap height is 0.729 em */
     int font = cap <= 7 ? OSM_FONT_B10 : cap <= 9 ? OSM_FONT_B12 :
                cap <= 10 ? OSM_FONT_B13 : cap <= 11 ? OSM_FONT_B15 :
@@ -986,14 +1014,31 @@ int gfx_brand(int x, int y, int cap, bool sound)
     int fcap = (f->height * 1000 / 1164) * 729 / 1000;
     capy = f->ascent - fcap;
     int ty = y - capy;                       /* so the capitals start at y */
-    static const int bar_x[] = { 0, 568, 1012, 1346, 1605, 1815, 1988 };
+    static const int bar_x[BRAND_BARS] = { 0, 568, 1012, 1346, 1605, 1815, 1988 };
     int bw = MAX(1, (fcap * 74 + 500) / 1000);
-    for (int i = 0; i < (int)ARRAYLEN(bar_x); i++)
-        gfx_fill(x + (bar_x[i] * fcap + 500) / 1000, y, bw, fcap, C_GOLD);
+    int bh = fcap, by = y;
+    if (look)
+    {
+        bh = MAX(1, (fcap * look->bars_h1000 + 500) / 1000);
+        by = y + (fcap - bh) / 2;           /* grows from its middle */
+    }
+    for (int i = 0; i < BRAND_BARS; i++)
+    {
+        int bx = (bar_x[i] * fcap + 500) / 1000;
+        if (look)
+            bx = bx * look->bars_open[i] / 1000;
+        gfx_fill(x + bx, by, bw, bh, look ? look->bars_color[i] : C_GOLD);
+    }
     int bars_w = (1988 * fcap + 500) / 1000 + bw;
     int tx = x + bars_w + fcap / 2;
     int track16 = fcap * 178 / 1000 * 16 / 1;
-    tx += gfx_text_ls(font, tx, ty, "OSMIUM", C_GOLD, track16 / 1);
+    if (look)
+    {
+        brand_letters(font, tx, ty, fcap, track16, look);
+        tx += gfx_text_width_ls(font, "OSMIUM", track16);
+    }
+    else
+        tx += gfx_text_ls(font, tx, ty, "OSMIUM", C_GOLD, track16 / 1);
     if (sound)
     {
         tx += fcap * 55 / 100;

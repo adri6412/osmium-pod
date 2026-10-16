@@ -929,6 +929,8 @@ static void ui_thread(void)
 
 void osm_ui_run(void)
 {
+    /* let the boot animation finish building the mark first */
+    osm_boot_splash_end(true);
     ui_thread_id = create_thread(ui_thread, ui_stack, sizeof(ui_stack), 0,
                                  "osm ui" IF_PRIO(, PRIORITY_USER_INTERFACE)
                                  IF_COP(, CPU));

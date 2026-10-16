@@ -112,4 +112,18 @@ void gfx_set_fallback_font(int rockbox_font_id);
 /* the Osmium Sound mark: gold bars, OSMIUM in gold, SOUND in off-white */
 int  gfx_brand(int x, int y, int cap, bool sound);
 
+/* the mark while it builds up (the boot animation): the same layout, with
+ * each part where and how the animation has it */
+#define BRAND_BARS    7
+#define BRAND_LETTERS 6                 /* O S M I U M */
+struct gfx_brand_look {
+    int bars_h1000;                     /* height of the bars, 1/1000 of full */
+    int bars_open[BRAND_BARS];          /* 1/1000 of the way from the first
+                                           bar to their place */
+    color_t bars_color[BRAND_BARS];
+    int letters_alpha[BRAND_LETTERS];   /* 0..255 */
+    int letters_dx[BRAND_LETTERS];      /* offset, 1/1000 of the cap height */
+};
+int  gfx_brand_ex(int x, int y, int cap, bool sound, const struct gfx_brand_look *look);
+
 #endif
