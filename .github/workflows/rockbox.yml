@@ -102,14 +102,6 @@ jobs:
         # rockbox.zip: .rockbox with firmware, codecs, languages, ...
         make zip
 
-    - name: Build the bootloader
-      run: |
-        mkdir -p build-boot
-        cd build-boot
-        ../tools/configure --target=fiiom3k --type=b
-        make -j$(nproc)
-        ls -l bootloader.m3k
-
     - name: Assemble the package
       run: |
         PKG=rockipod-osmium-fiiom3k-${{ steps.version.outputs.name }}
@@ -123,9 +115,8 @@ jobs:
         mkdir -p release/.rockbox/fonts
         ./tools/convbdf -f -o release/.rockbox/fonts/16-GNU-Unifont.fnt fonts/16-GNU-Unifont.bdf
 
-        # The bootloader, at the root of the card: the bootloader's recovery
-        # menu installs or updates it from there ("Install or update bootloader").
-        cp build-boot/bootloader.m3k release/
+        # No bootloader in the package: bootloaders built from git are not
+        # tested and can leave the player unbootable. Use the official one.
 
         cat > release/INSTALL.txt <<'EOF'
         RockIpod - Osmium Sound for the FiiO M3K
@@ -139,14 +130,11 @@ jobs:
           3. Eject and restart the player.
 
         First installation (no Rockbox bootloader yet):
-          Install the bootloader first, with Rockbox Utility
-          (https://www.rockbox.org/wiki/RockboxUtility) or with the
-          bootloader.m3k file in this archive, as described in the Rockbox
-          manual for the FiiO M3K; then follow the steps above.
-
-        Updating the bootloader later: copy bootloader.m3k to the root of the
-        card, hold Volume Up while powering on to open the recovery menu and
-        choose "Install or update bootloader".
+          Install the OFFICIAL Rockbox bootloader for the FiiO M3K first
+          (https://download.rockbox.org/, with Rockbox Utility or jztool, as
+          the Rockbox manual describes); then follow the steps above.
+          This firmware works with the official bootloader: do not install
+          a bootloader built from this repository.
         EOF
 
         (cd release && zip -qr ../$PKG.zip .)
@@ -173,8 +161,7 @@ jobs:
 
           **Install**: download `${{ env.PKG }}.zip`, unzip it to the root
           of the M3K's microSD card (overwrite the files in `.rockbox`) and restart the
-          player. See `INSTALL.txt` in the archive for the first installation
-          of the bootloader.
+          player. It needs the **official** Rockbox bootloader for the M3K
+          (https://download.rockbox.org/); see `INSTALL.txt`.
         files: |
           ${{ env.PKG }}.zip
-          build-boot/bootloader.m3k
