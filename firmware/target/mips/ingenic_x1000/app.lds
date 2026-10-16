@@ -11,7 +11,12 @@ INPUT(target/mips/system-mips.o)
 #ifdef BOOTLOADER
 # undef PLUGIN_BUFFER_SIZE
 # undef CODEC_SIZE
-# define PLUGIN_BUFFER_SIZE 0
+# ifdef X1000_USB_INSTALLER
+/* pluginbuf: the package loaded with the USB installer */
+#  define PLUGIN_BUFFER_SIZE X1000_USB_INSTALLER_PAYLOAD_SIZE
+# else
+#  define PLUGIN_BUFFER_SIZE 0
+# endif
 # define CODEC_SIZE 0
 # if defined(HAVE_INIT_ATTR)
 /* This needs to be fixed for the bootloader */

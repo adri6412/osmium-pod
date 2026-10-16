@@ -4403,6 +4403,13 @@ fi
       do_bootloader
       echo "Bootloader build selected"
       ;;
+    [Uu])
+      # X1000 USB installer: the bootloader, loaded over USB boot only,
+      # which installs a package the web installer put in RAM
+      do_bootloader
+      extradefines="$extradefines -DX1000_USB_INSTALLER"
+      echo "X1000 USB installer build selected"
+      ;;
     [Ss])
       if [ "$modelname" = "sdlapp" ]; then
           echo "Do not use sdlapp for simulator builds; it is already a native SDL application."

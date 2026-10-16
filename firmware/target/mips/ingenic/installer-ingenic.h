@@ -48,6 +48,8 @@ enum {
 };
 
 extern int install_bootloader(const char* filename);
+extern int install_bootloader_mem(long (*get_file)(const char* name,
+                                                   const void** data));
 extern int backup_bootloader(const char* filename);
 extern int restore_bootloader(const char* filename);
 extern const char* installer_strerror(int rc);

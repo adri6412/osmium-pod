@@ -103,6 +103,13 @@
 /* Standard DRAM base address for backward compatibility */
 #define X1000_STANDARD_DRAM_BASE 0x80004000
 
+/* The USB installer (build type U) finds the package the web installer
+ * loads with it at the top of DRAM; the linker keeps it out of the heap.
+ * site/lib.js has the same address. */
+#define X1000_USB_INSTALLER_PAYLOAD_SIZE (24 * 1024 * 1024)
+#define X1000_USB_INSTALLER_PAYLOAD_ADDR \
+    (X1000_DRAM_END - X1000_USB_INSTALLER_PAYLOAD_SIZE)
+
 /* Required for pcm_rec_dma_get_peak_buffer(), doesn't do anything
  * except on targets with recording. */
 #define HAVE_PCM_DMA_ADDRESS

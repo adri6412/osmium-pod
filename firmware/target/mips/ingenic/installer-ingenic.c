@@ -237,6 +237,59 @@ int install_bootloader(const char* filename)
     return rc;
 }
 
+/* The same update as install_bootloader(), from the archive's files
+ * already in memory: get_file() finds one by name, returning its size or
+ * a negative number if it is missing. The written image is read back. */
+int install_bootloader_mem(long (*get_file)(const char* name, const void** data))
+{
+    struct updater u;
+    int rc = updater_init(&u);
+    if(rc != IERR_SUCCESS)
+        goto error;
+
+    rc = nand_read_bytes(u.ndrv, u.img_off, u.img_len, u.img_buf);
+    if(rc != NAND_SUCCESS) {
+        rc = IERR_NAND_READ;
+        goto error;
+    }
+
+    for(int i = 0; i < num_updates; ++i) {
+        const struct update_part* part = &updates[i];
+        const void* data;
+        long size = get_file(part->filename, &data);
+        if(size < 0 || (size_t)size > part->length) {
+            rc = IERR_BAD_FORMAT;
+            goto error;
+        }
+
+        memset(&u.img_buf[part->offset - u.img_off], 0xff, part->length);
+        memcpy(&u.img_buf[part->offset - u.img_off], data, size);
+    }
+
+    rc = nand_write_bytes(u.ndrv, u.img_off, u.img_len, u.img_buf);
+    if(rc != NAND_SUCCESS) {
+        rc = IERR_NAND_WRITE;
+        goto error;
+    }
+
+    /* compare page by page, the image buffer holds what should be there */
+    static uint8_t page[NAND_DRV_MAXPAGESIZE];
+    unsigned pg_size = u.ndrv->chip->page_size;
+    for(size_t off = 0; off < u.img_len; off += pg_size) {
+        if(nand_read_bytes(u.ndrv, u.img_off + off, pg_size, page) != NAND_SUCCESS ||
+           memcmp(page, &u.img_buf[off], pg_size)) {
+            rc = IERR_NAND_WRITE;
+            goto error;
+        }
+    }
+
+    rc = IERR_SUCCESS;
+
+  error:
+    updater_cleanup(&u);
+    return rc;
+}
+
 int backup_bootloader(const char* filename)
 {
     int rc, fd = -1;

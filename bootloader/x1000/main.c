@@ -82,6 +82,13 @@ void main(uint32_t saved_cpm_scratch)
     }
 #endif
 
+#ifdef X1000_USB_INSTALLER
+    /* loaded by the web installer: install its package, restart. Comes
+     * back only on failure, or with no package, for the recovery menu. */
+    if(get_boot_flag(BOOT_FLAG_USB_BOOT))
+        usb_install();
+#endif
+
     /* If USB booting, the user probably needs to enter recovery mode;
      * let's not force them to hold down the recovery key. */
     bool recovery_mode = get_boot_flag(BOOT_FLAG_USB_BOOT);

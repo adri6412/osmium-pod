@@ -167,6 +167,9 @@ void gui_list_scroll(struct bl_list* list, int delta);
  */
 
 void bootloader_install(void);
+#ifdef X1000_USB_INSTALLER
+void usb_install(void);
+#endif
 void bootloader_backup(void);
 void bootloader_restore(void);
 

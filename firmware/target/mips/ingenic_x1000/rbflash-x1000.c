@@ -308,67 +308,80 @@ int rbflash_compare_file(const char* filename)
 }
 
 /* Write a rockbox.<ext> file from disk to flash */
-int rbflash_write_file(const char* filename)
+/* Check the file in buf (after room for the flash header) and write both */
+static int write_image(uint8_t* buf, size_t fsize)
 {
-    int rc;
-    struct nand_drv* ndrv = NULL;
-
-    int fd = open(filename, O_RDONLY);
-    if(fd < 0)
-        return RBF_FILE_IO;
-
-    off_t fsize = ffilesize(fd);
-    if(fsize <= SCRAMBLE_HDR_SIZE) {
-        close(fd);
-        return RBF_FILE_IO;
-    }
-
-    if((size_t)fsize > ROCKBOX_FLASH_LENGTH - sizeof(struct rbflash_hdr)) {
-        close(fd);
-        return RBF_TOO_BIG;
-    }
-
-    size_t total = sizeof(struct rbflash_hdr) + fsize;
-    int handle = core_alloc_ex(total, &buflib_ops_locked);
-    if(handle < 0) {
-        close(fd);
-        return RBF_NO_MEMORY;
-    }
-
-    uint8_t* buf = core_get_data(handle);
     struct rbflash_hdr* hdr = (struct rbflash_hdr*)buf;
     uint8_t* file = buf + sizeof(*hdr);
-
-    if(read(fd, file, fsize) != fsize) {
-        rc = RBF_FILE_IO;
-        goto out;
-    }
+    size_t total = sizeof(*hdr) + fsize;
 
     /* never put a broken image in flash */
     if(!verify_checksum(load_be32(file), file + SCRAMBLE_HDR_SIZE,
-                        fsize - SCRAMBLE_HDR_SIZE)) {
-        rc = RBF_BAD_CHKSUM;
-        goto out;
-    }
+                        fsize - SCRAMBLE_HDR_SIZE))
+        return RBF_BAD_CHKSUM;
 
     memcpy(hdr->magic, rbflash_magic, sizeof(rbflash_magic));
     hdr->length = fsize;
     hdr->reserved = 0;
 
-    ndrv = rbflash_open();
-    if(!ndrv) {
-        rc = RBF_NAND_OPEN;
-        goto out;
-    }
+    struct nand_drv* ndrv = rbflash_open();
+    if(!ndrv)
+        return RBF_NAND_OPEN;
 
-    rc = rbflash_write(ndrv, buf, total);
+    int rc = rbflash_write(ndrv, buf, total);
     if(rc == RBF_SUCCESS)
         rc = rbflash_verify(ndrv, buf, total);
 
-  out:
-    if(ndrv)
-        rbflash_close(ndrv);
+    rbflash_close(ndrv);
+    return rc;
+}
+
+/* Room for the header and a file of fsize bytes, or a negative error */
+static int alloc_image(size_t fsize)
+{
+    if(fsize <= SCRAMBLE_HDR_SIZE)
+        return RBF_FILE_IO;
+    if(fsize > ROCKBOX_FLASH_LENGTH - sizeof(struct rbflash_hdr))
+        return RBF_TOO_BIG;
+
+    int handle = core_alloc_ex(sizeof(struct rbflash_hdr) + fsize,
+                               &buflib_ops_locked);
+    return handle < 0 ? RBF_NO_MEMORY : handle;
+}
+
+int rbflash_write_file(const char* filename)
+{
+    int fd = open(filename, O_RDONLY);
+    if(fd < 0)
+        return RBF_FILE_IO;
+
+    off_t fsize = ffilesize(fd);
+    int handle = alloc_image(fsize);
+    if(handle < 0) {
+        close(fd);
+        return handle;
+    }
+
+    uint8_t* buf = core_get_data(handle);
+    int rc = RBF_FILE_IO;
+    if(read(fd, buf + sizeof(struct rbflash_hdr), fsize) == fsize)
+        rc = write_image(buf, fsize);
+
     core_free(handle);
     close(fd);
+    return rc;
+}
+
+int rbflash_write_buffer(const void* file, size_t size)
+{
+    int handle = alloc_image(size);
+    if(handle < 0)
+        return handle;
+
+    uint8_t* buf = core_get_data(handle);
+    memcpy(buf + sizeof(struct rbflash_hdr), file, size);
+    int rc = write_image(buf, size);
+
+    core_free(handle);
     return rc;
 }

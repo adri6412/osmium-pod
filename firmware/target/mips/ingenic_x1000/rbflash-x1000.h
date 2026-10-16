@@ -50,4 +50,7 @@ int rbflash_compare_file(const char* filename);
 /* Check a rockbox.<ext> file and write it to flash, then read it back */
 int rbflash_write_file(const char* filename);
 
+/* The same, with the file's contents already in memory */
+int rbflash_write_buffer(const void* file, size_t size);
+
 #endif /* __RBFLASH_X1000_H__ */

@@ -82,7 +82,7 @@
 #define ROCKBOX_FLASH_LENGTH (4 * 1024 * 1024)
 
 /* Storage defines */
-#if defined(BOOTLOADER) || defined(SIMULATOR)
+#if (defined(BOOTLOADER) && !defined(X1000_USB_INSTALLER)) || defined(SIMULATOR)
 #define CONFIG_STORAGE STORAGE_SD
 #else
 /* microSD card, plus the internal storage: a Dhara FTL on the NAND after
