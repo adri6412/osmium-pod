@@ -77,6 +77,7 @@ x1000/gui.c
 x1000/install.c
 x1000/main.c
 x1000/recovery.c
+x1000/restore.c
 x1000/usbinstall.c
 x1000/utils.c
 #elif defined(ECHO_R1)

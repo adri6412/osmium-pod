@@ -70,7 +70,8 @@ async function loadManifest() {
   a.textContent = `Release ${manifest.version}`;
   $("release").append(a, date);
 
-  for (const id of ["zip-link", "zip-link-top"]) $(id).href = manifest.package;
+  for (const id of ["zip-link", "zip-link-top", "zip-link-restore"])
+    $(id).href = manifest.package;
   $("install-button").disabled = !hasUsb || !manifest.installer;
   $("rescue-button").disabled = !hasUsb;
   $("sd-button").disabled = !hasFolders;

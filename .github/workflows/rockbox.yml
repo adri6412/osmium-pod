@@ -172,6 +172,9 @@ jobs:
           3. Eject and restart the player. With the Osmium Pod bootloader,
              the copy in flash is updated at the next start.
 
+        Restore with no computer: copy this zip, as it is, to the root of
+          the card, power on holding Volume Up and choose "Restore from zip".
+
         First installation by hand:
           Either install the OFFICIAL Rockbox bootloader for the FiiO M3K
           (https://download.rockbox.org/), which starts Rockbox from the

@@ -135,6 +135,11 @@ only for its USB mode).
   counts the drives when it is plugged in.
 * The recovery menu in flash keeps only the essentials on the M3K
   (`ESSENTIAL_MENU` in `recovery.c`); the USB installer has the full one.
+* `bootloader/x1000/restore.c`, *Restore from zip*: the newest
+  `osmium-pod*.zip` in the card's root goes to the internal storage with
+  Rockbox's `zip_extract()` (formatted first only if it has no file
+  system), its `rockbox.m3k` to flash, and the card's `.rockbox` becomes
+  `.rockbox.bak`, as the USB installer does.
 * `HAVE_ROCKBOX_DIR_REDIRECT` (`rb_namespace.c`): `ns_parse_root()` sends
   any path that starts at the root with `/.rockbox` to the root of another
   volume. Every file call goes through `open_stream_internal()`, so open,

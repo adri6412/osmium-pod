@@ -63,7 +63,6 @@
 #define PKG_ALLOW_NO_BACKUP 0x01    /* the user chose to go on without */
 
 #define SYSTEM_DIR  BOOTDIR             /* "/.rockbox" */
-#define BACKUP_DIR  BOOTDIR ".bak"
 
 extern unsigned char pluginbuf[];       /* the package, see app.lds */
 
@@ -242,30 +241,6 @@ static bool copy_tree(char* src, char* dst)
     return ok;
 }
 
-static void remove_tree(char* path)
-{
-    DIR* dir = opendir(path);
-    if(!dir)
-        return;
-
-    size_t len = strlen(path);
-    struct dirent* e;
-    while((e = readdir(dir))) {
-        if(is_dotdir_name(e->d_name) || len + strlen(e->d_name) + 2 > MAX_PATH)
-            continue;
-        struct dirinfo info = dir_get_info(dir, e);
-        snprintf(path + len, MAX_PATH - len, "/%s", e->d_name);
-        if(info.attribute & ATTR_DIRECTORY)
-            remove_tree(path);
-        else
-            remove(path);
-        path[len] = '\0';
-    }
-
-    closedir(dir);
-    rmdir(path);
-}
-
 /* ---------------------------------------------------------------- steps */
 
 static bool original_firmware_present(void)
@@ -390,14 +365,8 @@ static bool install_files(const uint8_t* tar, size_t len)
     }
 
     /* the card's copy would otherwise be taken as an update at boot */
-    if(root_card[0]) {
-        snprintf(src, sizeof(src), "%s" SYSTEM_DIR, root_card);
-        if(dir_exists(src)) {
-            snprintf(dst, sizeof(dst), "%s" BACKUP_DIR, root_card);
-            remove_tree(dst);
-            rename(src, dst);
-        }
-    }
+    if(root_card[0])
+        bl_retire_card_system(root_card);
 
     return true;
 }

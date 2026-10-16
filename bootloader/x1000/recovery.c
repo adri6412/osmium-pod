@@ -48,6 +48,7 @@ static const struct menuitem recovery_items[] = {
     {MENUITEM_ACTION,       "Start Rockbox",        &boot_rockbox},
     {MENUITEM_ACTION,       "USB: card",            &usb_mode},
     {MENUITEM_ACTION,       "USB: internal storage", &usb_mode_internal},
+    {MENUITEM_ACTION,       "Restore from zip",     &restore_from_zip},
     {MENUITEM_ACTION,       "Restart",              &reboot},
     {MENUITEM_ACTION,       "Power off",            &shutdown},
 };
@@ -72,6 +73,7 @@ static const struct menuitem recovery_items[] = {
     {MENUITEM_ACTION,       "USB mode",             &usb_mode},
 #if (CONFIG_STORAGE & STORAGE_NAND)
     {MENUITEM_ACTION,       "USB mode (internal)",  &usb_mode_internal},
+    {MENUITEM_ACTION,       "Restore from zip",     &restore_from_zip},
 #endif
     {MENUITEM_ACTION,       "Shutdown",             &shutdown},
     {MENUITEM_ACTION,       "Reboot",               &reboot},

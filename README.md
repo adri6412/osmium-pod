@@ -169,7 +169,10 @@ At every boot the bootloader:
 So updates work as before: copy the new `.rockbox` to the card and restart.
 The recovery menu in flash (hold Volume Up at power on) keeps only the
 essentials: *Start Rockbox*, *USB: card*, *USB: internal storage*,
-*Restart* and *Power off*. The full menu (install or restore the
+*Restore from zip*, *Restart* and *Power off*. *Restore from zip*
+reinstalls the system with no computer: copy a release zip
+(`osmium-pod-fiiom3k-<version>.zip`, as downloaded) to the card's root
+and choose it; the newest one is used. Settings and library are kept. The full menu (install or restore the
 bootloader, backups, flash dumps, *Rockbox (SD)*, *Rockbox in flash →
 Install from SD*) is in the USB installer: load it from the web installer
 (*Other ways → Recovery tools*) or with `jztool fiiom3k load installer.m3k`.

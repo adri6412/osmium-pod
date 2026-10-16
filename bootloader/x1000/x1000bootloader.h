@@ -199,6 +199,9 @@ int check_disk(bool wait);
 void usb_mode(void);
 #if (CONFIG_STORAGE & STORAGE_NAND)
 void usb_mode_internal(void);
+void restore_from_zip(void);
+void bl_remove_tree(char* path);    /* path: MAX_PATH bytes, edited */
+void bl_retire_card_system(const char* card_root);
 #endif
 void screenshot(void);
 void screenshot_enable(void);
