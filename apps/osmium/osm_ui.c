@@ -404,6 +404,13 @@ static void draw_progress(void)
 static void render(void)
 {
     gfx_noclip();
+    if (osm_library_preparing())
+    {
+        osm_library_screen_draw();
+        gfx_noclip();
+        draw_toast();
+        return;
+    }
     if (np_shown)
         scr_nowplaying.draw();
     else if (depth)
@@ -614,6 +621,14 @@ static void dispatch(int key, int ev)
             player_volume_step(key == K_VOL_UP ? 1 : -1);
             osm_toast_volume();
         }
+        return;
+    }
+
+    /* nothing to browse until the library is built */
+    if (osm_library_preparing())
+    {
+        if (key == K_SELECT && ev == EV_SHORT && osm_library_needs_restart())
+            sys_reboot();
         return;
     }
 

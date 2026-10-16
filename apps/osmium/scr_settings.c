@@ -145,6 +145,9 @@ static void act_rebuild(void)
     if (osm_dialog_wait(osm_str(S_LIB_REBUILD), osm_str(S_REBUILD_Q),
                         osm_str(S_OK), osm_str(S_CANCEL)))
     {
+        /* the playlist points into the old database, and saving the new
+         * one needs the memory the audio buffer holds */
+        audio_hard_stop();
         tagcache_rebuild();
         osm_toast(ICON_REFRESH_CW, osm_str(S_LIB_REBUILDING));
     }

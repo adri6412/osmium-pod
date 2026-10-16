@@ -246,12 +246,30 @@ static void paint_cell(int i, int x, int y, int w, int h, bool sel, void *d)
                  SILVER_A(0.55), ALIGN_LEFT);
 }
 
-static void draw_empty(const char *msg)
+static void draw_empty(const char *msg, const char *detail)
 {
     int y = LIST_TOP + 50;
     gfx_circle(SCR_W / 2, y + 20, 26, WA(0.05));
     gfx_icon(ICON_MUSIC, 20, SCR_W / 2 - 10, y + 10, SILVER_A(0.5));
     gfx_text_wrap(OSM_FONT_R12, 24, y + 60, SCR_W - 48, 4, 17, msg, SILVER_A(0.6));
+    if (detail)
+        gfx_text_wrap(OSM_FONT_R11, 24, y + 104, SCR_W - 48, 3, 15, detail, C_GOLD);
+}
+
+/* how far the database build has got, for the empty page */
+static const char *library_progress(char *buf, int len)
+{
+    struct tagcache_stat *st = tagcache_get_stat();
+    if (!st)
+        return NULL;
+    if (st->commit_step > 0)
+        snprintf(buf, len, osm_str(S_LIB_SAVE_PROGRESS), st->commit_step,
+                 tagcache_get_max_commit_step());
+    else if (st->processed_entries > 0)
+        snprintf(buf, len, osm_str(S_LIB_SCAN_PROGRESS), st->processed_entries);
+    else
+        return osm_str(S_LIB_FIRST_TIME);
+    return buf;
 }
 
 static void browse_draw(void)
@@ -267,10 +285,14 @@ static void browse_draw(void)
         bool db = pg->q.view != LIB_FOLDER && pg->q.view != LIB_PLAYLISTS &&
                   pg->q.view != LIB_PLAYLIST && pg->q.view != LIB_FAVORITES;
         struct tagcache_stat *st = tagcache_get_stat();
-        draw_empty(osm_str(db && !lib_ready() && st && st->commit_delayed ? S_LIB_RESTART :
-                           db && !lib_ready() ? S_LIBRARY_NOT_READY :
+        char progress[64];
+        bool preparing = db && !lib_ready();
+        draw_empty(osm_str(preparing && st && st->commit_delayed ? S_LIB_RESTART :
+                           preparing ? S_LIBRARY_NOT_READY :
                            pg->q.view == LIB_ALBUMS || pg->q.view == LIB_ARTISTS ?
-                           S_LIBRARY_EMPTY : S_EMPTY));
+                           S_LIBRARY_EMPTY : S_EMPTY),
+                   preparing && !(st && st->commit_delayed) ?
+                   library_progress(progress, sizeof progress) : NULL);
     }
     else
     {

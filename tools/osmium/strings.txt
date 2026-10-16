@@ -29,6 +29,13 @@ EMPTY_QUEUE|The queue is empty|La coda è vuota
 EMPTY|Nothing here|Non c'è niente qui
 LIBRARY_EMPTY|Your library is empty. Copy music to the card over USB.|La libreria è vuota. Copia la musica sulla scheda via USB.
 LIBRARY_NOT_READY|The library is being prepared…|La libreria è in preparazione…
+LIB_SCAN_PROGRESS|%d files checked|%d file controllati
+LIB_SAVE_PROGRESS|Saving: step %d of %d|Salvataggio: passo %d di %d
+LIB_FIRST_TIME|The first time takes a few minutes.|La prima volta richiede qualche minuto.
+LIB_PHASE_SCAN|Reading your music|Lettura della musica
+LIB_PHASE_SAVE|Saving the library|Salvataggio della libreria
+LIB_PRESS_RESTART|Select: restart|Select: riavvia
+PRESS_RESTART_WHY|The library was read but there was no memory left to save it. It is finished at the next start.|La libreria è stata letta ma non c'era memoria per salvarla. Viene completata al prossimo avvio.
 TRACK_COUNT|%d tracks|%d brani
 ALBUM_COUNT|%d albums|%d album
 ONE_TRACK|1 track|1 brano
