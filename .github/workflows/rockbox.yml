@@ -99,6 +99,14 @@ jobs:
         ../tools/configure --target=fiiom3k --type=N --ram=0
         make -j$(nproc)
         ls -l rockbox.m3k
+        # crt0.S copies and clears the sections 4 bytes at a time and stops
+        # only on an exact match: a misaligned boundary hangs the player at
+        # power on with a black screen
+        mipsel-elf-nm rockbox.elf | awk '
+          $3 ~ /^(_bssbegin|_bssend|_iramstart|_iramend|_initstart|_initend|_tcsmstart|_tcsmend|stackbegin|stackend|_irqstackbegin|_irqstackend)$/ {
+            if (index("048c", substr($1, length($1))) == 0) { print "misaligned " $3 " " $1; bad = 1 }
+          }
+          END { exit bad }'
         # rockbox.zip: .rockbox with firmware, codecs, languages, ...
         make zip
 
