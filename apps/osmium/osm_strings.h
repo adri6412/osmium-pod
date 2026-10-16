@@ -229,6 +229,13 @@ enum osm_str_id {
     S_INSERT_CARD,
     S_INTERNAL_ON_PC,
     S_INTERNAL_ON_PC_HOW,
+    S_USB_CONNECT,
+    S_USB_AS_CARD,
+    S_USB_AS_DAC,
+    S_DAC_TITLE,
+    S_DAC_WAITING,
+    S_DAC_PLAYING,
+    S_DAC_HINT,
     S_COUNT_
 };
 

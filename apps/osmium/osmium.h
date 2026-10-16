@@ -28,6 +28,8 @@ void osm_ui_run(void) NORETURN_ATTR;
 /* USB mass storage screen (blocks until unplugged); seqnum is the data of
  * the SYS_USB_CONNECTED event (button_get_data()), echoed in the ack */
 void osm_usb_screen(intptr_t seqnum);
+/* the USB DAC screen, while the computer uses the player as a sound card */
+void osm_dac_screen(void);
 
 /* ── hooks used by the Rockbox core (misc.c, playlist.c) ──────────── */
 /* true if the user pressed Back while a long operation runs */

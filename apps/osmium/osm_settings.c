@@ -175,6 +175,9 @@ static const struct cfg_item cfg_items[] =
 #ifdef HAVE_TOUCHPAD_SENSITIVITY_SETTING
     CI("touchpad sensitivity", touchpad_sensitivity),
 #endif
+#if defined(HAVE_USB_POWER) && !defined(USB_NONE) && !defined(SIMULATOR)
+    CI("usb mode", usb_mode),
+#endif
 
     /* the interface */
     CI("ui language", osm_language),
@@ -324,6 +327,11 @@ void settings_reset(void)
 #endif
 #if defined(HAVE_USB_POWER) && !defined(USB_NONE) && !defined(SIMULATOR)
     s->usb_mode = USBMODE_DEFAULT;
+#endif
+#ifdef USB_ENABLE_AUDIO
+    /* the USB DAC answers when the player connects as a charger, which
+     * is the "USB DAC" mode, or the card mode with a key held */
+    s->usb_audio = 2;
 #endif
 
     /* interface */

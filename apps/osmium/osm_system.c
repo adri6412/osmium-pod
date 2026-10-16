@@ -37,6 +37,10 @@
 #include "osm_player.h"
 #include "osm_screens.h"
 #include "osm_library.h"
+#include "sound.h"
+#ifdef USB_ENABLE_AUDIO
+#include "usbstack/usb_audio.h"
+#endif
 
 static int library_serial;
 
@@ -419,6 +423,81 @@ void osm_usb_screen(intptr_t seqnum)
     inside = false;
 #endif
 }
+
+#ifdef USB_ENABLE_AUDIO
+/* ── USB DAC ───────────────────────────────────────────────────────── */
+
+static void draw_dac(void)
+{
+    gfx_noclip();
+    gfx_clear(C_DARK);
+    gfx_brand(14, 14, 8, true);
+    int cy = 104;
+    gfx_circle(SCR_W / 2, cy, 46, GOLD_A(0.12));
+    gfx_circle(SCR_W / 2, cy, 46 - 1, GOLD_A(0.06));
+    gfx_icon(ICON_AUDIO_LINES, 48, SCR_W / 2 - 24, cy - 24, C_GOLD);
+    gfx_text_fit(OSM_FONT_B15, 12, cy + 62, SCR_W - 24, osm_str(S_DAC_TITLE), C_WHITE,
+                 ALIGN_CENTER);
+
+    /* what the computer sends */
+    char line[48];
+    if (usb_audio_get_playing())
+    {
+        unsigned long f = usb_audio_get_playback_sampling_frequency();
+        char khz[16];
+        if (f % 1000)
+            snprintf(khz, sizeof khz, "%lu.%lu", f / 1000, (f % 1000) / 100);
+        else
+            snprintf(khz, sizeof khz, "%lu", f / 1000);
+        snprintf(line, sizeof line, osm_str(S_DAC_PLAYING), khz);
+    }
+    else
+        strmemccpy(line, osm_str(S_DAC_WAITING), sizeof line);
+    gfx_text_fit(OSM_FONT_R12, 12, cy + 84, SCR_W - 24, line, C_GOLD, ALIGN_CENTER);
+
+    /* the volume */
+    char vol[24];
+    format_sound_value(vol, sizeof vol, SOUND_VOLUME, global_status.volume);
+    gfx_text_fit(OSM_FONT_B15, 12, cy + 108, SCR_W - 24, vol, C_WHITE, ALIGN_CENTER);
+
+    gfx_text_wrap(OSM_FONT_R12, 24, cy + 134, SCR_W - 48, 2, 16, osm_str(S_DAC_HINT),
+                  SILVER_A(0.6));
+
+    int lvl = battery_level();
+    char b[24];
+    snprintf(b, sizeof b, "%d%%", lvl);
+    int y = SCR_H - 34;
+    gfx_rrect(SCR_W / 2 - 50, y - 6, 100, 26, 13, WA(0.06));
+    ui_draw_battery(SCR_W / 2 - 4, y + 2);
+    gfx_text(OSM_FONT_R12, SCR_W / 2 + 4, y, b, C_WHITE);
+    gfx_present();
+}
+
+/* While the computer uses the player as a sound card: the player's own
+ * playback is stopped (usb_audio.c), the keys and the wheel set the volume.
+ * Back to the interface when the cable comes out. */
+void osm_dac_screen(void)
+{
+    backlight_on();
+    while (usb_audio_get_active())
+    {
+        draw_dac();
+        int b = button_get_w_tmo(HZ / 4);
+        if (b == BUTTON_NONE || (b & BUTTON_REL))
+            continue;
+        if (b & SYS_EVENT)
+        {
+            default_event_handler(b);
+            continue;
+        }
+        if (b & (BUTTON_VOL_UP | BUTTON_SCROLL_FWD))
+            player_volume_step(1);
+        else if (b & (BUTTON_VOL_DOWN | BUTTON_SCROLL_BACK))
+            player_volume_step(-1);
+    }
+    osm_dirty();
+}
+#endif
 
 /* ── shutdown ──────────────────────────────────────────────────────── */
 

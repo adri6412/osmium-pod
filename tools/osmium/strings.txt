@@ -225,3 +225,10 @@ NOT_IN_USE|Not in use|Non usata
 INSERT_CARD|Insert the card first|Inserisci prima la scheda
 INTERNAL_ON_PC|On the computer|Sul computer
 INTERNAL_ON_PC_HOW|Vol+ at power on → USB|Vol+ all'accensione → USB
+USB_CONNECT|On a computer|Collegato al computer
+USB_AS_CARD|Card (files)|Scheda (file)
+USB_AS_DAC|USB DAC|DAC USB
+DAC_TITLE|USB DAC|DAC USB
+DAC_WAITING|Waiting for the computer…|In attesa del computer…
+DAC_PLAYING|%s kHz · 16 bit|%s kHz · 16 bit
+DAC_HINT|Volume: keys or wheel. Unplug to go back.|Volume: tasti o rotella. Scollega per tornare.

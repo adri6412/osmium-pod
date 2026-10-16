@@ -226,6 +226,19 @@ installer). At the next start the player copies it into the internal
 drive, keeping settings and database, renames it to `.rockbox.bak`, and
 updates the copy of `rockbox.m3k` in flash.
 
+## USB DAC
+
+The player can work as a USB sound card for a computer (USB Audio Class 1:
+no driver needed on Windows 10/11, macOS or Linux), 16 bit, 44.1 to
+192 kHz, with Rockbox's own USB audio driver. *Settings → On a computer*
+chooses what plugging in does: *Card (files)*, the default, or *USB DAC*.
+Holding any key while plugging the cable in gives the other one.
+
+While the computer plays, the player shows the *USB DAC* screen with the
+sample rate; the volume keys and the wheel set the volume. Its own
+playback is stopped, and the equalizer and the other effects do not apply
+to the computer's sound. Unplug to go back.
+
 ## Credits
 * [Rockbox](https://www.rockbox.org/) (GPL v2 or later).
 * Interface design from [Osmium Sound](https://github.com/adri6412/osmium-sound).

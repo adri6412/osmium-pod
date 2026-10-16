@@ -37,6 +37,7 @@
 #include "osm_settings.h"
 #include "osm_library.h"
 #include "osm_storage.h"
+#include "usb.h"
 
 enum { PG_ROOT, PG_PLAYBACK, PG_AUDIO, PG_EQ, PG_NP, PG_DISPLAY, PG_LIBRARY,
        PG_POWER, PG_STORAGE, PG_ABOUT, PG_COUNT };
@@ -240,6 +241,12 @@ static const enum osm_str_id n_afr[] = { S_OFF, S_AFR_WEAK, S_AFR_MODERATE, S_AF
 static const enum osm_str_id n_view[] = { S_NP_VIEW_COVER, S_NP_VIEW_VU };
 static const enum osm_str_id n_albumview[] = { S_AV_GRID, S_AV_LIST };
 static const enum osm_str_id n_tf[] = { S_TF_24, S_TF_12 };
+#if defined(HAVE_USB_POWER) && !defined(USB_NONE) && !defined(SIMULATOR) && defined(USB_ENABLE_AUDIO)
+#define HAVE_USB_DAC_SETTING
+static const enum osm_str_id n_usbmode[] = { S_USB_AS_CARD, S_USB_AS_DAC };
+static const int v_usbmode[] = { USB_MODE_MASS_STORAGE, USB_MODE_CHARGE };
+static void ap_usbmode(void) { usb_set_mode(global_settings.usb_mode); settings_save(); }
+#endif
 static const enum osm_str_id n_none[16];
 static const int v_backlight[] = { 5, 10, 15, 20, 30, 45, 60, 120, 0 };
 static const int v_buttonlight[] = { 0, 1, 2, 3, 5, 10, 15, 30, -1 };
@@ -313,6 +320,9 @@ static struct item root_items[] = {
     PAGE(S_SET_DISPLAY, ICON_MONITOR, PG_DISPLAY),
     PAGE(S_SET_LIBRARY, ICON_LIBRARY, PG_LIBRARY),
     PAGE(S_SET_POWER, ICON_POWER, PG_POWER),
+#ifdef HAVE_USB_DAC_SETTING
+    CHOICE(S_USB_CONNECT, usb_mode, n_usbmode, v_usbmode, 2, ap_usbmode),
+#endif
 #if (CONFIG_STORAGE & STORAGE_NAND)
     PAGE(S_SET_INTERNAL, ICON_HARD_DRIVE, PG_STORAGE),
 #endif

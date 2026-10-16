@@ -135,6 +135,13 @@ only for its USB mode).
   counts the drives when it is plugged in.
 * The recovery menu in flash keeps only the essentials on the M3K
   (`ESSENTIAL_MENU` in `recovery.c`); the USB installer has the full one.
+* USB DAC: Rockbox's `usb_audio.c` (UAC1, isochronous) was already built
+  for the DesignWare controller. Osmium saves `usb_mode` (*Settings → On a
+  computer*: mass storage or charge only) and sets `usb_audio` to 2, "in
+  charge-only mode", so the DAC answers in the charge-only mode; a key held
+  while plugging in swaps the two (`usb.c`). The interface thread polls
+  `usb_audio_get_active()` and shows `osm_dac_screen()` until the cable
+  comes out.
 * `bootloader/x1000/restore.c`, *Restore from zip*: the newest
   `osmium-pod*.zip` in the card's root goes to the internal storage with
   Rockbox's `zip_extract()` (formatted first only if it has no file

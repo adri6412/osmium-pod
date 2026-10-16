@@ -231,6 +231,13 @@ static const char *const strings[OSM_LANG_COUNT][S_COUNT_] = {
         "Insert the card first",
         "On the computer",
         "Vol+ at power on → USB",
+        "On a computer",
+        "Card (files)",
+        "USB DAC",
+        "USB DAC",
+        "Waiting for the computer…",
+        "%s kHz · 16 bit",
+        "Volume: keys or wheel. Unplug to go back.",
     },
     [OSM_LANG_ITALIAN] = {
         "Analisi del disco…",
@@ -459,6 +466,13 @@ static const char *const strings[OSM_LANG_COUNT][S_COUNT_] = {
         "Inserisci prima la scheda",
         "Sul computer",
         "Vol+ all'accensione → USB",
+        "Collegato al computer",
+        "Scheda (file)",
+        "DAC USB",
+        "DAC USB",
+        "In attesa del computer…",
+        "%s kHz · 16 bit",
+        "Volume: tasti o rotella. Scollega per tornare.",
     },
 };
 

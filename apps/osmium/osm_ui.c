@@ -31,6 +31,9 @@
 #include "string-extra.h"
 #include "usb.h"
 #include "splash.h"
+#ifdef USB_ENABLE_AUDIO
+#include "usbstack/usb_audio.h"
+#endif
 #include "osmium.h"
 #include "osm_ui.h"
 #include "osm_player.h"
@@ -899,6 +902,14 @@ static void ui_thread(void)
             last_poll = current_tick;
             if (player_poll())
                 dirty = true;
+#ifdef USB_ENABLE_AUDIO
+            /* plugged in as a USB DAC */
+            if (usb_audio_get_active())
+            {
+                osm_dac_screen();
+                dirty = true;
+            }
+#endif
             bool changed = osm_ui_tick();
             if (osm_ui_idle() || changed)
                 dirty = true;
