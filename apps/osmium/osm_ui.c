@@ -857,14 +857,22 @@ static void ui_thread(void) NORETURN_ATTR;
 static void ui_thread(void)
 {
     ui_thread_id = thread_self();
+    OSM_TRACE("ui thread");
     gfx_init();
     player_init();
+    OSM_TRACE("player_init");
     osm_ui_init_fonts();
+    OSM_TRACE("fonts");
     osm_push(&scr_home, NULL);
     pending_transition = TR_NONE;
+    OSM_TRACE("home");
 
     /* back to what was playing at power off, paused */
     osm_resume_at_boot();
+    OSM_TRACE("resume");
+#ifdef OSM_BOOT_TRACE
+    sleep(HZ * 3);      /* time to read the trace */
+#endif
 
     long last_poll = 0;
     while (1)
@@ -916,6 +924,7 @@ void osm_ui_run(void)
                                  IF_COP(, CPU));
     if (!ui_thread_id)
         panicf("cannot start the interface");
+    OSM_TRACE("ui thread created");
     /* the main thread has nothing left to do (and its code from main.c
      * lives in the init section, reused once the system is up) */
     while (1)
