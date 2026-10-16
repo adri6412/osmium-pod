@@ -268,7 +268,17 @@ int osm_library_serial(void)
 bool osm_library_preparing(void)
 {
 #ifdef HAVE_TAGCACHE
-    return tagcache_is_initialized() && !lib_ready();
+    /* not for the instant the engine takes to check a sound database at
+     * start: only once it has not been ready for a moment */
+    static long since;
+    if (!tagcache_is_initialized() || lib_ready())
+    {
+        since = 0;
+        return false;
+    }
+    if (!since)
+        since = current_tick ? current_tick : 1;
+    return TIME_AFTER(current_tick, since + HZ);
 #else
     return false;
 #endif
@@ -307,7 +317,7 @@ void osm_library_screen_draw(void)
              C_GOLD);
 
     int y = cy + 60;
-    gfx_text_fit(OSM_FONT_B15, 12, y, SCR_W - 24,
+    gfx_text_fit(OSM_FONT_B13, 8, y, SCR_W - 16,
                  osm_str(restart ? S_LIB_RESTART : S_BOOT_DATABASE), C_WHITE,
                  ALIGN_CENTER);
     y += 24;
@@ -439,23 +449,29 @@ bool osm_ui_tick(void)
     }
 
     /* The first start, a deleted database, or one left damaged (the card
-     * pulled out while it was written): build it again. The engine checks
-     * the files in the background first, give it a few seconds. */
-    static bool db_kicked;
-    static long db_since;
-    if (!db_kicked && tagcache_is_initialized() && !lib_ready())
+     * pulled out or the battery gone while it was written): build it
+     * again. Wait until the engine is idle - nothing read, nothing saved
+     * for a few seconds - and try again if a build ends without a usable
+     * database. */
+    static int db_kicks;
+    static int db_seen = -1;
+    static long db_still;
+    if (tagcache_is_initialized() && !lib_ready() && db_kicks < 3)
     {
         struct tagcache_stat *ts = tagcache_get_stat();
-        if (!db_since)
-            db_since = current_tick;
-        bool missing = !file_exists(ROCKBOX_DIR "/database_idx.tcd");
-        bool idle = ts && ts->commit_step == 0 && !ts->commit_delayed &&
-                    ts->processed_entries == 0;
-        if (idle && (missing || TIME_AFTER(current_tick, db_since + HZ * 4)))
+        if (ts->processed_entries != db_seen || ts->commit_step > 0 || ts->curentry)
         {
-            db_kicked = true;
+            db_seen = ts->processed_entries;
+            db_still = current_tick;
+        }
+        bool missing = !file_exists(ROCKBOX_DIR "/database_idx.tcd");
+        long wait = (db_kicks == 0 && missing) ? HZ / 2 : HZ * 4;
+        if (ts->commit_step == 0 && !ts->commit_delayed &&
+            TIME_AFTER(current_tick, db_still + wait))
+        {
+            db_kicks++;
+            db_still = current_tick + HZ * 2;      /* give it time to start */
             tagcache_rebuild();
-            osm_toast(ICON_REFRESH_CW, osm_str(S_LIB_UPDATING));
         }
     }
 

@@ -716,18 +716,29 @@ static void album_draw(void)
 
     /* Play (gold) and Shuffle (dark) pills */
     int by = y + AP_HEADER;
-    int pw = 96, sw = 104, ph = 32;
+    /* as wide as their words (Riproduci is longer than Play), within the row */
+    int ph = 32, gap = 10, avail = SCR_W - 24 - gap;
+    int pw = MAX(96, 34 + gfx_text_width(OSM_FONT_B13, osm_str(S_PLAY)) + 16);
+    int sw = MAX(96, 32 + gfx_text_width(OSM_FONT_R13, osm_str(S_SHUFFLE)) + 16);
+    if (pw + sw > avail)
+    {
+        int over = pw + sw - avail;
+        int cut_p = over * pw / (pw + sw);
+        pw -= cut_p;
+        sw -= over - cut_p;
+    }
     bool pf = pg->focus == -2, sf = pg->focus == -1;
     gfx_rrect(12, by, pw, ph, 16, C_GOLD);
     if (pf)
         gfx_rrect_border(10, by - 2, pw + 4, ph + 4, 18, 2, C_WHITE);
-    gfx_icon(ICON_PLAY_FILL, 14, 12 + 18, by + 9, C_BLACK);
-    gfx_text(OSM_FONT_B13, 12 + 38, by + 8, osm_str(S_PLAY), C_BLACK);
-    int sx = 12 + pw + 10;
+    gfx_icon(ICON_PLAY_FILL, 14, 12 + 14, by + 9, C_BLACK);
+    gfx_text_fit(OSM_FONT_B13, 12 + 34, by + 8, pw - 34 - 10, osm_str(S_PLAY),
+                 C_BLACK, ALIGN_LEFT);
+    int sx = 12 + pw + gap;
     gfx_rrect(sx, by, sw, ph, 16, sf ? GOLD_A(0.15) : WA(0.08));
     gfx_rrect_border(sx, by, sw, ph, 16, sf ? 2 : 1, sf ? C_GOLD : WA(0.10));
-    gfx_icon(ICON_SHUFFLE, 14, sx + 14, by + 9, sf ? C_GOLD : C_WHITE);
-    gfx_text_fit(OSM_FONT_R13, sx + 34, by + 8, sw - 40, osm_str(S_SHUFFLE),
+    gfx_icon(ICON_SHUFFLE, 14, sx + 13, by + 9, sf ? C_GOLD : C_WHITE);
+    gfx_text_fit(OSM_FONT_R13, sx + 32, by + 8, sw - 32 - 10, osm_str(S_SHUFFLE),
                  sf ? C_GOLD : C_WHITE, ALIGN_LEFT);
 
     /* TRACKS */

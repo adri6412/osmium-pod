@@ -60,6 +60,8 @@ void gfx_get_clip(int *x, int *y, int *w, int *h);
 /* a copy of the frame, for transitions */
 void gfx_snapshot(fb_data *dst);
 void gfx_restore(const fb_data *src);
+/* scale n pixels to keep/256 of their brightness */
+void gfx_darken_span(fb_data *d, int n, unsigned keep);
 
 /* ── shapes ────────────────────────────────────────────────────────── */
 void gfx_fill(int x, int y, int w, int h, color_t c);

@@ -69,6 +69,15 @@ static inline void blend_565(fb_data *d, fb_data s, unsigned a /* 0..256 */)
     blend_px(d, r | r >> 5, g | g >> 6, b | b >> 5, a);
 }
 
+/* darken a pixel to keep/256 of its value */
+static inline fb_data darken(fb_data p, unsigned keep)
+{
+    unsigned r = ((p >> 11) * keep) >> 8;
+    unsigned g = (((p >> 5) & 0x3F) * keep) >> 8;
+    unsigned b = ((p & 0x1F) * keep) >> 8;
+    return (fb_data)((r << 11) | (g << 5) | b);
+}
+
 /* ── frame ─────────────────────────────────────────────────────────── */
 
 void gfx_init(void)
@@ -104,6 +113,12 @@ void gfx_get_clip(int *x, int *y, int *w, int *h)
 {
     *x = clip_x0; *y = clip_y0;
     *w = clip_x1 - clip_x0; *h = clip_y1 - clip_y0;
+}
+
+void gfx_darken_span(fb_data *d, int n, unsigned keep)
+{
+    for (int i = 0; i < n; i++)
+        d[i] = darken(d[i], keep);
 }
 
 void gfx_snapshot(fb_data *dst)
@@ -144,11 +159,25 @@ void gfx_fill(int x, int y, int w, int h, color_t c)
         }
         return;
     }
+    if ((c & 0x00FFFFFFu) == 0)
+    {
+        unsigned a = c >> 24;
+        unsigned keep = 256 - (a + (a >> 7));
+        for (int j = 0; j < h; j++)
+        {
+            fb_data *d = &PIX(x, y + j);
+            for (int i = 0; i < w; i++)
+                d[i] = darken(d[i], keep);
+        }
+        return;
+    }
+    unsigned a = c >> 24, cr = (c >> 16) & 0xFF, cg = (c >> 8) & 0xFF, cb = c & 0xFF;
+    a += a >> 7;
     for (int j = 0; j < h; j++)
     {
         fb_data *d = &PIX(x, y + j);
         for (int i = 0; i < w; i++)
-            blend_c(&d[i], c, 256);
+            blend_px(&d[i], cr, cg, cb, a);
     }
 }
 
@@ -191,13 +220,22 @@ static inline unsigned edge_cov(int r16, int d16)
     return in * 16;
 }
 
-/* the coverage of pixel (px,py) in a rounded box, given its corner circle */
-static inline unsigned corner_cov(int px, int py, int cx16, int cy16, int r16)
+/* the coverage of pixel (px,py) in a rounded box, given its corner circle;
+ * in2/out2 are the squared distances inside / beyond which the pixel is
+ * fully in or out, so the square root is only needed along the edge */
+static inline unsigned corner_cov(int px, int py, int cx16, int cy16, int r16,
+                                  int in2, int out2)
 {
     int dx = (px << 4) + 8 - cx16, dy = (py << 4) + 8 - cy16;
-    unsigned d = isqrt((unsigned long)(dx * dx + dy * dy));
-    return edge_cov(r16, d);
+    int d2 = dx * dx + dy * dy;
+    if (d2 <= in2)
+        return 256;
+    if (d2 >= out2)
+        return 0;
+    return edge_cov(r16, isqrt((unsigned long)d2));
 }
+
+static inline int sq(int v) { return v * v; }
 
 void gfx_rrect(int x, int y, int w, int h, int r, color_t c)
 {
@@ -215,6 +253,7 @@ void gfx_rrect(int x, int y, int w, int h, int r, color_t c)
     gfx_fill(x + r, y + h - r, w - 2 * r, r, c);
 
     int r16 = r << 4;
+    int in2 = sq(MAX(0, r16 - 8)), out2 = sq(r16 + 8);
     int cx[2] = { ((x + r) << 4), ((x + w - r) << 4) };
     int cy[2] = { ((y + r) << 4), ((y + h - r) << 4) };
     for (int k = 0; k < 4; k++)
@@ -229,7 +268,7 @@ void gfx_rrect(int x, int y, int w, int h, int r, color_t c)
             {
                 int px = bx + i;
                 if (px < clip_x0 || px >= clip_x1) continue;
-                unsigned cov = corner_cov(px, py, cx[k & 1], cy[k >> 1], r16);
+                unsigned cov = corner_cov(px, py, cx[k & 1], cy[k >> 1], r16, in2, out2);
                 if (cov)
                     blend_c(&PIX(px, py), c, cov);
             }
@@ -251,6 +290,7 @@ void gfx_rrect_border(int x, int y, int w, int h, int r, int t, color_t c)
     if (r <= 0)
         return;
     int r16 = r << 4, ri16 = ri << 4;
+    int out2 = sq(r16 + 8), in2 = ri > 0 ? sq(MAX(0, ri16 - 8)) : -1;
     int cx[2] = { ((x + r) << 4), ((x + w - r) << 4) };
     int cy[2] = { ((y + r) << 4), ((y + h - r) << 4) };
     for (int k = 0; k < 4; k++)
@@ -266,7 +306,10 @@ void gfx_rrect_border(int x, int y, int w, int h, int r, int t, color_t c)
                 int px = bx + i;
                 if (px < clip_x0 || px >= clip_x1) continue;
                 int dx = (px << 4) + 8 - cx[k & 1], dy = (py << 4) + 8 - cy[k >> 1];
-                unsigned d = isqrt((unsigned long)(dx * dx + dy * dy));
+                int d2 = dx * dx + dy * dy;
+                if (d2 >= out2 || d2 <= in2)
+                    continue;               /* beyond the ring, or inside it */
+                unsigned d = isqrt((unsigned long)d2);
                 int outer = edge_cov(r16, d);
                 int inner = ri > 0 ? (int)edge_cov(ri16, d) : 0;
                 int cov = outer - inner;
@@ -305,26 +348,169 @@ void gfx_vgrad(int x, int y, int w, int h, color_t c0, color_t c1)
         gfx_fill(x, y + j, w, 1, lerp_c(c0, c1, h > 1 ? j * 256 / (h - 1) : 0));
 }
 
+/* ── soft shadows and glows ─────────────────────────────────────────
+ *
+ * Both are a stack of growing, fading rounded boxes. Drawing the stack
+ * every frame costs one blend per layer per pixel (a menu's shadow is
+ * hundreds of thousands of blends); instead the stack is summed once into
+ * an 8-bit mask, kept in a small cache, and laid down with a single blend
+ * per pixel. */
+
+#define MASK_SLOTS 4
+#define MASK_BYTES ((SCR_W + 80) * (SCR_H + 80))
+static struct mask {
+    int key[6];
+    int w, h;               /* of the mask */
+    int ox, oy;             /* its origin relative to the box's x, y */
+    unsigned long used;
+    bool valid;
+} masks[MASK_SLOTS];
+static uint8_t mask_pool[MASK_SLOTS][MASK_BYTES];
+static unsigned long mask_clock;
+
+/* coverage (0..256) of pixel centre (px,py) in a rounded box */
+static unsigned rrect_cov(int px, int py, int x, int y, int w, int h, int r)
+{
+    if (px < x || py < y || px >= x + w || py >= y + h)
+        return 0;
+    r = MIN(r, MIN(w, h) / 2);
+    int cx, cy;
+    if (px < x + r) cx = x + r;
+    else if (px >= x + w - r) cx = x + w - r;
+    else return 256;
+    if (py < y + r) cy = y + r;
+    else if (py >= y + h - r) cy = y + h - r;
+    else return 256;
+    int r16 = r << 4;
+    return corner_cov(px, py, cx << 4, cy << 4, r16, sq(MAX(0, r16 - 8)), sq(r16 + 8));
+}
+
+static struct mask *mask_find(const int key[6], uint8_t **data)
+{
+    struct mask *victim = &masks[0];
+    for (int i = 0; i < MASK_SLOTS; i++)
+    {
+        struct mask *m = &masks[i];
+        if (m->valid && !memcmp(m->key, key, sizeof m->key))
+        {
+            m->used = ++mask_clock;
+            *data = mask_pool[i];
+            return m;
+        }
+        if (!m->valid || m->used < victim->used)
+            victim = m;
+    }
+    int slot = victim - masks;
+    memcpy(victim->key, key, sizeof victim->key);
+    victim->valid = false;          /* the caller fills it */
+    victim->used = ++mask_clock;
+    *data = mask_pool[slot];
+    return victim;
+}
+
 void gfx_shadow(int x, int y, int w, int h, int r, int dy, int blur, int alpha)
 {
-    /* stacked rounded boxes, growing and fading: a cheap gaussian */
+    /* the layers, relative to the box: as before, a cheap gaussian */
     int steps = MAX(1, blur / 2);
-    for (int s = steps; s >= 1; s--)
+    int key[6] = { 1, w, h, r, dy, blur | alpha << 8 };
+    uint8_t *a;
+    struct mask *m = mask_find(key, &a);
+    if (!m->valid)
     {
-        int g = s * blur / steps;
-        int a = alpha * (steps - s + 1) / (steps * steps / 2 + steps);
-        gfx_rrect(x - g / 2, y + dy - g / 2, w + g, h + g, r + g / 2,
-                  ((color_t)MIN(255, a) << 24));
+        m->ox = -blur / 2 - 1;
+        m->oy = dy - blur / 2 - 1;
+        m->w = w + blur + 2;
+        m->h = h + blur + 2;
+        if (m->w * m->h > MASK_BYTES)
+            return;
+        for (int j = 0; j < m->h; j++)
+            for (int i = 0; i < m->w; i++)
+            {
+                int px = m->ox + i, py = m->oy + j;
+                unsigned keep = 256;            /* what shows through, 0..256 */
+                for (int s2 = steps; s2 >= 1; s2--)
+                {
+                    int g = s2 * blur / steps;
+                    int la = alpha * (steps - s2 + 1) / (steps * steps / 2 + steps);
+                    la = MIN(255, la);
+                    unsigned cov = rrect_cov(px, py, -g / 2, dy - g / 2, w + g, h + g, r + g / 2);
+                    if (cov)
+                        keep = keep * (256 - ((unsigned)la * cov >> 8)) >> 8;
+                }
+                a[j * m->w + i] = (uint8_t)MIN(255, 256 - keep);
+            }
+        m->valid = true;
+    }
+    /* the box itself is drawn opaque over the shadow by every caller:
+     * skip what it covers */
+    int rr = MIN(r, MIN(w, h) / 2);
+    for (int j = 0; j < m->h; j++)
+    {
+        int py = y + m->oy + j;
+        if (py < clip_y0 || py >= clip_y1)
+            continue;
+        bool mid = py >= y + rr && py < y + h - rr;
+        bool band = py >= y && py < y + h;
+        const uint8_t *row = &a[j * m->w];
+        fb_data *d = &PIX(0, py);
+        for (int i = 0; i < m->w; i++)
+        {
+            int px = x + m->ox + i;
+            if (px < clip_x0 || px >= clip_x1 || !row[i])
+                continue;
+            if (band && ((mid && px >= x && px < x + w) || (px >= x + rr && px < x + w - rr)))
+                continue;
+            d[px] = darken(d[px], 256 - row[i]);
+        }
     }
 }
 
 void gfx_glow(int cx, int cy, int r, int blur, color_t c)
 {
+    /* the shape, at full strength, is cached; the colour's alpha scales it */
     int base = c >> 24;
-    for (int s = blur; s >= 1; s -= 2)
+    int key[6] = { 2, r, blur, 0, 0, 0 };
+    uint8_t *a;
+    struct mask *m = mask_find(key, &a);
+    int R = r + blur + 1;
+    if (!m->valid)
     {
-        int a = base * (blur - s + 2) / (blur * 3);
-        gfx_circle(cx, cy, r + s, (c & 0xFFFFFF) | ((color_t)MIN(255, a) << 24));
+        m->w = m->h = 2 * R;
+        m->ox = m->oy = -R;
+        if (m->w * m->h > MASK_BYTES)
+            return;
+        for (int j = 0; j < m->h; j++)
+            for (int i = 0; i < m->w; i++)
+            {
+                int px = m->ox + i, py = m->oy + j;
+                unsigned sum = 0;
+                for (int s2 = blur; s2 >= 1; s2 -= 2)
+                {
+                    int rs = r + s2;
+                    unsigned cov = rrect_cov(px, py, -rs, -rs, 2 * rs, 2 * rs, rs);
+                    /* the layer's share of the alpha, as the old stack */
+                    sum += cov * (unsigned)(blur - s2 + 2) * 255 / (unsigned)(blur * 3) >> 8;
+                }
+                a[j * m->w + i] = (uint8_t)MIN(255u, sum);
+            }
+        m->valid = true;
+    }
+    unsigned cr = (c >> 16) & 0xFF, cg = (c >> 8) & 0xFF, cb = c & 0xFF;
+    for (int j = 0; j < m->h; j++)
+    {
+        int py = cy + m->oy + j;
+        if (py < clip_y0 || py >= clip_y1)
+            continue;
+        const uint8_t *row = &a[j * m->w];
+        for (int i = 0; i < m->w; i++)
+        {
+            int px = cx + m->ox + i;
+            if (px < clip_x0 || px >= clip_x1 || !row[i])
+                continue;
+            unsigned la = (unsigned)row[i] * base / 255;
+            la += la >> 7;
+            blend_px(&PIX(px, py), cr, cg, cb, la);
+        }
     }
 }
 
@@ -409,6 +595,19 @@ void gfx_image(const struct osm_image *img, int x, int y, int opacity)
     if (!img->rgb)
         return;
     x += img->x; y += img->y;
+    if (!img->alpha && opacity >= 256)
+    {
+        /* opaque: whole rows */
+        int x0 = MAX(x, clip_x0), x1 = MIN(x + img->w, clip_x1);
+        for (int j = 0; j < img->h && x1 > x0; j++)
+        {
+            int py = y + j;
+            if (py < clip_y0 || py >= clip_y1) continue;
+            memcpy(&PIX(x0, py), img->rgb + j * img->w + (x0 - x),
+                   (x1 - x0) * sizeof(fb_data));
+        }
+        return;
+    }
     for (int j = 0; j < img->h; j++)
     {
         int py = y + j;
@@ -493,10 +692,17 @@ void gfx_bitmap(const fb_data *src, int sw, int sh, int x, int y, int dw, int dh
     /* source step in 1/256 px */
     long stx = ((long)sw << 8) / dw, sty = ((long)sh << 8) / dh;
     bool same = (sw == dw && sh == dh);
+    int x0 = MAX(x, clip_x0), x1 = MIN(x + dw, clip_x1);
     for (int j = 0; j < dh; j++)
     {
         int py = y + j;
         if (py < clip_y0 || py >= clip_y1) continue;
+        if (same && opacity >= 256 && x1 > x0 && j >= radius && j < dh - radius)
+        {
+            /* 1:1, opaque, away from the rounded corners: the whole row */
+            memcpy(&PIX(x0, py), &src[j * sw + (x0 - x)], (x1 - x0) * sizeof(fb_data));
+            continue;
+        }
         long syf = j * sty + sty / 2 - 128;
         int sy0 = MAX(0, syf >> 8), sy1 = MIN(sh - 1, sy0 + 1);
         int fy = syf < 0 ? 0 : syf & 0xFF;
@@ -513,7 +719,7 @@ void gfx_bitmap(const fb_data *src, int sw, int sh, int x, int y, int dw, int dh
                 if (j < radius) cy = (y + radius) << 4;
                 else if (j >= dh - radius) cy = (y + dh - radius) << 4;
                 if (cx >= 0 && cy >= 0)
-                    cov = corner_cov(px, py, cx, cy, r16);
+                    cov = corner_cov(px, py, cx, cy, r16, sq(MAX(0, r16 - 8)), sq(r16 + 8));
                 if (!cov)
                     continue;
             }

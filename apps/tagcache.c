@@ -3454,7 +3454,7 @@ static bool commit(void)
 #endif /* HAVE_DIRCACHE */
 
 #ifdef HAVE_TC_RAMCACHE
-    if (tempbuf_size == 0 && tc_stat.ramcache_allocated > 0)
+    if (tempbuf_size == 0 && tc_stat.ramcache_allocated > 0 && tcramcache.handle > 0)
     {
         tcrc_buffer_lock();
         tempbuf = (char *)(tcramcache.hdr + 1);
@@ -5232,6 +5232,7 @@ static void load_ramcache(void)
         tcramcache.hdr = NULL;
         int handle = tcramcache.handle;
         tcramcache.handle = 0;
+        tc_stat.ramcache_allocated = 0;     /* nothing for commit() to borrow */
         core_free(handle);
     }
 

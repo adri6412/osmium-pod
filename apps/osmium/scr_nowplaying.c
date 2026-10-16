@@ -258,7 +258,9 @@ static void build_layer(void)
     if (global_settings.osm_np_view == OSM_NP_VU)
     {
         const struct osm_vu_skin *s = vu_skin();
-        /* the plate under the meters */
+        /* the meters' faces (the needles and the glass move on top), and
+         * the plate under the meters */
+        gfx_image(&s->under, 0, 34, 256);
         draw_led_plate((SCR_W - osm_led_plate.w) / 2, 34 + s->h + 4);
     }
     else
@@ -277,7 +279,6 @@ static void draw_vu(void)
     int y0 = 34;
     int levels[2];
     player_vu_levels(&levels[0], &levels[1]);
-    gfx_image(&s->under, 0, y0, 256);
     for (int m = 0; m < 2; m++)
     {
         int a = s->angle_min + (s->angle_max - s->angle_min) * levels[m] / 1000;

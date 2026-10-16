@@ -125,7 +125,8 @@ static void draw_music(void)
             gfx_rrect_border(x, y, w, h, 12, 1, C_BORDER);
         color_t c = sel ? C_GOLD : C_WHITE;
         gfx_icon(tiles[i].icon, 26, x + (w - 26) / 2, y + h / 2 - 22, c);
-        gfx_text_fit(OSM_FONT_R11, x + 2, y + h / 2 + 9, w - 4, osm_str(tiles[i].label),
+        gfx_text_fit(gfx_text_width(OSM_FONT_R11, osm_str(tiles[i].label)) <= w - 4 ?
+                     OSM_FONT_R11 : OSM_FONT_R10, x + 2, y + h / 2 + 9, w - 4, osm_str(tiles[i].label),
                      sel ? C_GOLD : C_WHITE, ALIGN_CENTER);
     }
 }
