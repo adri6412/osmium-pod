@@ -97,7 +97,17 @@ void power_off(void)
 
 bool charging_state(void)
 {
-    return axp_battery_status() == AXP_BATT_CHARGING;
+    /* The charger's own "charging" indication (REG01 bit 6). What
+     * axp_battery_status() reads, REG00 bit 2, is the direction of the
+     * battery current at this instant: with USB in, a load peak (screen,
+     * CPU, flash) can take more than USB gives and flip it, and powermgmt
+     * then switched between its charging and discharging voltage tables
+     * at each flip, so the percentage alternated between two values. */
+    static bool charging = false;
+    int r = i2c_reg_read1(AXP_PMU_BUS, AXP_PMU_ADDR, AXP_REG_CHARGESTATUS);
+    if(r >= 0)
+        charging = (r & 0x40) != 0;
+    return charging;    /* on a bus error, the last known state */
 }
 
 int _battery_voltage(void)
