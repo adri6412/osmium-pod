@@ -127,8 +127,9 @@ Chrome or Edge it copies the release to the microSD card and loads the
 bootloader into the player's RAM over USB (WebUSB, the same protocol as
 jztool), with no tools to install. The page serves the release files from
 its own origin, because GitHub release downloads cannot be fetched by a
-web page. For a first deployment, set *Settings → Pages → Source* to
-*GitHub Actions*.
+web page. The workflow publishes to the `gh-pages` branch: for a first
+deployment, set *Settings → Pages → Source* to *Deploy from a branch*,
+`gh-pages`, `/ (root)`.
 
 To install by hand, unzip the release archive to the root of the M3K's
 microSD card (overwriting the files in `.rockbox`) and restart the player.

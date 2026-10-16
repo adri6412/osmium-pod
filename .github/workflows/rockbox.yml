@@ -213,9 +213,8 @@ jobs:
     needs: build-firmware
     if: needs.build-firmware.outputs.release == 'true' && github.event.inputs.prerelease != 'true'
     permissions:
-      contents: read
+      contents: write
       pages: write
-      id-token: write
     uses: ./.github/workflows/pages.yml
     with:
       tag: ${{ needs.build-firmware.outputs.tag }}
