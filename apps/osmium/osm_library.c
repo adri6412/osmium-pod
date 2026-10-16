@@ -780,7 +780,12 @@ static bool decode_cover(const char *path, int *w, int *h, const uint16_t **px)
     if (fd < 0)
         return false;
     memset(&thumb_id3, 0, sizeof thumb_id3);
-    bool ok = get_metadata(&thumb_id3, fd, path);
+    if (!get_metadata(&thumb_id3, fd, path))
+    {
+        /* no tags: the pictures next to the file can still be found */
+        memset(&thumb_id3, 0, sizeof thumb_id3);
+        strmemccpy(thumb_id3.path, path, sizeof thumb_id3.path);
+    }
     struct bitmap bm;
     int rc = -1;
     const int format = FORMAT_NATIVE | FORMAT_RESIZE | FORMAT_KEEP_ASPECT;
@@ -790,29 +795,31 @@ static bool decode_cover(const char *path, int *w, int *h, const uint16_t **px)
 #if LCD_DEPTH > 1
     bm.maskdata = NULL;
 #endif
-    if (ok && thumb_id3.has_embedded_albumart &&
+    /* the picture in the tags first, as the player does */
+    if (thumb_id3.has_embedded_albumart &&
         (thumb_id3.albumart.type & AA_CLEAR_FLAGS_MASK) == AA_TYPE_JPG)
     {
         lseek(fd, thumb_id3.albumart.pos, SEEK_SET);
         rc = clip_jpeg_fd(fd, thumb_id3.albumart.type, thumb_id3.albumart.size,
                           &bm, sizeof decode_buf, format, NULL);
-        close(fd);
     }
-    else
+    close(fd);
+    /* none, or one the decoder cannot read (PNG, progressive JPEG): the
+     * picture files in the folder */
+    char file[MAX_PATH];
+    if (rc <= 0 && search_albumart_files(&thumb_id3, "", file, sizeof file))
     {
-        close(fd);
-        char file[MAX_PATH];
-        if (ok && search_albumart_files(&thumb_id3, "", file, sizeof file))
+        bm.width = THUMB_SIZE;
+        bm.height = THUMB_SIZE;
+        bm.data = decode_buf;
+        fd = open(file, O_RDONLY);
+        if (fd >= 0)
         {
-            fd = open(file, O_RDONLY);
-            if (fd >= 0)
-            {
-                if (strcasecmp(file + strlen(file) - 4, ".bmp"))
-                    rc = read_jpeg_fd(fd, &bm, sizeof decode_buf, format, NULL);
-                else
-                    rc = read_bmp_fd(fd, &bm, sizeof decode_buf, format, NULL);
-                close(fd);
-            }
+            if (strcasecmp(file + strlen(file) - 4, ".bmp"))
+                rc = read_jpeg_fd(fd, &bm, sizeof decode_buf, format, NULL);
+            else
+                rc = read_bmp_fd(fd, &bm, sizeof decode_buf, format, NULL);
+            close(fd);
         }
     }
     if (rc <= 0 || bm.width <= 0 || bm.height <= 0 ||

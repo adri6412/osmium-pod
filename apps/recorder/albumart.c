@@ -25,6 +25,7 @@
 #include "metadata.h"
 #include "buffering.h"
 #include "dircache.h"
+#include "dir.h"
 #include "misc.h"
 #include "pathfuncs.h"
 #include "settings.h"
@@ -100,13 +101,60 @@ static bool try_exts(char *path, int len)
 #define try_exts(path, len) file_exists(path)
 #endif
 
+#ifdef USE_JPEG_COVER
+/* other names a cover often has (without a size) */
+static const char * const generic_names[] = { "folder", "front" };
+#endif
+
+#if defined(USE_JPEG_COVER) && !defined(PLUGIN)
+/* The last resort: any picture in the track's folder ("Artist - Album.jpg",
+ * "AlbumArt_..._Large.jpg", ...). One that says it is the front cover is
+ * taken first, else the first one found. */
+static bool search_any_image(const char *dir, char *path, int pathsize)
+{
+    DIR *d = opendir(*dir ? dir : PATH_ROOTSTR);
+    struct dirent *entry;
+    bool found = false;
+
+    if (!d)
+        return false;
+    while ((entry = readdir(d)))
+    {
+        const char *name = entry->d_name;
+        const char *dot = strrchr(name, '.');
+        if (name[0] == '.' || !dot ||
+            (strcasecmp(dot, ".jpg") && strcasecmp(dot, ".jpeg") &&
+             strcasecmp(dot, ".bmp")))
+            continue;
+        if (dir_get_info(d, entry).attribute & ATTR_DIRECTORY)
+            continue;
+        bool front = strcasestr(name, "front") || strcasestr(name, "cover") ||
+                     strcasestr(name, "folder");
+        if (!found || front)
+        {
+            if (strlen(dir) + strlen(name) >= (size_t)pathsize)
+                continue;                   /* too long a path */
+            strcpy(path, dir);
+            strcat(path, name);
+            found = true;
+            if (front)
+                break;
+        }
+    }
+    closedir(d);
+    return found;
+}
+#endif
+
 /* Look for the first matching album art bitmap in the following list:
  *  ./<trackname><size>.{jpeg,jpg,bmp}
  *  ./<albumname><size>.{jpeg,jpg,bmp}
  *  ./cover<size>.bmp
+ *  ./{folder,front}.{jpeg,jpg,bmp} (no size)
  *  ../<albumname><size>.{jpeg,jpg,bmp}
  *  ../cover<size>.{jpeg,jpg,bmp}
  *  ROCKBOX_DIR/albumart/<artist>-<albumname><size>.{jpeg,jpg,bmp}
+ *  ./<any picture> (no size)
  * <size> is the value of the size_string parameter, <trackname> and
  * <albumname> are read from the ID3 metadata.
  * If a matching bitmap is found, its filename is stored in buf.
@@ -184,10 +232,10 @@ bool search_albumart_files(const struct mp3entry *id3, const char *size_string,
         }
 
 #ifdef USE_JPEG_COVER
-        if (!found && !*size_string)
+        for (unsigned i = 0; !found && !*size_string && i < ARRAYLEN(generic_names); i++)
         {
-            snprintf (path, sizeof(path), "%sfolder.jpg", dir);
-            found = file_exists(path);
+            pathlen = snprintf(path, sizeof(path), "%s%s.", dir, generic_names[i]);
+            found = try_exts(path, pathlen);
         }
 #endif
 
@@ -240,6 +288,14 @@ bool search_albumart_files(const struct mp3entry *id3, const char *size_string,
         if (found)
             break;
     }
+
+#if defined(USE_JPEG_COVER) && !defined(PLUGIN)
+    if (!found && !*size_string)
+    {
+        strip_filename(dir, sizeof(dir), trackname);  /* the track's own folder */
+        found = search_any_image(dir, path, sizeof(path));
+    }
+#endif
 
     if (!found)
         return false;
