@@ -108,16 +108,24 @@ Keys: arrows, Enter (Select), Backspace (Back), Insert (Menu), Space (Play),
 
 ## Releases
 
-The GitHub workflow (`.github/workflows/rockbox.yml`) builds the firmware and
-the bootloader on every push (package in the run's artifacts) and publishes
+The GitHub workflow (`.github/workflows/rockbox.yml`) builds the firmware
+on every push (package in the run's artifacts) and publishes
 a **GitHub release** with `rockipod-osmium-fiiom3k-<version>.zip`:
 
 * push a tag: `git tag v1.0.0 && git push origin v1.0.0`, or
 * *Actions → Build Rockbox for FiiO M3K → Run workflow*, entering the version.
 
 To install, unzip the release archive to the root of the M3K's microSD card
-(overwriting the files in `.rockbox`) and restart the player; `INSTALL.txt`
-in the archive explains the first installation of the bootloader.
+(overwriting the files in `.rockbox`) and restart the player.
+
+The firmware runs on the **official** Rockbox bootloader for the M3K
+(<https://download.rockbox.org/>). Do not install a bootloader built from
+this tree: it is untested and can leave the player with a black screen.
+If that happened, put the player in USB boot mode (power off, hold
+Volume Down while plugging the USB cable) and load the official
+bootloader with `jztool fiiom3k load bootloader.m3k` (see
+`utils/jztool/README.md`); then, from its recovery menu, restore your
+backup (`fiiom3k-boot.bin`) or install the official `bootloader.m3k`.
 
 ## PC Music Manager
 The desktop application is located in the `pc_app` directory.

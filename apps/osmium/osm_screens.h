@@ -40,5 +40,9 @@ bool osm_ui_tick(void);         /* periodic work; true to redraw */
 bool osm_ui_idle(void);         /* when no key is pending */
 void osm_resume_at_boot(void);
 int  osm_library_serial(void);  /* bumps when the files may have changed */
+/* the database is being built: a full screen shows the progress */
+bool osm_library_preparing(void);
+bool osm_library_needs_restart(void); /* built, but saved at the next start */
+void osm_library_screen_draw(void);
 
 #endif

@@ -88,7 +88,8 @@ bool lib_album_of_track(const char *path, char *album, int alen,
                         char *artist, int arlen);
 
 /* ── covers for the album grid ─────────────────────────────────────── */
-#define THUMB_SIZE 100
+/* the cell of the album grid (scr_browse.c), so the grid draws them 1:1 */
+#define THUMB_SIZE 107
 /* the decoded cover of the album whose track is `idx`, or NULL: then it
  * is decoded in the background */
 const uint16_t *lib_thumb(int32_t idx, int *w, int *h);

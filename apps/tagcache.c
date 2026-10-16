@@ -3375,6 +3375,7 @@ static bool commit(void)
 #ifdef HAVE_TC_RAMCACHE
     bool ramcache_buffer_stolen = false;
 #endif
+    bool tempbuf_allocated = false;
     logf("committing tagcache");
 
     while (write_lock)
@@ -3453,7 +3454,7 @@ static bool commit(void)
 #endif /* HAVE_DIRCACHE */
 
 #ifdef HAVE_TC_RAMCACHE
-    if (tempbuf_size == 0 && tc_stat.ramcache_allocated > 0)
+    if (tempbuf_size == 0 && tc_stat.ramcache_allocated > 0 && tcramcache.handle > 0)
     {
         tcrc_buffer_lock();
         tempbuf = (char *)(tcramcache.hdr + 1);
@@ -3470,6 +3471,16 @@ static bool commit(void)
         tempbuf_size &= ~0x03;
     }
 #endif /*defined(PLUGIN)*/
+
+#if !defined(PLUGIN) && !defined(__PCTOOL__)
+    /* No dircache or ramcache to borrow (a first build without dircache,
+     * as in the simulator): take what is free. */
+    if (tempbuf_size == 0)
+    {
+        allocate_tempbuf();
+        tempbuf_allocated = tempbuf_size > 0;
+    }
+#endif
 
     /* And finally fail if there are no buffers available. */
     if (tempbuf_size == 0)
@@ -3575,6 +3586,9 @@ commit_error:
 #endif /* HAVE_TC_RAMCACHE */
 
     read_lock--;
+
+    if (tempbuf_allocated)
+        free_tempbuf();
 
 #ifdef HAVE_DIRCACHE
     /* Resume the dircache, if we stole the buffer. */
@@ -5218,6 +5232,7 @@ static void load_ramcache(void)
         tcramcache.hdr = NULL;
         int handle = tcramcache.handle;
         tcramcache.handle = 0;
+        tc_stat.ramcache_allocated = 0;     /* nothing for commit() to borrow */
         core_free(handle);
     }
 

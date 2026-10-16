@@ -404,6 +404,13 @@ static void draw_progress(void)
 static void render(void)
 {
     gfx_noclip();
+    if (osm_library_preparing())
+    {
+        osm_library_screen_draw();
+        gfx_noclip();
+        draw_toast();
+        return;
+    }
     if (np_shown)
         scr_nowplaying.draw();
     else if (depth)
@@ -425,7 +432,8 @@ static void run_transition(int kind)
     if (kind == TR_NONE)
         return;
     gfx_snapshot(snap_new);
-    const int frames = 7;
+    /* few frames, each a handful of row copies: the page moves at once */
+    const int frames = 5;
     for (int f = 1; f <= frames; f++)
     {
         int t = f * 256 / frames;
@@ -433,31 +441,30 @@ static void run_transition(int kind)
         if (kind == TR_PUSH || kind == TR_POP)
         {
             bool push = kind == TR_PUSH;
-            /* the new page slides in from the right (or the old one out) */
+            /* the new page slides in from the right (or the old one out),
+             * the one underneath drifts a quarter and dims a little */
             int off = push ? SCR_W - (SCR_W * e >> 8) : (SCR_W * e >> 8);
             int back = push ? -(SCR_W / 4) * e >> 8 : -(SCR_W / 4) * (256 - e) >> 8;
             const fb_data *under = push ? snap_old : snap_new;
             const fb_data *over = push ? snap_new : snap_old;
+            int dim = push ? e : 256 - e;
+            unsigned keep = 256 - dim * 90 / 256;
+            /* the part of the row from the page underneath: x in [0, off),
+             * read from x - back, which is >= 0 since back <= 0 */
+            int un = MIN(off, SCR_W + back);
             for (int y = 0; y < SCR_H; y++)
             {
                 fb_data *d = &osm_fb[y * SCR_W];
-                for (int x = 0; x < SCR_W; x++)
+                if (un > 0)
                 {
-                    int ox = x - off;
-                    if (ox >= 0)
-                        d[x] = over[y * SCR_W + ox];
-                    else
-                    {
-                        int ux = x - back;
-                        d[x] = (ux >= 0 && ux < SCR_W) ? under[y * SCR_W + ux] : 0;
-                    }
+                    memcpy(d, &under[y * SCR_W - back], un * sizeof(fb_data));
+                    gfx_darken_span(d, un, keep);
                 }
+                if (off > un)
+                    memset(&d[MAX(un, 0)], 0, (off - MAX(un, 0)) * sizeof(fb_data));
+                if (off < SCR_W)
+                    memcpy(&d[off], &over[y * SCR_W], (SCR_W - off) * sizeof(fb_data));
             }
-            /* the page underneath dims a little */
-            int dim = push ? e : 256 - e;
-            gfx_clip(0, 0, push ? SCR_W - off : off, SCR_H);
-            gfx_fill(0, 0, SCR_W, SCR_H, (color_t)(dim * 90 / 256) << 24);
-            gfx_noclip();
         }
         else
         {
@@ -466,16 +473,11 @@ static void run_transition(int kind)
             int off = up ? SCR_H - (SCR_H * e >> 8) : (SCR_H * e >> 8);
             const fb_data *under = up ? snap_old : snap_new;
             const fb_data *over = up ? snap_new : snap_old;
-            for (int y = 0; y < SCR_H; y++)
-            {
-                if (y >= off)
-                    memcpy(&osm_fb[y * SCR_W], &over[(y - off) * SCR_W], SCR_W * sizeof(fb_data));
-                else
-                    memcpy(&osm_fb[y * SCR_W], &under[y * SCR_W], SCR_W * sizeof(fb_data));
-            }
+            memcpy(osm_fb, under, off * SCR_W * sizeof(fb_data));
+            memcpy(&osm_fb[off * SCR_W], over, (SCR_H - off) * SCR_W * sizeof(fb_data));
         }
         gfx_present();
-        sleep(1);
+        yield();
     }
     gfx_restore(snap_new);
 }
@@ -614,6 +616,14 @@ static void dispatch(int key, int ev)
             player_volume_step(key == K_VOL_UP ? 1 : -1);
             osm_toast_volume();
         }
+        return;
+    }
+
+    /* nothing to browse until the library is built */
+    if (osm_library_preparing())
+    {
+        if (key == K_SELECT && ev == EV_SHORT && osm_library_needs_restart())
+            sys_reboot();
         return;
     }
 

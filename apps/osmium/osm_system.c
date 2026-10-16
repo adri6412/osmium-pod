@@ -31,6 +31,7 @@
 #include "rbpaths.h"
 #include "tagcache.h"
 #include "timefuncs.h"
+#include "string-extra.h"
 #include "osmium.h"
 #include "osm_ui.h"
 #include "osm_player.h"
@@ -260,13 +261,137 @@ int osm_library_serial(void)
     return library_serial;
 }
 
+/* ── the library being built ───────────────────────────────────────── */
+
+/* While the database is (re)built the player has no library to show:
+ * a full screen with the progress takes over until it is ready. */
+bool osm_library_preparing(void)
+{
+#ifdef HAVE_TAGCACHE
+    /* not for the instant the engine takes to check a sound database at
+     * start: only once it has not been ready for a moment */
+    static long since;
+    if (!tagcache_is_initialized() || lib_ready())
+    {
+        since = 0;
+        return false;
+    }
+    if (!since)
+        since = current_tick ? current_tick : 1;
+    return TIME_AFTER(current_tick, since + HZ);
+#else
+    return false;
+#endif
+}
+
+bool osm_library_needs_restart(void)
+{
+#ifdef HAVE_TAGCACHE
+    struct tagcache_stat *st = tagcache_get_stat();
+    return osm_library_preparing() && st && st->commit_delayed;
+#else
+    return false;
+#endif
+}
+
+void osm_library_screen_draw(void)
+{
+#ifdef HAVE_TAGCACHE
+    struct tagcache_stat *st = tagcache_get_stat();
+    bool restart = st->commit_delayed;
+    bool saving = st->commit_step > 0;
+    char line[64];
+
+    gfx_noclip();
+    gfx_clear(C_DARK);
+    gfx_brand(14, 14, 8, true);
+
+    /* the mark, breathing while the work goes on */
+    int cy = 104;
+    int phase = (current_tick / 4) % 32;
+    int breath = phase < 16 ? phase : 31 - phase;            /* 0..15 */
+    gfx_glow(SCR_W / 2, cy, 40, 14, (C_GOLD & 0x00FFFFFFu) | (color_t)(26 + breath * 2) << 24);
+    gfx_circle(SCR_W / 2, cy, 44, GOLD_A(0.12));
+    gfx_circle(SCR_W / 2, cy, 43, C_PANEL);
+    gfx_icon(restart ? ICON_REFRESH_CW : ICON_LIBRARY, 44, SCR_W / 2 - 22, cy - 22,
+             C_GOLD);
+
+    int y = cy + 60;
+    gfx_text_fit(OSM_FONT_B13, 8, y, SCR_W - 16,
+                 osm_str(restart ? S_LIB_RESTART : S_BOOT_DATABASE), C_WHITE,
+                 ALIGN_CENTER);
+    y += 24;
+
+    if (restart)
+    {
+        gfx_text_wrap(OSM_FONT_R12, 24, y, SCR_W - 48, 3, 17,
+                      osm_str(S_PRESS_RESTART_WHY), SILVER_A(0.7));
+        int bw = 180, by = SCR_H - 64;
+        gfx_rrect((SCR_W - bw) / 2, by, bw, 34, 17, C_GOLD);
+        gfx_text_fit(OSM_FONT_B13, (SCR_W - bw) / 2, by + 9, bw,
+                     osm_str(S_LIB_PRESS_RESTART), C_BLACK, ALIGN_CENTER);
+        return;
+    }
+
+    gfx_text_fit(OSM_FONT_R12, 12, y, SCR_W - 24,
+                 osm_str(saving ? S_LIB_PHASE_SAVE : S_LIB_PHASE_SCAN),
+                 SILVER_A(0.7), ALIGN_CENTER);
+    y += 22;
+
+    /* how far: the steps of the commit, or the files read so far */
+    int max = tagcache_get_max_commit_step();
+    if (saving)
+        snprintf(line, sizeof line, osm_str(S_LIB_SAVE_PROGRESS),
+                 MIN(st->commit_step, max), max);
+    else
+        snprintf(line, sizeof line, osm_str(S_LIB_SCAN_PROGRESS),
+                 st->processed_entries);
+    gfx_text_fit(OSM_FONT_B13, 12, y, SCR_W - 24, line, C_GOLD, ALIGN_CENTER);
+    y += 26;
+
+    /* the bar: filled while saving, a running segment while reading */
+    int bx = 32, bw = SCR_W - 64, bh = 6;
+    gfx_rrect(bx, y, bw, bh, 3, WA(0.10));
+    if (saving && max > 0)
+        gfx_rrect(bx, y, MAX(bh, bw * MIN(st->commit_step, max) / max), bh, 3,
+                  C_GOLD);
+    else
+    {
+        int seg = bw / 4;
+        int pos = (current_tick * 2) % (bw + seg) - seg;
+        int x0 = MAX(0, pos), x1 = MIN(bw, pos + seg);
+        if (x1 > x0)
+        {
+            gfx_clip(bx, y, bw, bh);
+            gfx_rrect(bx + x0, y, x1 - x0, bh, 3, C_GOLD);
+            gfx_noclip();
+        }
+    }
+    y += 16;
+
+    /* the file being read */
+    const char *cur = (const char *)st->curentry;
+    if (!saving && cur)
+    {
+        char name[MAX_PATH];
+        strlcpy(name, cur, sizeof name);
+        const char *base = strrchr(name, '/');
+        gfx_text_fit(OSM_FONT_R10, 16, y, SCR_W - 32, base ? base + 1 : name,
+                     SILVER_A(0.45), ALIGN_CENTER);
+    }
+
+    gfx_text_fit(OSM_FONT_R10, 12, SCR_H - 30, SCR_W - 24,
+                 osm_str(S_LIB_FIRST_TIME), SILVER_A(0.45), ALIGN_CENTER);
+#endif
+}
+
 /* ── at boot: where we left off ────────────────────────────────────── */
 
 void osm_resume_at_boot(void)
 {
     /* The first start (no library yet): leave the memory to the database,
      * which needs it to finish building. */
-    if (!file_exists(ROCKBOX_DIR "/database_idx.tcd"))
+    if (!file_exists(ROCKBOX_DIR "/database_idx.tcd") || !lib_ready())
         return;
     /* the playlist is reloaded, the track queued and paused: Play resumes */
     if (playlist_resume() == -1 || global_status.resume_index < 0)
@@ -324,23 +449,29 @@ bool osm_ui_tick(void)
     }
 
     /* The first start, a deleted database, or one left damaged (the card
-     * pulled out while it was written): build it again. The engine checks
-     * the files in the background first, give it a few seconds. */
-    static bool db_kicked;
-    static long db_since;
-    if (!db_kicked && tagcache_is_initialized() && !lib_ready())
+     * pulled out or the battery gone while it was written): build it
+     * again. Wait until the engine is idle - nothing read, nothing saved
+     * for a few seconds - and try again if a build ends without a usable
+     * database. */
+    static int db_kicks;
+    static int db_seen = -1;
+    static long db_still;
+    if (tagcache_is_initialized() && !lib_ready() && db_kicks < 3)
     {
         struct tagcache_stat *ts = tagcache_get_stat();
-        if (!db_since)
-            db_since = current_tick;
-        bool missing = !file_exists(ROCKBOX_DIR "/database_idx.tcd");
-        bool idle = ts && ts->commit_step == 0 && !ts->commit_delayed &&
-                    ts->processed_entries == 0;
-        if (idle && (missing || TIME_AFTER(current_tick, db_since + HZ * 4)))
+        if (ts->processed_entries != db_seen || ts->commit_step > 0 || ts->curentry)
         {
-            db_kicked = true;
+            db_seen = ts->processed_entries;
+            db_still = current_tick;
+        }
+        bool missing = !file_exists(ROCKBOX_DIR "/database_idx.tcd");
+        long wait = (db_kicks == 0 && missing) ? HZ / 2 : HZ * 4;
+        if (ts->commit_step == 0 && !ts->commit_delayed &&
+            TIME_AFTER(current_tick, db_still + wait))
+        {
+            db_kicks++;
+            db_still = current_tick + HZ * 2;      /* give it time to start */
             tagcache_rebuild();
-            osm_toast(ICON_REFRESH_CW, osm_str(S_LIB_UPDATING));
         }
     }
 
@@ -354,6 +485,10 @@ bool osm_ui_tick(void)
         osm_toast(ICON_REFRESH_CW, osm_str(S_LIB_RESTART));
         redraw = true;
     }
+
+    /* while the database is built, the empty pages show how far it got */
+    if (osm_library_preparing())
+        redraw = true;
 
     /* the database finished building in the background */
     static bool was_ready;
