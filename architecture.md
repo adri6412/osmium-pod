@@ -73,9 +73,25 @@ and audio.
 If no partition can be mounted, the player offers USB mode so the card
 can be fixed, then reboots.
 
-At the end `osm_ui_run()` starts the interface thread. The main thread
-then sleeps forever: its code lives in the init section, which is
-reclaimed once the system is up.
+The boot screen is the appliance's animation (its Plymouth theme), drawn
+in code at the same 25 fps (`osm_system.c`):
+
+1. A gold dot grows into the first bar, and the other six bars slide out
+   of it.
+2. O S M I U M comes in from the left, letter by letter.
+3. S O U N D fades in underneath.
+4. From then on, a light runs over the bars every 2.2 s.
+
+The timings were measured on the appliance's frames. Because the boot
+blocks for seconds at a time, a thread of its own (`osm boot`) plays the
+animation. `osm_boot_message()` only hands that thread the text and
+progress to show under the mark.
+
+At the end `osm_ui_run()` calls `osm_boot_splash_end(true)`: it waits for
+the mark to be complete (3.2 s after power on at most), then starts the
+interface thread. The USB screen at boot and `osm_fatal()` stop the
+animation at once. The main thread then sleeps forever: its code lives in
+the init section, which is reclaimed once the system is up.
 
 ## Threads
 
@@ -83,6 +99,7 @@ reclaimed once the system is up.
 |---|---|---|---|---|
 | `osm ui` | `osm_ui.c` | 64 KB | user interface | the whole interface |
 | `osm covers` | `osm_library.c` | 16 KB | background | album grid thumbnails |
+| `osm boot` | `osm_system.c` | 16 KB | user interface | the boot animation, until the interface starts |
 | audio, codec, buffering, voice, tagcache, dircache, usb… | core | — | — | unchanged from Rockbox |
 
 The UI thread loop (`ui_thread()` in `osm_ui.c`) works like this:
@@ -100,12 +117,32 @@ and sends commands. Long operations in the core, such as building a
 playlist or scanning folders, call back into the interface to check for
 abort (see the hooks below).
 
-The cover thread decodes album art for the grid into 107×107 thumbnails.
-It uses a 512 KB work buffer and reads either the JPEG embedded in the
-file (`clip_jpeg_fd`) or a cover file in the folder
-(`search_albumart_files`, `read_jpeg_fd` / `read_bmp_fd`). Results
-carry a generation number, so covers that arrive after the list changed
-are dropped.
+The cover thread decodes album art for the grid into 107×107 thumbnails,
+using a 512 KB work buffer. It reads the sources in this order:
+
+1. The JPEG embedded in the file (`clip_jpeg_fd`).
+2. If there is none, or it cannot be decoded, a picture file found by
+   `search_albumart_files()` (`read_jpeg_fd` / `read_bmp_fd`). This step
+   runs even when the file has no readable tags.
+
+Results carry a generation number, so covers that arrive after the list
+changed are dropped.
+
+`search_albumart_files()` (`apps/recorder/albumart.c`) is also used by
+the engine for Now Playing. It tries these files, each as .jpeg, .jpg
+or .bmp, in this order:
+
+1. `<track>` and `<album>`.
+2. `cover`, `folder`, `front`.
+3. The same names in the parent folder.
+4. `.rockbox/albumart/<artist>-<album>`.
+5. As a last resort, any picture in the track's folder, preferring one
+   whose name contains "front", "cover" or "folder".
+
+Rockbox's JPEG decoder reads baseline JPEG only. Progressive JPEG and PNG
+covers show the placeholder. Upstream's progressive decoder exists only
+in the image viewer plugin (`apps/plugins/imageviewer/jpegp`), and it
+needs the whole image in memory.
 
 ## The interface
 
@@ -204,9 +241,12 @@ Core files the fork modified (compare with `git diff <fork point> -- <file>`):
 * **`apps/tagcache.c`**: commit without a confirmation dialog; a commit
   without dircache allocates its own buffer; no endless reload loop when
   there is nothing to commit.
-* **`apps/playback.c`**: two album art slots. `apps/codecs.c`,
-  `apps/cuesheet.*`, `apps/talk.*`, `apps/language.c` and `apps/recorder/*`
-  only lose their GUI includes and calls.
+* **`apps/playback.c`**: two album art slots.
+* **`apps/recorder/albumart.c`**: more cover file names (`folder`, `front`)
+  and the "any picture in the folder" fallback.
+* **GUI references only**: `apps/codecs.c`, `apps/cuesheet.*`,
+  `apps/talk.*`, `apps/language.c` and the rest of `apps/recorder/*` only
+  lose their GUI includes and calls.
 * **`firmware/`**:
   * `export/config/fiiom3k.h` has `CODEC_SIZE` set to 2 MiB and no quick
     screen, hotkeys or A-B repeat.
