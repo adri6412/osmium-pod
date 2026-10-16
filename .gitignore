@@ -334,6 +334,3 @@ __pycache__
 
 /utils/time-sync/time-sync
 
-# Music Manager Build Artifacts
-/pc_app/dist
-/pc_app/release
