@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Osmium Pod Installer</title>
+<meta name="description" content="Install Osmium Pod (Rockbox) on the FiiO M3K from the browser.">
+<link rel="stylesheet" href="style.css?v=d9e7ae50b3">
+<script type="module" src="app.js?v=d9e7ae50b3"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Osmium Pod <span>for the FiiO M3K</span></h1>
+    <p class="lead">Install Rockbox with the Osmium Sound interface from your browser,
+      straight into the player: bootloader, firmware and system go to its internal
+      memory, <strong>replacing the FiiO firmware</strong>. The microSD card is only
+      for your music.</p>
+    <p id="release" class="release">Looking for the latest release…</p>
+    <div id="browser-warning" class="notice warn" hidden>
+      This page needs <strong>Chrome, Edge or another Chromium browser</strong> on a
+      computer: it uses WebUSB, which Firefox and Safari do not have. You can still
+      <a id="zip-link-top" href="#">download the package</a> and install it by hand
+      with jztool.
+    </div>
+  </header>
+
+  <section class="step" id="step-usb">
+    <div class="num">1</div>
+    <div class="body">
+      <h2>Put the player in USB boot mode</h2>
+      <ol>
+        <li>Power the player <strong>off</strong> and unplug it.</li>
+        <li>First installation? Put a <strong>microSD card</strong> in the player: the
+          installer saves a backup of the FiiO firmware on it.</li>
+        <li>Hold <strong>Volume Down</strong> and plug the USB cable into the computer.
+          The screen stays black: that is the X1000's USB boot mode.</li>
+      </ol>
+      <details>
+        <summary>The player does not show up in step 2</summary>
+        <ul>
+          <li><strong>Windows</strong>: the USB boot device needs the WinUSB driver.
+            Start <a href="https://zadig.akeo.ie/">Zadig</a> with the player in USB
+            boot mode, pick the device with ID <code>A108 1000</code> and install
+            <em>WinUSB</em>. This is needed once.</li>
+          <li><strong>Linux</strong>: allow access to the device with a udev rule, then
+            unplug and plug the player again:
+            <pre>echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="a108", ATTRS{idProduct}=="1000", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-ingenic-usbboot.rules
+sudo udevadm control --reload</pre></li>
+          <li><strong>macOS</strong>: no setup is needed.</li>
+          <li>Use a data cable, and try another USB port if nothing appears.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="step" id="step-install">
+    <div class="num">2</div>
+    <div class="body">
+      <h2>Install</h2>
+      <p>The page downloads the release and sends it to the player with the
+        installer; pick <em>Ingenic USB Boot Device</em> when the browser asks.
+        It works for the first installation and for updates: settings and library
+        are kept.</p>
+      <label class="option"><input type="checkbox" id="no-backup">
+        I have no card: install <strong>without</strong> a backup of the FiiO
+        firmware (it cannot be restored afterwards)</label>
+      <div class="actions">
+        <button id="install-button" disabled>Install Osmium Pod</button>
+      </div>
+      <progress id="install-progress" max="1" value="0" hidden></progress>
+      <pre id="install-log" class="log" hidden></pre>
+      <p id="install-status" class="status"></p>
+    </div>
+  </section>
+
+  <section class="step" id="step-player">
+    <div class="num">3</div>
+    <div class="body">
+      <h2>On the player</h2>
+      <p>The player shows each step and restarts by itself into Osmium Pod. The
+        first time, saving the backup takes a few minutes: leave it plugged in.
+        Then copy your music to the card, in a card reader or by connecting the
+        player to the computer.</p>
+      <p>The settings and the library live in the player's internal storage. When
+        Rockbox runs, the computer sees only the card. To see the internal storage,
+        power the player on holding <strong>Volume +</strong>, choose <em>USB:
+        internal storage</em>, then plug the cable in.</p>
+      <p>If something stops the installation, the player shows the reason; you can
+        unplug it, go back to step 1 and try again.</p>
+    </div>
+  </section>
+
+  <section class="step muted" id="step-other">
+    <div class="num">…</div>
+    <div class="body">
+      <h2>Other ways</h2>
+      <details>
+        <summary>Update by copying to the card</summary>
+        <p>With Osmium Pod already installed, a release copied to the card is taken
+          at the next start. Put the card in a card reader (or connect the player while
+          it runs) and choose the <strong>root of the card</strong>.</p>
+        <div class="actions">
+          <button id="sd-button" class="small" disabled>Choose the card…</button>
+          <a id="zip-link" class="secondary" href="#">or download the zip</a>
+        </div>
+        <progress id="sd-progress" max="1" value="0" hidden></progress>
+        <p id="sd-status" class="status"></p>
+      </details>
+      <details>
+        <summary>Restore without a computer</summary>
+        <p>Copy the release zip (<a id="zip-link-restore" href="#">download it</a>)
+          to the root of the card, as it is. Power the player on holding
+          <strong>Volume +</strong> and choose <em>Restore from zip</em>: it
+          reinstalls the system from the newest zip on the card, keeping settings
+          and library.</p>
+      </details>
+      <details>
+        <summary>Recovery tools (rescue)</summary>
+        <p>Load the installer into RAM without installing anything, to reach the
+          full recovery menu: <strong>Volume +/−</strong> move, <strong>Play</strong>
+          selects. It can restore <code>fiiom3k-boot.bin</code>, install a
+          <code>bootloader.m3k</code> from the card, save backups and dump the flash.
+          You can also pick another bootloader file, for example the official one
+          from <a href="https://download.rockbox.org/">download.rockbox.org</a>.</p>
+        <input type="file" id="bl-file" accept=".m3k">
+        <div class="actions">
+          <button id="rescue-button" class="small" disabled>Load the recovery menu</button>
+        </div>
+        <pre id="rescue-log" class="log" hidden></pre>
+        <p id="rescue-status" class="status"></p>
+      </details>
+      <details>
+        <summary>If something goes wrong</summary>
+        <p>USB boot mode is in the chip's ROM, so it is always there: the player can
+          always be brought back. Run the installation again, or use the recovery
+          menu above. The backup of the FiiO firmware is on the card:
+          <code>fiiom3k-boot.bin</code> and <code>flash.img</code>; keep them on
+          your computer.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <p><a href="https://github.com/adri6412/osmium-pod">Source code</a> ·
+      Rockbox is free software under the GPL v2 or later. Use at your own risk.</p>
+  </footer>
+</main>
+</body>
+</html>
