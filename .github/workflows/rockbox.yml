@@ -44,6 +44,7 @@ jobs:
       contents: write
     outputs:
       release: ${{ steps.version.outputs.release }}
+      tag: ${{ steps.version.outputs.name }}
 
     steps:
     - name: Checkout repository
@@ -205,12 +206,16 @@ jobs:
           ${{ env.PKG }}.zip
           bootloader.m3k
 
-  # Point the web installer at the release just published
+  # Point the web installer at the release just published (not for
+  # pre-releases). The tag is passed on: right after publishing, GitHub
+  # can still report the previous release as the latest.
   pages:
     needs: build-firmware
-    if: needs.build-firmware.outputs.release == 'true'
+    if: needs.build-firmware.outputs.release == 'true' && github.event.inputs.prerelease != 'true'
     permissions:
       contents: read
       pages: write
       id-token: write
     uses: ./.github/workflows/pages.yml
+    with:
+      tag: ${{ needs.build-firmware.outputs.tag }}

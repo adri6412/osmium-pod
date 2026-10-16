@@ -14,6 +14,11 @@ on:
       - '.github/workflows/pages.yml'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      tag:
+        description: 'Release to publish; empty: the latest release'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -30,12 +35,13 @@ jobs:
     - name: Add the latest release
       env:
         GH_TOKEN: ${{ github.token }}
+        TAG: ${{ inputs.tag }}
       run: |
         mkdir -p _site/firmware
         cp -r site/. _site/
 
-        # latest release that is not a draft or a pre-release
-        if ! TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName); then
+        # by default the latest release that is not a draft or a pre-release
+        if [ -z "$TAG" ] && ! TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName); then
           echo "No release yet: the page says so"
           echo '{}' > _site/firmware/manifest.json
           exit 0
