@@ -1,7 +1,8 @@
 name: Build Rockbox for FiiO M3K
 
-# Every push builds the firmware and keeps the package as a workflow artifact.
-# A release is published:
+# Every push builds the firmware and the bootloader and keeps them as a
+# workflow artifact. A release is published, and the web installer on
+# GitHub Pages (pages.yml) updated to it:
 #   - when a tag v* is pushed (git tag v1.0.0 && git push origin v1.0.0), or
 #   - from the Actions tab: "Run workflow", with the version to publish
 #     (the tag is created on the selected branch).
@@ -41,6 +42,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    outputs:
+      release: ${{ steps.version.outputs.release }}
 
     steps:
     - name: Checkout repository
@@ -110,6 +113,20 @@ jobs:
         # rockbox.zip: .rockbox with firmware, codecs, languages, ...
         make zip
 
+    - name: Build the bootloader
+      run: |
+        mkdir -p build-bootloader
+        cd build-bootloader
+        ../tools/configure --target=fiiom3k --type=B
+        make -j$(nproc)
+        ls -l bootloader.ucl bootloader.m3k
+        # the SPL loads at most 102 KiB from flash, and the installer refuses
+        # anything bigger (installer-ingenic.c)
+        size=$(stat -c %s bootloader.ucl)
+        if [ "$size" -gt $((102 * 1024)) ]; then
+          echo "bootloader.ucl is $size bytes, over the 102 KiB limit"; exit 1
+        fi
+
     - name: Assemble the package
       run: |
         PKG=osmium-pod-fiiom3k-${{ steps.version.outputs.name }}
@@ -123,26 +140,31 @@ jobs:
         mkdir -p release/.rockbox/fonts
         ./tools/convbdf -f -o release/.rockbox/fonts/16-GNU-Unifont.fnt fonts/16-GNU-Unifont.bdf
 
-        # No bootloader in the package: bootloaders built from git are not
-        # tested and can leave the player unbootable. Use the official one.
+        # The bootloader (Rockbox in flash) is a separate release file, so
+        # copying the package to the card never changes it by accident.
+        cp build-bootloader/bootloader.m3k bootloader.m3k
 
         cat > release/INSTALL.txt <<'EOF'
         Osmium Pod - Osmium Sound for the FiiO M3K
         ==========================================
 
-        Rockbox bootloader already on the player (update):
+        Easiest: use the web installer, from Chrome or Edge:
+          https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+
+        Update (Rockbox bootloader already on the player):
           1. Connect the M3K over USB (or put the microSD card in a reader).
           2. Copy everything in this archive to the root of the card,
              overwriting the files already there (merge the .rockbox
              folder: settings and database are kept).
-          3. Eject and restart the player.
+          3. Eject and restart the player. With the Osmium Pod bootloader,
+             the copy in flash is updated at the next start.
 
-        First installation (no Rockbox bootloader yet):
-          Install the OFFICIAL Rockbox bootloader for the FiiO M3K first
-          (https://download.rockbox.org/, with Rockbox Utility or jztool, as
-          the Rockbox manual describes); then follow the steps above.
-          This firmware works with the official bootloader: do not install
-          a bootloader built from this repository.
+        First installation by hand:
+          Either install the OFFICIAL Rockbox bootloader for the FiiO M3K
+          (https://download.rockbox.org/), which starts Rockbox from the
+          card and keeps the FiiO firmware; or install bootloader.m3k from
+          this release, which puts Rockbox in the internal flash in place of
+          the FiiO firmware (see README.md, "Rockbox in flash").
         EOF
 
         (cd release && zip -qr ../$PKG.zip .)
@@ -152,7 +174,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.PKG }}
-        path: release/
+        path: |
+          release/
+          bootloader.m3k
         include-hidden-files: true
 
     - name: Publish the release
@@ -167,9 +191,26 @@ jobs:
         body: |
           Osmium Sound for the FiiO M3K.
 
-          **Install**: download `${{ env.PKG }}.zip`, unzip it to the root
-          of the M3K's microSD card (overwrite the files in `.rockbox`) and restart the
-          player. It needs the **official** Rockbox bootloader for the M3K
-          (https://download.rockbox.org/); see `INSTALL.txt`.
+          **Install from the browser**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+
+          **Update**: unzip `${{ env.PKG }}.zip` to the root of the M3K's
+          microSD card (overwrite the files in `.rockbox`) and restart the
+          player.
+
+          `bootloader.m3k` puts Rockbox in the player's internal flash, in
+          place of the FiiO firmware. The package also works with the
+          official Rockbox bootloader (https://download.rockbox.org/), which
+          starts it from the card. See `INSTALL.txt`.
         files: |
           ${{ env.PKG }}.zip
+          bootloader.m3k
+
+  # Point the web installer at the release just published
+  pages:
+    needs: build-firmware
+    if: needs.build-firmware.outputs.release == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

@@ -1,0 +1,81 @@
+name: Web installer (GitHub Pages)
+
+# Publishes site/ on GitHub Pages together with the latest release's files
+# (package zip and bootloader.m3k), so the page downloads them from its own
+# origin (GitHub release downloads have no CORS headers).
+# Runs when the site changes, by hand, and from rockbox.yml after a release.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-site:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Add the latest release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        mkdir -p _site/firmware
+        cp -r site/. _site/
+
+        # latest release that is not a draft or a pre-release
+        if ! TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName); then
+          echo "No release yet: the page says so"
+          echo '{}' > _site/firmware/manifest.json
+          exit 0
+        fi
+
+        cd _site/firmware
+        gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'osmium-pod-fiiom3k-*.zip'
+        if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'bootloader.m3k'; then
+          echo "::warning::release $TAG has no bootloader.m3k: the installer stays disabled"
+        fi
+        mv osmium-pod-fiiom3k-*.zip osmium-pod-fiiom3k.zip
+
+        BOOTLOADER=null
+        [ -f bootloader.m3k ] && BOOTLOADER='"firmware/bootloader.m3k"'
+        gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,publishedAt,url \
+          | jq --argjson bl "$BOOTLOADER" '{
+              version: .tagName,
+              published: .publishedAt,
+              url: .url,
+              package: "firmware/osmium-pod-fiiom3k.zip",
+              bootloader: $bl
+            }' > manifest.json
+        cat manifest.json
+        ls -l
+
+    - name: Upload the site
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: _site
+
+  deploy:
+    needs: build-site
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

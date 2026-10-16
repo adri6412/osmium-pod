@@ -120,17 +120,70 @@ a **GitHub release** with `osmium-pod-fiiom3k-<version>.zip`:
 * push a tag: `git tag v1.0.0 && git push origin v1.0.0`, or
 * *Actions → Build Rockbox for FiiO M3K → Run workflow*, entering the version.
 
-To install, unzip the release archive to the root of the M3K's microSD card
-(overwriting the files in `.rockbox`) and restart the player.
+Each release also carries `bootloader.m3k` (see "Rockbox in flash"), and
+`.github/workflows/pages.yml` then publishes the **web installer**
+(`site/`) on GitHub Pages: <https://adri6412.github.io/osmium-pod/>. From
+Chrome or Edge it copies the release to the microSD card and loads the
+bootloader into the player's RAM over USB (WebUSB, the same protocol as
+jztool), with no tools to install. The page serves the release files from
+its own origin, because GitHub release downloads cannot be fetched by a
+web page. For a first deployment, set *Settings → Pages → Source* to
+*GitHub Actions*.
+
+To install by hand, unzip the release archive to the root of the M3K's
+microSD card (overwriting the files in `.rockbox`) and restart the player.
 
 The firmware runs on the **official** Rockbox bootloader for the M3K
-(<https://download.rockbox.org/>). Do not install a bootloader built from
-this tree: it is untested and can leave the player with a black screen.
-If that happened, put the player in USB boot mode (power off, hold
-Volume Down while plugging the USB cable) and load the official
-bootloader with `jztool fiiom3k load bootloader.m3k` (see
-`utils/jztool/README.md`); then, from its recovery menu, restore your
-backup (`fiiom3k-boot.bin`) or install the official `bootloader.m3k`.
+(<https://download.rockbox.org/>). That is the tested setup, and the one
+releases are made for.
+
+## Rockbox in flash (experimental)
+
+The bootloader built from this tree (`--type=B`) can keep `rockbox.m3k`
+in the M3K's internal NAND, **in place of the FiiO firmware**, which is
+lost and can no longer be started. The card is still needed: codecs,
+settings, the database and the music stay on it. Only the main binary
+moves to flash, so the player boots even if `.rockbox/rockbox.m3k` is
+missing or damaged.
+
+NAND layout:
+
+| Offset   | Size     | Content                                       |
+|----------|----------|-----------------------------------------------|
+| 0x0      | 128 KiB  | SPL + bootloader (unchanged)                  |
+| 0x20000  | 4 MiB    | Rockbox (was the FiiO kernel)                 |
+| 0x420000 | …        | FiiO recovery kernel and UBI, left unused     |
+
+At every boot the bootloader:
+1. compares `.rockbox/rockbox.m3k` on the card with the copy in flash, and
+   writes it to flash if it differs (splash "Updating Rockbox in flash");
+2. boots from flash. If the image is damaged, it is rewritten from the card
+   and the boot is retried; failing that, Rockbox is started from the card.
+
+So updates work as before: copy the new `.rockbox` to the card and restart.
+The recovery menu (hold Volume Up at power on) adds *Rockbox (SD)*, to boot
+the card's copy without touching flash, *Rockbox in flash → Install from
+SD* to force the write, and *Debug tools → Dump Rockbox flash*.
+
+Installing (build with `tools/configure --target=fiiom3k --type=B`):
+1. Copy `bootloader.m3k` and the `.rockbox` folder to the card.
+2. **Try it from RAM first.** Put the player in USB boot mode (power off,
+   hold Volume Down while plugging the USB cable) and run
+   `jztool fiiom3k load bootloader.m3k` (see `utils/jztool/README.md`).
+3. From its recovery menu, back up first: *Bootloader → Backup*
+   (`fiiom3k-boot.bin`) and *Debug tools → Dump entire flash*
+   (`flash.img`, the only way to get the FiiO firmware back). Copy both
+   files to a computer.
+4. Choose *Rockbox*: the bootloader still runs from RAM, writes Rockbox to
+   flash and boots it. Check that it works, also without the card.
+5. Only then use *Bootloader → Install or update* to write the bootloader.
+
+If the player shows a black screen, go back to USB boot mode and load a
+working bootloader with jztool; from its recovery menu restore
+`fiiom3k-boot.bin` or install the official `bootloader.m3k`. The X1000's
+USB boot is in mask ROM, so it is always available. Keep `flash.img`:
+it is the only copy of the FiiO firmware. This tree has no tool to write
+it back to the NAND.
 
 ## Credits
 * [Rockbox](https://www.rockbox.org/) (GPL v2 or later).

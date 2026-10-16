@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Osmium Pod Installer</title>
+<meta name="description" content="Install Osmium Pod (Rockbox) on the FiiO M3K from the browser.">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Osmium Pod <span>for the FiiO M3K</span></h1>
+    <p class="lead">Install Rockbox with the Osmium Sound interface from your browser.
+      Rockbox goes into the player's internal flash, <strong>replacing the FiiO
+      firmware</strong>. The microSD card still holds the codecs, the settings and
+      your music.</p>
+    <p id="release" class="release">Looking for the latest release…</p>
+    <div id="browser-warning" class="notice warn" hidden>
+      This page needs <strong>Chrome, Edge or another Chromium browser</strong> on a
+      computer: it uses WebUSB and folder access, which Firefox and Safari do not
+      have. You can still <a id="zip-link-top" href="#">download the package</a>
+      and install it by hand with jztool.
+    </div>
+  </header>
+
+  <section class="step" id="step-sd">
+    <div class="num">1</div>
+    <div class="body">
+      <h2>Prepare the microSD card</h2>
+      <p>Put the card in a card reader (or connect the player while Rockbox runs, in
+        USB mode) and choose the <strong>root of the card</strong>. The page copies
+        the <code>.rockbox</code> folder and <code>bootloader.m3k</code> to it;
+        settings, database and music are kept.</p>
+      <div class="actions">
+        <button id="sd-button" disabled>Choose the card…</button>
+        <a id="zip-link" class="secondary" href="#">or download the zip</a>
+      </div>
+      <progress id="sd-progress" max="1" value="0" hidden></progress>
+      <p id="sd-status" class="status"></p>
+    </div>
+  </section>
+
+  <section class="step" id="step-usb">
+    <div class="num">2</div>
+    <div class="body">
+      <h2>Start the installer on the player</h2>
+      <p>Put the card back in the player. Then:</p>
+      <ol>
+        <li>Power the player <strong>off</strong> and unplug it.</li>
+        <li>Hold <strong>Volume Down</strong> and plug the USB cable into the computer.
+          The screen stays black: that is the X1000's USB boot mode.</li>
+        <li>Press the button below and pick <em>Ingenic USB Boot Device</em>.</li>
+      </ol>
+      <div class="actions">
+        <button id="usb-button" disabled>Connect the player</button>
+      </div>
+      <pre id="usb-log" class="log" hidden></pre>
+      <p id="usb-status" class="status"></p>
+      <details>
+        <summary>The player does not show up</summary>
+        <ul>
+          <li><strong>Windows</strong>: the USB boot device needs the WinUSB driver.
+            Start <a href="https://zadig.akeo.ie/">Zadig</a> with the player in USB
+            boot mode, pick the device with ID <code>A108 1000</code> and install
+            <em>WinUSB</em>. This is needed once.</li>
+          <li><strong>Linux</strong>: allow access to the device with a udev rule, then
+            unplug and plug the player again:
+            <pre>echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="a108", ATTRS{idProduct}=="1000", TAG+="uaccess"' | sudo tee /etc/udev/rules.d/70-ingenic-usbboot.rules
+sudo udevadm control --reload</pre></li>
+          <li><strong>macOS</strong>: no setup is needed.</li>
+          <li>Use a data cable, and try another USB port if nothing appears.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Load a different bootloader (rescue)</summary>
+        <p>Load any <code>bootloader.m3k</code>, for example the official one from
+          <a href="https://download.rockbox.org/">download.rockbox.org</a>, into RAM
+          instead of the Osmium Pod one. Nothing is written to the player.</p>
+        <input type="file" id="bl-file" accept=".m3k">
+      </details>
+    </div>
+  </section>
+
+  <section class="step" id="step-player">
+    <div class="num">3</div>
+    <div class="body">
+      <h2>Install on the player</h2>
+      <p>The player shows the <em>Rockbox recovery menu</em>, running from RAM.
+        <strong>Volume +/−</strong> moves, <strong>Play</strong> selects,
+        <strong>Power</strong> turns it off. Do the steps in this order:</p>
+      <ol class="checklist">
+        <li><label><input type="checkbox" data-check="backup">
+          <strong>Bootloader → Backup</strong>: saves <code>fiiom3k-boot.bin</code>
+          to the card.</label></li>
+        <li><label><input type="checkbox" data-check="dump">
+          <strong>Advanced → Debug tools → Dump entire flash</strong>: saves
+          <code>flash.img</code> (128 MB, takes a few minutes). It is the only copy
+          of the FiiO firmware. Copy both files to your computer.</label></li>
+        <li><label><input type="checkbox" data-check="rockbox">
+          <strong>Boot select → Rockbox</strong>: writes Rockbox to the flash and
+          starts it. <span class="danger">From here the FiiO firmware is gone.</span>
+          Check that it works.</label></li>
+        <li><label><input type="checkbox" data-check="install">
+          Power off, repeat step 2, then <strong>Bootloader → Install or
+          update</strong>: writes the bootloader to the flash. From now on the
+          player starts Rockbox by itself.</label></li>
+      </ol>
+      <p>To update later, copy a new release to the card and restart: the
+        bootloader updates the flash by itself.</p>
+    </div>
+  </section>
+
+  <section class="step muted" id="step-help">
+    <div class="num">?</div>
+    <div class="body">
+      <h2>If something goes wrong</h2>
+      <p>USB boot mode is in the chip's ROM, so it is always there. If the player
+        shows a black screen, go back to step 2 and load a bootloader. Then, from the
+        recovery menu, use <strong>Bootloader → Restore</strong> to put back
+        <code>fiiom3k-boot.bin</code>, or <strong>Install or update</strong> with the
+        official <code>bootloader.m3k</code> on the card. The official bootloader
+        starts Rockbox from the card.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p><a href="https://github.com/adri6412/osmium-pod">Source code</a> ·
+      Rockbox is free software under the GPL v2 or later. Use at your own risk.</p>
+  </footer>
+</main>
+</body>
+</html>
