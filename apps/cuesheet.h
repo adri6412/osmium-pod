@@ -23,9 +23,11 @@
 #define _CUESHEET_H_
 
 #include <stdbool.h>
-#include "screens.h"
 #include "file.h"
 #include "metadata.h"
+
+/* skipping back within this many ms goes to the previous segment */
+#define DEFAULT_SKIP_THRESH 3000l
 
 #define MAX_NAME 80    /* Max length of information strings */
 #define MAX_TRACKS 99  /* Max number of tracks in a cuesheet */
@@ -67,11 +69,7 @@ bool parse_cuesheet(struct cuesheet_file *cue_file, struct cuesheet *cue);
 /* reads a cuesheet to find the audio track associated to it */
 bool get_trackname_from_cuesheet(char *filename, char *buf);
 
-/* display a cuesheet struct */
-void browse_cuesheet(struct cuesheet *cue);
 
-/* display a cuesheet file after parsing and loading it to the plugin buffer */
-bool display_cuesheet_content(char* filename);
 
 /* finds the index of the current track played within a cuesheet */
 int cue_find_current_track(struct cuesheet *cue, unsigned long curpos);
@@ -79,10 +77,6 @@ int cue_find_current_track(struct cuesheet *cue, unsigned long curpos);
 /* skip to next track in the cuesheet towards "direction" (which is 1 or -1) */
 bool curr_cuesheet_skip(struct cuesheet *cue, int direction, unsigned long curr_pos);
 
-/* draw track markers on the progressbar */
-void cue_draw_markers(struct screen *screen, struct cuesheet *cue,
-                      unsigned long tracklen,
-                      int x, int y, int w, int h);
 
 /* check if the subtrack has changed */
 bool cuesheet_subtrack_changed(struct mp3entry *id3);

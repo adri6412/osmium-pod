@@ -1,36 +1,75 @@
 name: Build Rockbox for FiiO M3K
 
+# Every push builds the firmware and keeps the package as a workflow artifact.
+# A release is published:
+#   - when a tag v* is pushed (git tag v1.0.0 && git push origin v1.0.0), or
+#   - from the Actions tab: "Run workflow", with the version to publish
+#     (the tag is created on the selected branch).
+
 on:
   push:
+    branches:
+      - '**'
     paths:
       - 'apps/**'
       - 'bootloader/**'
       - 'firmware/**'
+      - 'lib/**'
+      - 'fonts/**'
       - 'tools/**'
-      - 'wps/**'
-      - 'backdrops/**'
+      - 'uisimulator/**'
       - '.github/workflows/rockbox.yml'
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. v1.0.0); empty: build only'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: false
+
+concurrency:
+  group: rockbox-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-firmware:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Release version
+      id: version
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          VERSION="${{ github.ref_name }}"
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        if [ -n "$VERSION" ]; then
+          case "$VERSION" in v*) ;; *) VERSION="v$VERSION" ;; esac
+          echo "release=true" >> $GITHUB_OUTPUT
+          echo "name=$VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "release=false" >> $GITHUB_OUTPUT
+          echo "name=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        fi
+
     - name: Install Dependencies for Toolchain Build
       run: |
         sudo apt-get update
-        # Install deps required by rockboxdev.sh
-        sudo apt-get install -y build-essential git zip libsdl1.2-dev flex bison texinfo \
+        # Install deps required by rockboxdev.sh and the build
+        sudo apt-get install -y build-essential git zip unzip libsdl1.2-dev flex bison texinfo \
           curl automake libtool libtool-bin autoconf libmpc-dev libgmp-dev libmpfr-dev \
-          gawk
+          gawk perl
         # Note: gcc-mipsel-linux-gnu is NOT needed as we build our own toolchain
 
     - name: Cache Rockbox Toolchain
@@ -39,7 +78,7 @@ jobs:
       with:
         path: /opt/mips
         # Key based on rockboxdev.sh content ensures rebuild if script changes
-        key: rockbox-toolchain-mips-${{ hashFiles('tools/rockboxdev.sh') }}
+        key: rockbox-toolchain-mips-ubuntu-24.04-${{ hashFiles('tools/rockboxdev.sh') }}
 
     - name: Build Rockbox Toolchain
       if: steps.cache-toolchain.outputs.cache-hit != 'true'
@@ -47,79 +86,95 @@ jobs:
         sudo mkdir -p /opt/mips
         sudo chown $USER /opt/mips
         # 'i' is the target for MIPS (Bare Metal) in rockboxdev.sh
-        ./tools/rockboxdev.sh --target=i --prefix=/opt/mips --dlwhere=/tmp/rbdev-dl --builddir=/tmp/rbdev-build
+        ./tools/rockboxdev.sh --target=i --prefix=/opt/mips --dlwhere=/tmp/rbdev-dl \
+          --builddir=/tmp/rbdev-build --makeflags=-j$(nproc)
 
     - name: Add Toolchain to PATH
       run: echo "/opt/mips/bin" >> $GITHUB_PATH
 
-    - name: Configure Rockbox
+    - name: Build the firmware
       run: |
         mkdir -p build
         cd build
         ../tools/configure --target=fiiom3k --type=N --ram=0
-
-    - name: Compile Rockbox
-      working-directory: build
-      run: |
         make -j$(nproc)
-        # Ensure rockbox.m3k is created
         ls -l rockbox.m3k
+        # rockbox.zip: .rockbox with firmware, codecs, languages, ...
+        make zip
 
-    - name: Assemble Release
+    - name: Build the bootloader
       run: |
-        mkdir -p release/.rockbox
-        
-        # 1. Copy Firmware
-        cp build/rockbox.m3k release/
-        cp build/rockbox-info.txt release/.rockbox/
-        
-        # 2. Copy Codecs, Plugins, etc. (from build output)
-        mkdir -p release/.rockbox/codecs
-        find build -name "*.codec" -exec cp {} release/.rockbox/codecs/ \;
-        
-        mkdir -p release/.rockbox/rocks/apps
-        cp -r build/apps/plugins/*.rock release/.rockbox/rocks/apps/ || true
-        
-        mkdir -p release/.rockbox/fonts
-        cp build/fonts/* release/.rockbox/fonts/
-        
-        mkdir -p release/.rockbox/langs
-        cp build/apps/lang/*.lng release/.rockbox/langs/
-        
-        # 3. Merge iPodLike Theme (Base)
-        if [ -d "iPodLike_Fixed/.rockbox" ]; then
-          cp -r iPodLike_Fixed/.rockbox/* release/.rockbox/
-        else
-          echo "Warning: iPodLike_Fixed directory not found"
-        fi
-        
-        # 4. Copy WPS/Themes (Source overlays)
-        mkdir -p release/.rockbox/backdrops
-        cp backdrops/*.bmp release/.rockbox/backdrops/ || true
-        
-        mkdir -p release/.rockbox/wps/iPodLike
-        cp wps/*.wps release/.rockbox/wps/ || true
-        cp wps/*.sbs release/.rockbox/wps/ || true
-        cp wps/iPodLike/*.bmp release/.rockbox/wps/iPodLike/ || true
-        
-        mkdir -p release/.rockbox/themes
-        cp -r apps/themes/* release/.rockbox/themes/ || true
-        
-        # 5. Set default theme config
-        cp apps/themes/iPodLike.cfg release/.rockbox/config.cfg || true
+        mkdir -p build-boot
+        cd build-boot
+        ../tools/configure --target=fiiom3k --type=b
+        make -j$(nproc)
+        ls -l bootloader.m3k
 
-        # Create Zip for Release
-        cd release
-        zip -r ../rockbox-fiiom3k.zip . rockbox.m3k
+    - name: Assemble the package
+      run: |
+        PKG=rockipod-osmium-fiiom3k-${{ steps.version.outputs.name }}
+        echo "PKG=$PKG" >> $GITHUB_ENV
+        mkdir -p release
+        (cd release && unzip -q ../build/rockbox.zip)
+
+        # Fallback font for the scripts the built-in fonts do not cover
+        # (CJK, ...): Osmium Sound picks it up from .rockbox/fonts.
+        make -C tools convbdf
+        mkdir -p release/.rockbox/fonts
+        ./tools/convbdf -f -o release/.rockbox/fonts/16-GNU-Unifont.fnt fonts/16-GNU-Unifont.bdf
+
+        # The bootloader, at the root of the card: the bootloader's recovery
+        # menu installs or updates it from there ("Install or update bootloader").
+        cp build-boot/bootloader.m3k release/
+
+        cat > release/INSTALL.txt <<'EOF'
+        RockIpod - Osmium Sound for the FiiO M3K
+        ========================================
+
+        Rockbox bootloader already on the player (update):
+          1. Connect the M3K over USB (or put the microSD card in a reader).
+          2. Copy everything in this archive to the root of the card,
+             overwriting the files already there (merge the .rockbox
+             folder: settings and database are kept).
+          3. Eject and restart the player.
+
+        First installation (no Rockbox bootloader yet):
+          Install the bootloader first, with Rockbox Utility
+          (https://www.rockbox.org/wiki/RockboxUtility) or with the
+          bootloader.m3k file in this archive, as described in the Rockbox
+          manual for the FiiO M3K; then follow the steps above.
+
+        Updating the bootloader later: copy bootloader.m3k to the root of the
+        card, hold Volume Up while powering on to open the recovery menu and
+        choose "Install or update bootloader".
+        EOF
+
+        (cd release && zip -qr ../$PKG.zip .)
+        ls -l $PKG.zip
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: rockbox-fiiom3k
+        name: ${{ env.PKG }}
         path: release/
+        include-hidden-files: true
 
-    - name: Release Firmware
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+    - name: Publish the release
+      if: steps.version.outputs.release == 'true'
+      uses: softprops/action-gh-release@v2
       with:
-        files: rockbox-fiiom3k.zip
+        tag_name: ${{ steps.version.outputs.name }}
+        target_commitish: ${{ github.sha }}
+        name: RockIpod Osmium ${{ steps.version.outputs.name }}
+        prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+        generate_release_notes: true
+        body: |
+          Osmium Sound for the FiiO M3K.
+
+          **Install**: download `${{ env.PKG }}.zip`, unzip it to the root
+          of the M3K's microSD card (overwrite the files in `.rockbox`) and restart the
+          player. See `INSTALL.txt` in the archive for the first installation
+          of the bootloader.
+        files: |
+          ${{ env.PKG }}.zip
+          build-boot/bootloader.m3k

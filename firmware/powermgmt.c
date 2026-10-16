@@ -66,7 +66,8 @@ extern unsigned short percent_to_volt_charge[11];
 
 #ifndef BOOTLOADER
 #include "misc.h"
-#include "splash.h"
+#include "splash.h"   /* provided by the UI */
+#include "file.h"
 
 struct battery_tables_t device_battery_tables =
 {

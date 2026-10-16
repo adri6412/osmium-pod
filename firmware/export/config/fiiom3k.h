@@ -75,7 +75,6 @@
 /* #define HAVE_WHEEL_ACCELERATION */
 /* #define WHEEL_ACCELERATION */
 /* #define WHEEL_ACCEL_START */
-#define HAVE_KEYCLICK
 
 /* Storage defines */
 #define CONFIG_STORAGE STORAGE_SD
@@ -139,8 +138,4 @@
 #define HAVE_BMP_SCALING
 #define HAVE_JPEG
 #define HAVE_TAGCACHE
-#define HAVE_VOLUME_IN_LIST
-#define HAVE_QUICKSCREEN
-#define HAVE_HOTKEY
-#define AB_REPEAT_ENABLE
 #define HAVE_BOOTLOADER_SCREENDUMP

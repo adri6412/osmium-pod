@@ -144,6 +144,5 @@ extern int axp_get_charge_current(void);
 extern void axp_power_off(void);
 
 /* Debug menu */
-extern bool axp_debug_menu(void);
 
 #endif /* __AXP_PMU_H__ */

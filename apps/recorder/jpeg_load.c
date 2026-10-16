@@ -26,9 +26,15 @@
 * KIND, either express or implied.
 *
 ****************************************************************************/
+#include "config.h"
+#include "system.h"
+#include "lcd.h"
 #include "metadata_common.h"
-#include "plugin.h"
+#ifndef alloca
+#define alloca __builtin_alloca
+#endif
 #include "debug.h"
+#include <string.h>
 #include "jpeg_load.h"
 /*#define JPEG_BS_DEBUG*/
 //#define ROCKBOX_DEBUG_JPEG

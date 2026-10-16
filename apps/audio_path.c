@@ -32,7 +32,6 @@
 #include "spdif.h"
 #endif
 #if CONFIG_TUNER
-#include "radio.h"
 #endif
 #if defined(IPOD_ACCESSORY_PROTOCOL) && defined(HAVE_LINE_REC)
 #include "iap.h"

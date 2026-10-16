@@ -4125,8 +4125,8 @@ fi
     target="FIIO_M3K"
     memory=64
     mipsr2elcc
-    appextra="recorder:gui"
-    plugins="yes"
+    appextra="recorder:osmium"
+    plugins="no"
     tool="$rootdir/tools/scramble -add=fiiom3k "
     boottool="$rootdir/tools/mkspl-x1000 -type=nand -ppb=2 -bpp=2 "
     output="rockbox.m3k"

@@ -1785,7 +1785,6 @@ drivers/nand_id.c
 target/mips/ingenic_x1000/aic-x1000.c
 target/mips/ingenic_x1000/boot-x1000.c
 target/mips/ingenic_x1000/clk-x1000.c
-target/mips/ingenic_x1000/debug-x1000.c
 target/mips/ingenic_x1000/dma-x1000.c
 target/mips/ingenic_x1000/gpio-x1000.c
 target/mips/ingenic_x1000/i2c-x1000.c

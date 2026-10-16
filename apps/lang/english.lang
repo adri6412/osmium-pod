@@ -95,10 +95,10 @@
     *: "Rockbox"
   </source>
   <dest>
-    *: "RockIpod"
+    *: "Rockbox"
   </dest>
   <voice>
-    *: "RockIpod"
+    *: "Rockbox"
   </voice>
 </phrase>
 <phrase>
@@ -5935,10 +5935,10 @@
     *: "Rockbox Info"
   </source>
   <dest>
-    *: "RockIpod Info"
+    *: "Rockbox Info"
   </dest>
   <voice>
-    *: "RockIpod Info"
+    *: "Rockbox Info"
   </voice>
 </phrase>
 <phrase>
@@ -17013,19 +17013,5 @@
   <voice>
     *: none
     general_purpose_led: "Use LED indicators"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RAM_INFO
-  desc: RAM info menu item
-  user: core
-  <source>
-    *: "RAM Info"
-  </source>
-  <dest>
-    *: "RAM Info"
-  </dest>
-  <voice>
-    *: "RAM Info"
   </voice>
 </phrase>

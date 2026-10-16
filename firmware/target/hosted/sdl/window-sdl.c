@@ -23,6 +23,7 @@
 #include "window-sdl.h"
 #include "lcd-sdl.h"
 #include "misc.h"
+#include "system-sdl.h"
 #include "panic.h"
 
 extern SDL_Surface *lcd_surface;

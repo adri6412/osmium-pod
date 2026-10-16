@@ -23,7 +23,6 @@
 #include "config.h"
 #if !defined(BOOTLOADER)
 #include "settings.h"
-#include "action.h"
 #endif
 #include <stdlib.h>
 #include "cpu.h"
@@ -844,6 +843,11 @@ bool is_backlight_on(bool ignore_always_off)
         || (timeout == 0) /* always on */
         || ((timeout < 0) && !ignore_always_off);
 }
+
+#if !(defined(HAVE_REMOTE_LCD_AS_MAIN) && defined(HAS_REMOTE_BUTTON_HOLD)) && !defined(HAS_BUTTON_HOLD)
+/* the key lock lives in the user interface (osmium/osm_input.c) */
+extern bool is_keys_locked(void);
+#endif
 
 /* return value in ticks; 0 means always on, <0 means always off */
 int backlight_get_current_timeout(void)

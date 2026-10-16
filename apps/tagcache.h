@@ -101,9 +101,6 @@ struct tagcache_stat {
     //const char *uimessage;   /* Pending error message. Implement soon. */
 };
 
-/* Public debug logger */
-void tc_debug_log(const char *msg);
-
 enum source_type {source_constant, 
                   source_runtime, 
                   source_current_path /* dont add items after this.

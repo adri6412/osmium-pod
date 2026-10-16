@@ -9,7 +9,6 @@
 #include "metadata_common.h"
 #include "metadata_parsers.h"
 #include "rbunicode.h"
-#include "plugin.h"
 
 bool get_hes_metadata(int fd, struct mp3entry* id3)
 {
