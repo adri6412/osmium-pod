@@ -17,6 +17,7 @@
 #include "system.h"
 #include "kernel.h"
 #include "thread.h"
+#include "panic.h"
 #include "button.h"
 #include "backlight.h"
 #include "powermgmt.h"
@@ -846,7 +847,14 @@ static bool want_frames(void)
     return s && s->animating && s->animating();
 }
 
-void osm_ui_run(void)
+/* The interface runs in its own thread: the main thread's stack is small
+ * (a few KB in the first page of DRAM on the M3K, right above the exception
+ * vectors) and the UI goes deep: file system and database calls under a
+ * menu under a dialog, the core calling back into splash() and so on. */
+static long ui_stack[(64 * 1024) / sizeof(long)];
+
+static void ui_thread(void) NORETURN_ATTR;
+static void ui_thread(void)
 {
     ui_thread_id = thread_self();
     gfx_init();
@@ -899,6 +907,19 @@ void osm_ui_run(void)
         }
         handle_button(btn);
     }
+}
+
+void osm_ui_run(void)
+{
+    ui_thread_id = create_thread(ui_thread, ui_stack, sizeof(ui_stack), 0,
+                                 "osm ui" IF_PRIO(, PRIORITY_USER_INTERFACE)
+                                 IF_COP(, CPU));
+    if (!ui_thread_id)
+        panicf("cannot start the interface");
+    /* the main thread has nothing left to do (and its code from main.c
+     * lives in the init section, reused once the system is up) */
+    while (1)
+        sleep(HZ * 60);
 }
 
 /* ── shared drawing ────────────────────────────────────────────────── */
