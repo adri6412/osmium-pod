@@ -73,6 +73,29 @@ and audio.
 If no partition can be mounted, the player offers USB mode so the card
 can be fixed, then reboots.
 
+### Rockbox in flash (bootloader)
+
+The bootloader built from this tree keeps `rockbox.m3k` in NAND, in place
+of the FiiO kernel (`ROCKBOX_FLASH_ADDR` 0x20000, 4 MiB, in
+`bootloader/x1000/x1000bootloader.h`). The code is in
+`bootloader/x1000/flashrb.c`. The region holds a 16-byte header (magic
+`OSMRBX01`, file length) followed by the `scramble -add` file, verbatim;
+the data runs over the region's good blocks, and bad blocks are skipped
+both when writing and when reading, as the uImage reader does.
+
+`boot_rockbox()` (`bootloader/x1000/boot.c`):
+1. `rockbox_flash_sync(false)` compares the length and checksum of
+   `/.rockbox/rockbox.m3k` with the flash header and rewrites flash only
+   if they differ, so a normal boot writes nothing.
+2. `load_rockbox_flash()` checks the whole image's checksum. If it fails,
+   it forces a rewrite from the card and retries once.
+3. Otherwise it falls back to `boot_rockbox_sd()`, the original SD path.
+
+A file is checked before it is written, the free space before anything
+is erased, and the written data is read back. The main firmware is
+unchanged: after a USB copy, `check_bootfile()` still restarts from the
+card's file (ROLO), and the next cold boot copies it to flash.
+
 The boot screen is the appliance's animation (its Plymouth theme), drawn
 in code at the same 25 fps (`osm_system.c`):
 
@@ -311,4 +334,5 @@ Then check, comparing against a build of the previous master:
 `v*` tag it also publishes a GitHub release with
 `osmium-pod-fiiom3k-<version>.zip`: the `.rockbox` folder plus a
 Unifont fallback font. It never contains a bootloader: the firmware runs
-on the official Rockbox bootloader for the M3K.
+on the official Rockbox bootloader for the M3K. The bootloader with
+Rockbox in flash (see Boot) is built and installed by hand.

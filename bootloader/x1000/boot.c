@@ -33,7 +33,7 @@
 # include "backlight-target.h"
 #endif
 
-void boot_rockbox(void)
+void boot_rockbox_sd(void)
 {
     size_t length;
     int handle = load_rockbox(BOOTFILE, &length);
@@ -42,6 +42,27 @@ void boot_rockbox(void)
 
     gui_shutdown();
     x1000_boot_rockbox(core_get_data(handle), length);
+}
+
+void boot_rockbox(void)
+{
+#ifdef ROCKBOX_FLASH_ADDR
+    /* bring flash up to date with the SD, then boot from flash. If the
+     * image in flash is damaged, rewrite it from the SD and retry once;
+     * fall back to the SD if flash still holds no usable image. */
+    for(int attempt = 0; attempt < 2; ++attempt) {
+        rockbox_flash_sync(attempt > 0);
+
+        size_t length;
+        int handle = load_rockbox_flash(&length);
+        if(handle >= 0) {
+            gui_shutdown();
+            x1000_boot_rockbox(core_get_data(handle), length);
+        }
+    }
+#endif
+
+    boot_rockbox_sd();
 }
 
 void shutdown(void)

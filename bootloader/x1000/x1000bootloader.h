@@ -42,24 +42,10 @@ struct uimage_header;
 # define BL_QUIT_NAME       "POWER"
 # define BL_SCREENSHOT_NAME "MENU"
 # define BOOTBACKUP_FILE    "/fiiom3k-boot.bin"
-# define OF_PLAYER_NAME     "FiiO player"
-# define OF_PLAYER_ADDR     0x20000
-# define OF_PLAYER_LENGTH   (4 * 1024 * 1024)
-/* WARNING: The length of kernel arguments cannot exceed 99 bytes on the M3K
- * due to an Ingenic kernel bug: plat_mem_setup() calls ddr_param_change() and
- * that function tries to copy the command line to an 100-char buffer without
- * any bounds checking. Overflowing the buffer typically leads to disaster.
- * It seems ddr_param_change() is not present on all Ingenic kernels and the
- * bug may not affect the Q1. */
-# define OF_PLAYER_ARGS     OF_RECOVERY_ARGS \
-    " init=/linuxrc ubi.mtd=3 root=ubi0:rootfs ubi.mtd=4 rootfstype=ubifs rw"
-# define OF_PLAYER_BTN      BUTTON_PLAY
-# define OF_RECOVERY_NAME   "FiiO recovery"
-# define OF_RECOVERY_ADDR   0x420000
-# define OF_RECOVERY_LENGTH (5 * 1024 * 1024)
-# define OF_RECOVERY_ARGS \
-    "mem=64M console=ttyS2"
-# define OF_RECOVERY_BTN    (BUTTON_PLAY|BUTTON_VOL_UP)
+/* Rockbox lives in NAND in place of the FiiO player kernel, so the original
+ * firmware is gone and can no longer be booted. See flashrb.c. */
+# define ROCKBOX_FLASH_ADDR   0x20000
+# define ROCKBOX_FLASH_LENGTH (4 * 1024 * 1024)
 #elif defined(SHANLING_Q1)
 # define BL_RECOVERY        BUTTON_NEXT
 # define BL_UP              BUTTON_PREV
@@ -190,6 +176,7 @@ void bootloader_restore(void);
  */
 
 void boot_rockbox(void);
+void boot_rockbox_sd(void);
 void boot_of_player(void);
 void boot_of_recovery(void);
 void boot_linux(void);
@@ -224,6 +211,13 @@ void dump_of_recovery(void);
 void dump_entire_flash(void);
 void show_flash_info(void);
 void show_flash_onfi_info(void);
+
+#ifdef ROCKBOX_FLASH_ADDR
+int load_rockbox_flash(size_t* sizep);
+void rockbox_flash_sync(bool force);
+void rockbox_flash_install(void);
+void dump_rockbox_flash(void);
+#endif
 
 void recovery_menu(void) __attribute__((noreturn));
 

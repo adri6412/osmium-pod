@@ -43,6 +43,9 @@ static void to_debug_menu(void);
 static const struct menuitem recovery_items[] = {
     {MENUITEM_HEADING,  "Boot select",              NULL},
     {MENUITEM_ACTION,       "Rockbox",              &boot_rockbox},
+#ifdef ROCKBOX_FLASH_ADDR
+    {MENUITEM_ACTION,       "Rockbox (SD)",         &boot_rockbox_sd},
+#endif
 #ifdef OF_PLAYER_NAME
     {MENUITEM_ACTION,       OF_PLAYER_NAME,         &boot_of_player},
 #endif
@@ -58,6 +61,10 @@ static const struct menuitem recovery_items[] = {
     {MENUITEM_ACTION,       "Install or update",    &bootloader_install},
     {MENUITEM_ACTION,       "Backup",               &bootloader_backup},
     {MENUITEM_ACTION,       "Restore",              &bootloader_restore},
+#ifdef ROCKBOX_FLASH_ADDR
+    {MENUITEM_HEADING,  "Rockbox in flash",         NULL},
+    {MENUITEM_ACTION,       "Install from SD",      &rockbox_flash_install},
+#endif
     {MENUITEM_HEADING,  "Advanced",                 NULL},
     {MENUITEM_ACTION,       "Debug tools",          &to_debug_menu},
 };
@@ -74,6 +81,9 @@ static const struct menuitem debug_menu_items[] = {
 #endif
 #ifdef OF_RECOVERY_ADDR
     {MENUITEM_ACTION,       "Dump OF recovery",     &dump_of_recovery},
+#endif
+#ifdef ROCKBOX_FLASH_ADDR
+    {MENUITEM_ACTION,       "Dump Rockbox flash",   &dump_rockbox_flash},
 #endif
     {MENUITEM_ACTION,       "Dump entire flash",    &dump_entire_flash},
     {MENUITEM_ACTION,       "Main menu",            &to_main_menu},
