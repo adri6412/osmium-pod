@@ -303,4 +303,19 @@ void usb_set_skip_first_drive(bool skip);
 void usb_init_device(void);
 #endif
 
+#ifdef HAVE_USBSTACK
+/* USB mass storage: what the host asked for, shown on the USB screen */
+#define USB_STORAGE_DIAG_LUNS 2
+struct usb_storage_diag {
+    int drives;                 /* drives the device has */
+    unsigned max_lun_requests;  /* GET MAX LUN requests seen */
+    int max_lun_reply;          /* and the last answer */
+    unsigned commands[USB_STORAGE_DIAG_LUNS];      /* SCSI commands per LUN */
+    unsigned char last_command[USB_STORAGE_DIAG_LUNS];
+    bool ejected[USB_STORAGE_DIAG_LUNS];
+    unsigned bad_luns;          /* commands for LUNs that do not exist */
+};
+void usb_storage_get_diag(struct usb_storage_diag *d);
+#endif
+
 #endif

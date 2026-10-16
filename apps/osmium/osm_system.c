@@ -373,6 +373,19 @@ static void draw_usb(void)
                  ALIGN_CENTER);
     gfx_text_wrap(OSM_FONT_R12, 24, cy + 90, SCR_W - 48, 3, 17, osm_str(S_USB_SUB),
                   SILVER_A(0.7));
+#if defined(HAVE_USBSTACK) && !defined(SIMULATOR)
+    /* diagnostics: what the computer asked of each drive */
+    struct usb_storage_diag d;
+    usb_storage_get_diag(&d);
+    char l1[48], l2[64];
+    snprintf(l1, sizeof l1, "drives %d · max LUN %d (%u)%s", d.drives,
+             d.max_lun_reply, d.max_lun_requests, d.bad_luns ? " · bad LUN" : "");
+    snprintf(l2, sizeof l2, "LUN0 %u/%02x%s · LUN1 %u/%02x%s",
+             d.commands[0], d.last_command[0], d.ejected[0] ? " ej" : "",
+             d.commands[1], d.last_command[1], d.ejected[1] ? " ej" : "");
+    gfx_text_fit(OSM_FONT_R12, 12, SCR_H - 78, SCR_W - 24, l1, SILVER_A(0.5), ALIGN_CENTER);
+    gfx_text_fit(OSM_FONT_R12, 12, SCR_H - 62, SCR_W - 24, l2, SILVER_A(0.5), ALIGN_CENTER);
+#endif
     /* the battery, charging */
     int lvl = battery_level();
     char b[24];

@@ -132,6 +132,7 @@
 #define ASC_MEDIUM_NOT_PRESENT      0x3a
 #define ASC_INVALID_FIELD_IN_CBD    0x24
 #define ASC_LBA_OUT_OF_RANGE        0x21
+#define ASC_LUN_NOT_SUPPORTED       0x25
 #define ASC_WRITE_ERROR             0x0C
 #define ASC_READ_ERROR              0x11
 #define ASC_NOT_READY               0x04
@@ -330,6 +331,15 @@ static void fill_inquiry(IF_MD_NONVOID(int lun));
 static void send_and_read_next(void);
 static bool ejected[NUM_DRIVES];
 static bool locked[NUM_DRIVES];
+
+/* what the host asked, for usb_storage_get_diag() */
+static struct {
+    unsigned max_lun_requests;
+    int max_lun_reply;
+    unsigned commands[USB_STORAGE_DIAG_LUNS];
+    unsigned char last_command[USB_STORAGE_DIAG_LUNS];
+    unsigned bad_luns;
+} diag;
 
 static int usb_interface;
 
@@ -760,6 +770,8 @@ static bool usb_storage_control_request(struct usb_ctrlrequest* req, uint8_t* re
 #if defined(HAVE_MULTIDRIVE)
             if(skip_first) reqdata[0]--;
 #endif
+            diag.max_lun_requests++;
+            diag.max_lun_reply = reqdata[0];
             logf("ums: getmaxlun");
             usb_core_control_response(USB_CONTROL_ACK, reqdata, 1);
             handled = true;
@@ -848,6 +860,20 @@ static void handle_scsi_ready(struct command_block_wrapper* cbw)
 #if defined(HAVE_MULTIDRIVE)
     if(skip_first) lun++;
 #endif
+
+    if(lun < USB_STORAGE_DIAG_LUNS) {
+        diag.commands[lun]++;
+        diag.last_command[lun] = cbw->command_block[0];
+    }
+    if(lun >= storage_num_drives()) {
+        /* no such LUN: never index the per-drive arrays with it */
+        diag.bad_luns++;
+        send_csw(UMS_STATUS_FAIL);
+        cur_sense_data.sense_key=SENSE_ILLEGAL_REQUEST;
+        cur_sense_data.asc=ASC_LUN_NOT_SUPPORTED;
+        cur_sense_data.ascq=0;
+        return;
+    }
 
     storage_get_info(lun,&info);
 #ifdef USB_USE_RAMDISK
@@ -1623,3 +1649,16 @@ struct usb_class_driver usb_cdrv_storage = {
     .notify_hotswap = usb_storage_notify_hotswap,
 #endif
 };
+
+void usb_storage_get_diag(struct usb_storage_diag *d)
+{
+    d->drives = storage_num_drives();
+    d->max_lun_requests = diag.max_lun_requests;
+    d->max_lun_reply = diag.max_lun_reply;
+    d->bad_luns = diag.bad_luns;
+    for(int i = 0; i < USB_STORAGE_DIAG_LUNS; i++) {
+        d->commands[i] = diag.commands[i];
+        d->last_command[i] = diag.last_command[i];
+        d->ejected[i] = i < NUM_DRIVES && ejected[i];
+    }
+}
