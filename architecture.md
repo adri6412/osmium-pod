@@ -117,6 +117,11 @@ card as drive 0 and the NAND as drive 1 (the bootloader stays SD only).
   they do not clash with the storage API's `nand_init()`.
 * `firmware/drivers/sdmmc_host.c`: `sd_event()` used an undeclared `drive`
   with more than one drive; it is the event's data.
+* USB mass storage assumed the card is drive 1 (Sansa layout): `usb.c`
+  passed every card event as drive 1, which on the M3K marked the internal
+  storage as ejected, so the computer never saw it; it now passes the
+  event's drive. `REPORT LUNS` numbered LUNs by "removable" instead of
+  by index. A fixed drive is never reported as ejected.
 * `HAVE_ROCKBOX_DIR_REDIRECT` (`rb_namespace.c`): `ns_parse_root()` sends
   any path that starts at the root with `/.rockbox` to the root of another
   volume. Every file call goes through `open_stream_internal()`, so open,

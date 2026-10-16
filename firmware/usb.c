@@ -184,15 +184,19 @@ static inline void usb_stack_enable(bool enable)
 }
 
 #ifdef HAVE_HOTSWAP
-static inline void usb_handle_hotswap(long id)
+static inline void usb_handle_hotswap(long id, intptr_t data)
 {
     switch(id)
     {
     case SYS_HOTSWAP_INSERTED:
     case SYS_HOTSWAP_EXTRACTED:
-        usb_core_hotswap_event(1, id == SYS_HOTSWAP_INSERTED);
+        /* data is the drive that changed; it used to be taken as drive 1
+         * (the card on the Sansas), so with the card as drive 0 any card
+         * event marked drive 1, the M3K's internal storage, as ejected */
+        usb_core_hotswap_event(IF_MD_DRV((int)data), id == SYS_HOTSWAP_INSERTED);
         break;
     }
+    (void)data;     /* single drive: always 0 */
     /* Note: No MMC storage handling is needed with the stack atm. */
 }
 #endif /* HAVE_HOTSWAP */
@@ -311,8 +315,9 @@ static inline void usb_stack_enable(bool enable)
 }
 
 #ifdef HAVE_HOTSWAP
-static inline void usb_handle_hotswap(long id)
+static inline void usb_handle_hotswap(long id, intptr_t data)
 {
+    (void)data;
 #if (CONFIG_STORAGE & STORAGE_MMC)
     switch(id)
     {
@@ -546,7 +551,7 @@ static void NORETURN_ATTR usb_thread(void)
 #if (CONFIG_STORAGE & STORAGE_MMC)
         case USB_REENABLE:
 #endif
-            usb_handle_hotswap(ev.id);
+            usb_handle_hotswap(ev.id, ev.data);
             break;
 #endif
 

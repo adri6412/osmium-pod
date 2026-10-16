@@ -393,6 +393,8 @@ static bool check_disk_present(IF_MD_NONVOID(int volume))
 static void usb_storage_notify_hotswap(int volume,bool inserted)
 {
     logf("notify %d",inserted);
+    if(volume < 0 || volume >= storage_num_drives() || !storage_removable(volume))
+        return;
     if(inserted && check_disk_present(IF_MD(volume))) {
         ejected[volume] = false;
     }
@@ -519,7 +521,9 @@ static int usb_storage_init_connection(void)
     int i;
     for(i=0;i<storage_num_drives();i++) {
         locked[i] = false;
-        ejected[i] = !check_disk_present(IF_MD(i));
+        /* only a card can be missing: a fixed drive is always there, even
+         * blank, so the computer can format it */
+        ejected[i] = storage_removable(i) && !check_disk_present(IF_MD(i));
         queue_broadcast(SYS_USB_LUN_LOCKED, (i<<16)+0);
     }
     return 0;
@@ -898,13 +902,12 @@ static void handle_scsi_ready(struct command_block_wrapper* cbw)
             allocation_length|=(cbw->command_block[9]);
             memset(tb.lun_data,0,sizeof(struct report_lun_data));
             tb.lun_data->lun_list_length=htobe32(8*storage_num_drives());
+            /* each entry is a LUN number (single level, peripheral
+             * addressing: byte 1). This used to write 1 for removable
+             * drives and 0 for the others, right only with the card as
+             * drive 1. */
             for(i=0;i<storage_num_drives();i++)
-            {
-                if(storage_removable(i))
-                    tb.lun_data->luns[i][1]=1;
-                else
-                    tb.lun_data->luns[i][1]=0;
-            }
+                tb.lun_data->luns[i][1]=i;
             length = MIN(length, allocation_length);
             send_command_result(tb.lun_data,
                                 MIN(response_length, length));
