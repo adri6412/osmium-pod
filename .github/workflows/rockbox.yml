@@ -112,7 +112,7 @@ jobs:
 
     - name: Assemble the package
       run: |
-        PKG=rockipod-osmium-fiiom3k-${{ steps.version.outputs.name }}
+        PKG=osmium-pod-fiiom3k-${{ steps.version.outputs.name }}
         echo "PKG=$PKG" >> $GITHUB_ENV
         mkdir -p release
         (cd release && unzip -q ../build/rockbox.zip)
@@ -127,8 +127,8 @@ jobs:
         # tested and can leave the player unbootable. Use the official one.
 
         cat > release/INSTALL.txt <<'EOF'
-        RockIpod - Osmium Sound for the FiiO M3K
-        ========================================
+        Osmium Pod - Osmium Sound for the FiiO M3K
+        ==========================================
 
         Rockbox bootloader already on the player (update):
           1. Connect the M3K over USB (or put the microSD card in a reader).
@@ -161,7 +161,7 @@ jobs:
       with:
         tag_name: ${{ steps.version.outputs.name }}
         target_commitish: ${{ github.sha }}
-        name: RockIpod Osmium ${{ steps.version.outputs.name }}
+        name: Osmium Pod ${{ steps.version.outputs.name }}
         prerelease: ${{ github.event.inputs.prerelease == 'true' }}
         generate_release_notes: true
         body: |

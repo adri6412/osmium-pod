@@ -1,4 +1,4 @@
-# RockIpod — Osmium Sound for the FiiO M3K
+# Osmium Pod — Osmium Sound for the FiiO M3K
 
 > **⚠️ DISCLAIMER: PERSONAL PROJECT**
 > This project is a personal fork of Rockbox. It is provided **"AS IS"** without support or warranty of any kind. Future maintenance or updates are not guaranteed.
@@ -34,10 +34,15 @@ The interface is built for the M3K screen and keys: other targets are not suppor
     cover thumbnails decoded in a background thread.
   * `scr_home.c`, `scr_browse.c`, `scr_nowplaying.c`, `scr_settings.c` — the screens.
   * `osm_settings.c` — settings, stored as text in `/.rockbox/osmium.cfg`.
-* **Asset generators** (`tools/osmium/`): fonts, icons, images and the
-  English / Italian strings are generated into `apps/osmium/assets/`
-  (`gen_fonts.py`, `gen_icons.py`, `gen_images.py`, `gen_strings.py`).
+* **Asset generators** (`tools/osmium/`): fonts, icons and images are
+  generated into `apps/osmium/assets/` (`gen_fonts.py`, `gen_icons.py`,
+  `gen_images.py`), the English / Italian strings into
+  `apps/osmium/osm_strings.[ch]` (`gen_strings.py`, from `strings.txt`).
   The generated files are committed, the build does not need Python.
+
+How the pieces fit together (threads, the hooks between the core and the
+interface, how to update the Rockbox core): see
+[architecture.md](architecture.md).
 
 ## Features
 
@@ -110,7 +115,7 @@ Keys: arrows, Enter (Select), Backspace (Back), Insert (Menu), Space (Play),
 
 The GitHub workflow (`.github/workflows/rockbox.yml`) builds the firmware
 on every push (package in the run's artifacts) and publishes
-a **GitHub release** with `rockipod-osmium-fiiom3k-<version>.zip`:
+a **GitHub release** with `osmium-pod-fiiom3k-<version>.zip`:
 
 * push a tag: `git tag v1.0.0 && git push origin v1.0.0`, or
 * *Actions → Build Rockbox for FiiO M3K → Run workflow*, entering the version.
@@ -126,19 +131,6 @@ Volume Down while plugging the USB cable) and load the official
 bootloader with `jztool fiiom3k load bootloader.m3k` (see
 `utils/jztool/README.md`); then, from its recovery menu, restore your
 backup (`fiiom3k-boot.bin`) or install the official `bootloader.m3k`.
-
-## PC Music Manager
-The desktop application is located in the `pc_app` directory.
-Note: the Osmium interface reads the standard Rockbox database
-(`database_*.tcd`, built on the device); the custom `database.rdb`
-written by older versions of the app is not used.
-
-### Quick Start
-```bash
-cd pc_app
-npm install
-npm start
-```
 
 ## Credits
 * [Rockbox](https://www.rockbox.org/) (GPL v2 or later).
