@@ -88,6 +88,7 @@ int main(void)
 #endif
 
     global_status.last_volume_change = 0;
+    OSM_TRACE("usb monitoring");
     osm_ui_run();       /* never returns */
 #if (CONFIG_PLATFORM & PLATFORM_HOSTED)
     return 0;
@@ -217,26 +218,34 @@ static void INIT_ATTR init(void)
     global_status.font_id[SCREEN_MAIN] = FONT_SYSFIXED;
     font_init();
     settings_reset();
+    OSM_TRACE("lcd+font");
 
     CHART(">osm_boot_splash");
     osm_boot_splash();
     CHART("<osm_boot_splash");
+    OSM_TRACE("splash");
 
     lang_init(core_language_builtin, language_strings,
               LANG_LAST_INDEX_IN_ARRAY);
+    OSM_TRACE("lang");
 
 #if CONFIG_RTC
     rtc_init();
 #endif
     adc_init();
     usb_init();
+    OSM_TRACE("usb_init");
     backlight_init();
+    OSM_TRACE("backlight_init");
     button_init();
+    OSM_TRACE("button_init");
     powermgmt_init();
+    OSM_TRACE("powermgmt_init");
 
     rc = storage_init();
     if (rc)
         osm_fatal("Storage error", rc);
+    OSM_TRACE("storage_init");
 
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
     /* the card may still be settling */
@@ -264,14 +273,18 @@ static void INIT_ATTR init(void)
         system_reboot();
     }
 
+    OSM_TRACE("mounted");
     pcm_init();
+    OSM_TRACE("pcm_init");
     dsp_init();
 
     CHART(">settings_load");
     settings_load();
     CHART("<settings_load");
+    OSM_TRACE("settings_load");
 
     init_battery_tables();
+    OSM_TRACE("battery tables");
 
 #ifdef HAVE_DIRCACHE
     rc = init_dircache(true);
@@ -281,20 +294,26 @@ static void INIT_ATTR init(void)
 #endif
 #endif
 
+    OSM_TRACE("dircache pre");
     settings_apply(true);
+    OSM_TRACE("settings_apply");
 
 #ifdef HAVE_DIRCACHE
     init_dircache(false);
 #endif
+    OSM_TRACE("dircache");
 #ifdef HAVE_TAGCACHE
     init_tagcache();
 #endif
+    OSM_TRACE("tagcache");
 
     playlist_init();
+    OSM_TRACE("playlist_init");
 
     CHART(">audio_init");
     audio_init();
     CHART("<audio_init");
+    OSM_TRACE("audio_init");
 
     cpu_boost(false);
 
@@ -304,5 +323,6 @@ static void INIT_ATTR init(void)
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
     check_bootfile(false); /* remember write time and filesize */
 #endif
+    OSM_TRACE("init done");
 }
 #endif /* CONFIG_PLATFORM & PLATFORM_HOSTED */

@@ -7,6 +7,14 @@
 
 /* boot */
 void osm_boot_splash(void);
+/* a diagnostic build (-DOSM_BOOT_TRACE) prints each boot step on screen,
+ * with the backlight forced on, to see where a device stops */
+#ifdef OSM_BOOT_TRACE
+void osm_boot_trace(const char *step);
+#define OSM_TRACE(step) osm_boot_trace(step)
+#else
+#define OSM_TRACE(step) do { } while (0)
+#endif
 void osm_boot_message(const char *msg, int step, int steps);
 void osm_fatal(const char *msg, int code);
 

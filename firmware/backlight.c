@@ -845,7 +845,7 @@ bool is_backlight_on(bool ignore_always_off)
 }
 
 #if !(defined(HAVE_REMOTE_LCD_AS_MAIN) && defined(HAS_REMOTE_BUTTON_HOLD)) && !defined(HAS_BUTTON_HOLD)
-/* the key lock lives in the user interface (osmium/osm_input.c) */
+/* the key lock lives in the user interface (apps/osmium/osm_ui.c) */
 extern bool is_keys_locked(void);
 #endif
 

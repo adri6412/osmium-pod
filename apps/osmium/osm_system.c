@@ -68,6 +68,38 @@ void osm_ui_init_fonts(void)
 
 /* ── boot ──────────────────────────────────────────────────────────── */
 
+#ifdef OSM_BOOT_TRACE
+#if !(CONFIG_PLATFORM & PLATFORM_HOSTED)
+#include "backlight-target.h"
+#endif
+void osm_boot_trace(const char *step)
+{
+    static int line;
+    static bool lit;
+#if !(CONFIG_PLATFORM & PLATFORM_HOSTED)
+    if (!lit)
+    {
+        backlight_hw_init();
+        backlight_hw_on();
+    }
+#endif
+    lit = true;
+    lcd_set_viewport(NULL);
+    lcd_setfont(FONT_SYSFIXED);
+    lcd_set_drawmode(DRMODE_SOLID);
+    lcd_set_foreground(LCD_RGBPACK(255, 255, 0));
+    lcd_set_background(LCD_RGBPACK(0, 0, 96));
+    int h = font_get(FONT_SYSFIXED)->height;
+    if (line == 0 || (line + 1) * h > LCD_HEIGHT)
+    {
+        lcd_clear_display();
+        line = 0;
+    }
+    lcd_putsf(0, line++, "%ld %s", current_tick, step);
+    lcd_update();
+}
+#endif
+
 static void draw_logo_screen(const char *line, int step, int steps)
 {
     gfx_noclip();
