@@ -102,7 +102,8 @@ and the I/O of the region are shared with the firmware in
 
 The NAND after the Rockbox image (`NAND_FTL_START`, 0x420000, to the end
 minus 4 blocks) is a second drive: `STORAGE_SD | STORAGE_NAND`, with the
-card as drive 0 and the NAND as drive 1 (the bootloader stays SD only).
+card as drive 0 and the NAND as drive 1 (in the bootloader too, started
+only for its USB mode).
 
 * `firmware/target/mips/ingenic/nand-ftl-ingenic.c` is the storage driver.
   [Dhara](https://github.com/dlbeer/dhara) (vendored in `dhara/`, unchanged)
@@ -118,10 +119,22 @@ card as drive 0 and the NAND as drive 1 (the bootloader stays SD only).
 * `firmware/drivers/sdmmc_host.c`: `sd_event()` used an undeclared `drive`
   with more than one drive; it is the event's data.
 * USB mass storage assumed the card is drive 1 (Sansa layout): `usb.c`
-  passed every card event as drive 1, which on the M3K marked the internal
-  storage as ejected, so the computer never saw it; it now passes the
-  event's drive. `REPORT LUNS` numbered LUNs by "removable" instead of
-  by index. A fixed drive is never reported as ejected.
+  passed every card event as drive 1, which on the M3K could mark the
+  internal storage as ejected; it now passes the event's drive. `REPORT LUNS` numbered LUNs by "removable" instead of
+  by index. A fixed drive is never reported as ejected, and a command for
+  a LUN the device does not have is refused instead of indexing past the
+  per-drive arrays.
+* Even so, Windows asked for the LUN count (GET MAX LUN, answered 1 by
+  the USB thread) and never sent a command to LUN 1. So the computer is
+  shown one drive: `USB_STORAGE_LUNS 1` caps the LUNs and
+  `usb_storage_set_drives(first, count)` (which replaces "skip the first
+  drive") chooses them. Rockbox shows the card; the bootloader's *USB:
+  internal storage* shows the NAND alone. The bootloader has the internal
+  storage too, started only for that (`NAND_FTL_LAZY`,
+  `nand_ftl_start()`), and asks to unplug the cable first: the computer
+  counts the drives when it is plugged in.
+* The recovery menu in flash keeps only the essentials on the M3K
+  (`ESSENTIAL_MENU` in `recovery.c`); the USB installer has the full one.
 * `HAVE_ROCKBOX_DIR_REDIRECT` (`rb_namespace.c`): `ns_parse_root()` sends
   any path that starts at the root with `/.rockbox` to the root of another
   volume. Every file call goes through `open_stream_internal()`, so open,

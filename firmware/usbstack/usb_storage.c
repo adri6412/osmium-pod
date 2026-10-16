@@ -332,15 +332,6 @@ static void send_and_read_next(void);
 static bool ejected[NUM_DRIVES];
 static bool locked[NUM_DRIVES];
 
-/* what the host asked, for usb_storage_get_diag() */
-static struct {
-    unsigned max_lun_requests;
-    int max_lun_reply;
-    unsigned commands[USB_STORAGE_DIAG_LUNS];
-    unsigned char last_command[USB_STORAGE_DIAG_LUNS];
-    unsigned bad_luns;
-} diag;
-
 static int usb_interface;
 
 static struct usb_class_driver_ep_allocation ep_allocs[2] = {
@@ -352,8 +343,27 @@ static struct usb_class_driver_ep_allocation ep_allocs[2] = {
 #define EP_OUT (ep_allocs[1].ep)
 
 #if defined(HAVE_MULTIDRIVE)
-static bool skip_first = 0;
+/* the drives the host sees as LUNs: count of them from the first one
+ * (-1: all). LUN n is drive lun_first + n. */
+static int lun_first = 0;
+#ifdef USB_STORAGE_LUNS
+static int lun_count = USB_STORAGE_LUNS;
+#else
+static int lun_count = -1;
 #endif
+#endif
+
+static int num_luns(void)
+{
+#if defined(HAVE_MULTIDRIVE)
+    int n = storage_num_drives() - lun_first;
+    if(lun_count >= 0 && n > lun_count)
+        n = lun_count;
+    return n > 0 ? n : 0;
+#else
+    return storage_num_drives();
+#endif
+}
 
 #ifdef USB_USE_RAMDISK
 static unsigned char* ramdisk_buffer;
@@ -420,7 +430,13 @@ static void usb_storage_notify_hotswap(int volume,bool inserted)
 #ifdef HAVE_MULTIDRIVE
 void usb_set_skip_first_drive(bool skip)
 {
-    skip_first = skip;
+    lun_first = skip ? 1 : 0;
+}
+
+void usb_storage_set_drives(int first, int count)
+{
+    lun_first = first;
+    lun_count = count;
 }
 #endif
 
@@ -766,12 +782,7 @@ static bool usb_storage_control_request(struct usb_ctrlrequest* req, uint8_t* re
     switch (req->bRequest) {
         case USB_BULK_GET_MAX_LUN: {
             /* comes before the handover, without the transfer buffer */
-            reqdata[0] = storage_num_drives() - 1;
-#if defined(HAVE_MULTIDRIVE)
-            if(skip_first) reqdata[0]--;
-#endif
-            diag.max_lun_requests++;
-            diag.max_lun_reply = reqdata[0];
+            reqdata[0] = num_luns() > 0 ? num_luns() - 1 : 0;
             logf("ums: getmaxlun");
             usb_core_control_response(USB_CONTROL_ACK, reqdata, 1);
             handled = true;
@@ -857,23 +868,17 @@ static void handle_scsi_ready(struct command_block_wrapper* cbw)
      * bogus data */
     cbw->signature=0;
 
-#if defined(HAVE_MULTIDRIVE)
-    if(skip_first) lun++;
-#endif
-
-    if(lun < USB_STORAGE_DIAG_LUNS) {
-        diag.commands[lun]++;
-        diag.last_command[lun] = cbw->command_block[0];
-    }
-    if(lun >= storage_num_drives()) {
+    if(lun >= num_luns()) {
         /* no such LUN: never index the per-drive arrays with it */
-        diag.bad_luns++;
         send_csw(UMS_STATUS_FAIL);
         cur_sense_data.sense_key=SENSE_ILLEGAL_REQUEST;
         cur_sense_data.asc=ASC_LUN_NOT_SUPPORTED;
         cur_sense_data.ascq=0;
         return;
     }
+#if defined(HAVE_MULTIDRIVE)
+    lun += lun_first;   /* from here on, the drive */
+#endif
 
     storage_get_info(lun,&info);
 #ifdef USB_USE_RAMDISK
@@ -921,18 +926,18 @@ static void handle_scsi_ready(struct command_block_wrapper* cbw)
             logf("scsi report luns %d",lun);
             unsigned int allocation_length=0;
             int i;
-            unsigned int response_length = 8+8*storage_num_drives();
+            unsigned int response_length = 8+8*num_luns();
             allocation_length|=(cbw->command_block[6]<<24);
             allocation_length|=(cbw->command_block[7]<<16);
             allocation_length|=(cbw->command_block[8]<<8);
             allocation_length|=(cbw->command_block[9]);
             memset(tb.lun_data,0,sizeof(struct report_lun_data));
-            tb.lun_data->lun_list_length=htobe32(8*storage_num_drives());
+            tb.lun_data->lun_list_length=htobe32(8*num_luns());
             /* each entry is a LUN number (single level, peripheral
              * addressing: byte 1). This used to write 1 for removable
              * drives and 0 for the others, right only with the card as
              * drive 1. */
-            for(i=0;i<storage_num_drives();i++)
+            for(i=0;i<num_luns();i++)
                 tb.lun_data->luns[i][1]=i;
             length = MIN(length, allocation_length);
             send_command_result(tb.lun_data,
@@ -1649,16 +1654,3 @@ struct usb_class_driver usb_cdrv_storage = {
     .notify_hotswap = usb_storage_notify_hotswap,
 #endif
 };
-
-void usb_storage_get_diag(struct usb_storage_diag *d)
-{
-    d->drives = storage_num_drives();
-    d->max_lun_requests = diag.max_lun_requests;
-    d->max_lun_reply = diag.max_lun_reply;
-    d->bad_luns = diag.bad_luns;
-    for(int i = 0; i < USB_STORAGE_DIAG_LUNS; i++) {
-        d->commands[i] = diag.commands[i];
-        d->last_command[i] = diag.last_command[i];
-        d->ejected[i] = i < NUM_DRIVES && ejected[i];
-    }
-}

@@ -82,10 +82,12 @@ sudo udevadm control --reload</pre></li>
         first time, saving the backup takes a few minutes: leave it plugged in.
         Then copy your music to the card, in a card reader or by connecting the
         player to the computer.</p>
-      <p>The settings and the library live in the player
-        (<em>Settings → Internal storage</em>). If something stops the installation,
-        the player shows the reason; you can unplug it, go back to step 1 and try
-        again.</p>
+      <p>The settings and the library live in the player's internal storage. When
+        Rockbox runs, the computer sees only the card. To see the internal storage,
+        power the player on holding <strong>Volume +</strong>, choose <em>USB:
+        internal storage</em>, then plug the cable in.</p>
+      <p>If something stops the installation, the player shows the reason; you can
+        unplug it, go back to step 1 and try again.</p>
     </div>
   </section>
 
@@ -106,16 +108,16 @@ sudo udevadm control --reload</pre></li>
         <p id="sd-status" class="status"></p>
       </details>
       <details>
-        <summary>Recovery menu only (rescue)</summary>
-        <p>Load a bootloader into RAM, without installing anything, to reach its
-          recovery menu: <strong>Volume +/−</strong> move, <strong>Play</strong>
-          selects. It can restore <code>fiiom3k-boot.bin</code> or install a
-          <code>bootloader.m3k</code> from the card. Any bootloader works, for
-          example the official one from
-          <a href="https://download.rockbox.org/">download.rockbox.org</a>.</p>
+        <summary>Recovery tools (rescue)</summary>
+        <p>Load the installer into RAM without installing anything, to reach the
+          full recovery menu: <strong>Volume +/−</strong> move, <strong>Play</strong>
+          selects. It can restore <code>fiiom3k-boot.bin</code>, install a
+          <code>bootloader.m3k</code> from the card, save backups and dump the flash.
+          You can also pick another bootloader file, for example the official one
+          from <a href="https://download.rockbox.org/">download.rockbox.org</a>.</p>
         <input type="file" id="bl-file" accept=".m3k">
         <div class="actions">
-          <button id="rescue-button" class="small" disabled>Load into RAM</button>
+          <button id="rescue-button" class="small" disabled>Load the recovery menu</button>
         </div>
         <pre id="rescue-log" class="log" hidden></pre>
         <p id="rescue-status" class="status"></p>

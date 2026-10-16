@@ -212,10 +212,12 @@ async function rescueBoot() {
   const btn = $("rescue-button");
   btn.disabled = true;
   try {
+    // with no package, the installer is the bootloader with the full
+    // recovery menu (the one in flash keeps only the essentials)
     const file = $("bl-file").files[0];
     const data = file
       ? new Uint8Array(await file.arrayBuffer())
-      : await fetchBytes(manifest.bootloader);
+      : await fetchBytes(manifest.installer || manifest.bootloader);
     const boot = parseBootloader(data);
     say(`Bootloader ${boot.version}${file ? ` (${file.name})` : ""}`);
 

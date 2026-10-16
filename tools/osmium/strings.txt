@@ -223,3 +223,5 @@ UPDATE_FAILED|The update failed: the system stays as it was.|Aggiornamento non r
 NOT_AVAILABLE|Not available|Non disponibile
 NOT_IN_USE|Not in use|Non usata
 INSERT_CARD|Insert the card first|Inserisci prima la scheda
+INTERNAL_ON_PC|On the computer|Sul computer
+INTERNAL_ON_PC_HOW|Vol+ at power on → USB|Vol+ all'accensione → USB

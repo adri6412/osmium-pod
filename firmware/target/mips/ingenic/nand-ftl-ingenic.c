@@ -229,8 +229,12 @@ static dhara_page_t fixed_capacity(void)
     return reserve + margin < cap ? cap - reserve - margin : 0;
 }
 
-int nand_init(void)
+/* Open the NAND, find the bad blocks, load the map */
+static int ftl_start(void)
 {
+    if(ftl_present)
+        return 0;
+
     struct nand_drv* drv = nand_drv_init();
 
     nand_lock(drv);
@@ -270,6 +274,22 @@ int nand_init(void)
     ftl_present = num_sectors > 0;
     nand_unlock(drv);
     return 0;
+}
+
+int nand_init(void)
+{
+#ifdef NAND_FTL_LAZY
+    /* the drive exists, empty, until nand_ftl_start() */
+    return 0;
+#else
+    return ftl_start();
+#endif
+}
+
+int nand_ftl_start(void)
+{
+    ftl_start();
+    return ftl_present ? 0 : -1;
 }
 
 /* ---------------------------------------------------------------- I/O */
@@ -437,6 +457,11 @@ int nand_num_drives(int first_drive)
 int nand_ftl_drive(void)
 {
     return ftl_present ? ftl_drive : -1;
+}
+
+int nand_ftl_drive_number(void)
+{
+    return ftl_drive;
 }
 
 void nand_ftl_get_info(struct nand_ftl_info* info)

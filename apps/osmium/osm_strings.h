@@ -227,6 +227,8 @@ enum osm_str_id {
     S_NOT_AVAILABLE,
     S_NOT_IN_USE,
     S_INSERT_CARD,
+    S_INTERNAL_ON_PC,
+    S_INTERNAL_ON_PC_HOW,
     S_COUNT_
 };
 

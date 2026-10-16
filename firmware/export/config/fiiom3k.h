@@ -82,7 +82,7 @@
 #define ROCKBOX_FLASH_LENGTH (4 * 1024 * 1024)
 
 /* Storage defines */
-#if (defined(BOOTLOADER) && !defined(X1000_USB_INSTALLER)) || defined(SIMULATOR)
+#if defined(SIMULATOR)
 #define CONFIG_STORAGE STORAGE_SD
 #else
 /* microSD card, plus the internal storage: a Dhara FTL on the NAND after
@@ -95,6 +95,14 @@
 /* the FTL's map becomes durable on storage_flush() */
 #define HAVE_STORAGE_FLUSH
 #define NAND_FTL_START (ROCKBOX_FLASH_ADDR + ROCKBOX_FLASH_LENGTH)
+#if defined(BOOTLOADER) && !defined(X1000_USB_INSTALLER)
+/* the bootloader starts the internal storage only for its USB mode */
+#define NAND_FTL_LAZY
+#endif
+/* over USB the computer sees one drive, the card: Windows did not take
+ * a second LUN. The bootloader's recovery menu shows the internal storage
+ * on its own (usb_storage_set_drives()). */
+#define USB_STORAGE_LUNS 1
 #endif
 #define HAVE_HOTSWAP
 #define HAVE_HOTSWAP_STORAGE_AS_MAIN

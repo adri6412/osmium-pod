@@ -167,9 +167,12 @@ At every boot the bootloader:
    and the boot is retried; failing that, Rockbox is started from the card.
 
 So updates work as before: copy the new `.rockbox` to the card and restart.
-The recovery menu (hold Volume Up at power on) adds *Rockbox (SD)*, to boot
-the card's copy without touching flash, *Rockbox in flash → Install from
-SD* to force the write, and *Debug tools → Dump Rockbox flash*.
+The recovery menu in flash (hold Volume Up at power on) keeps only the
+essentials: *Start Rockbox*, *USB: card*, *USB: internal storage*,
+*Restart* and *Power off*. The full menu (install or restore the
+bootloader, backups, flash dumps, *Rockbox (SD)*, *Rockbox in flash →
+Install from SD*) is in the USB installer: load it from the web installer
+(*Other ways → Recovery tools*) or with `jztool fiiom3k load installer.m3k`.
 
 Installing (build with `tools/configure --target=fiiom3k --type=B`):
 1. Copy `bootloader.m3k` and the `.rockbox` folder to the card.
@@ -198,7 +201,10 @@ drive** of about 89 MiB, so that the whole `.rockbox` folder (codecs,
 settings, database, resume, favorites) can live in the player and the card
 holds only music. Wear leveling, bad blocks and power loss are handled by
 [Dhara](https://github.com/dlbeer/dhara), a NAND flash translation layer;
-the drive is FAT16 and shows up on the computer next to the card.
+the drive is FAT16. While Rockbox runs, the computer sees only the card
+(Windows would not take a second drive); to reach the internal drive, hold
+Volume Up at power on and choose *USB: internal storage*, then plug the
+cable in.
 
 Nothing changes until you ask for it: *Settings → Internal storage →
 Move the system to the internal storage*. The player restarts, formats

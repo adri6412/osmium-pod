@@ -197,6 +197,9 @@ enum {
 
 int check_disk(bool wait);
 void usb_mode(void);
+#if (CONFIG_STORAGE & STORAGE_NAND)
+void usb_mode_internal(void);
+#endif
 void screenshot(void);
 void screenshot_enable(void);
 

@@ -179,6 +179,7 @@ static void info_system(char *b, int l)
     strmemccpy(b, osm_str(osm_storage_system_internal() ? S_ON_INTERNAL : S_ON_CARD), l);
 }
 static void info_internal(char *b, int l) { osm_storage_info(b, l); }
+static void info_internal_pc(char *b, int l) { strmemccpy(b, osm_str(S_INTERNAL_ON_PC_HOW), l); }
 static void move_label(char *b, int l)
 {
     strmemccpy(b, osm_str(osm_storage_system_internal() ? S_MOVE_TO_CARD
@@ -408,6 +409,7 @@ static struct item power_items[] = {
 static struct item storage_items[] = {
     INFO(S_SYSTEM_LOCATION, info_system),
     INFO(S_SET_INTERNAL, info_internal),
+    INFO(S_INTERNAL_ON_PC, info_internal_pc),
     { .type = T_ACTION, .label = S_MOVE_TO_INTERNAL, .icon = ICON_HARD_DRIVE,
       .apply = act_move, .label_fn = move_label },
 };

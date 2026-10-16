@@ -36,6 +36,13 @@ struct nand_ftl_info {
 /* Rockbox drive number of the internal storage, -1 if absent */
 int nand_ftl_drive(void);
 
+/* Start the internal storage if nand_init() left it (NAND_FTL_LAZY, the
+ * bootloader); 0 once it is ready, -1 if the NAND is unusable */
+int nand_ftl_start(void);
+
+/* Its drive number even before it is started, -1 if none */
+int nand_ftl_drive_number(void);
+
 void nand_ftl_get_info(struct nand_ftl_info* info);
 
 /* Erase the FTL area and write an empty FAT16 file system. The volume

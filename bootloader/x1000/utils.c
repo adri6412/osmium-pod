@@ -31,6 +31,9 @@
 #include "screendump.h"
 #include "nand-ingenic.h"
 #include "sfc-x1000.h"
+#if (CONFIG_STORAGE & STORAGE_NAND)
+#include "nand-ftl-ingenic.h"
+#endif
 
 /* Set to true if a SYS_USB_CONNECTED event is seen
  * Set to false if a SYS_USB_DISCONNECTED event is seen
@@ -78,6 +81,30 @@ void usb_mode(void)
 
     splashf(3*HZ, "USB disconnected");
 }
+
+#if (CONFIG_STORAGE & STORAGE_NAND)
+/* USB mode showing the internal storage alone, as one drive */
+void usb_mode_internal(void)
+{
+    splashf(0, "Starting the internal storage");
+    if(nand_ftl_start() != 0) {
+        splashf(5*HZ, "Internal storage\nnot available");
+        return;
+    }
+
+    /* the computer counts the drives when the cable goes in */
+    while(is_usb_connected) {
+        splashf(0, "Unplug the USB cable\nPress " BL_QUIT_NAME " to cancel");
+        if(get_button(HZ/4) == BL_QUIT)
+            return;
+    }
+
+    usb_storage_set_drives(nand_ftl_drive(), 1);
+    usb_mode();
+    usb_storage_set_drives(0, 1);
+    storage_flush();
+}
+#endif
 
 void screenshot(void)
 {

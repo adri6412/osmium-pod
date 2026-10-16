@@ -37,6 +37,21 @@ struct menuitem {
 };
 
 static void to_main_menu(void);
+
+#if defined(FIIO_M3K) && !defined(X1000_USB_INSTALLER)
+/* Osmium Pod: only what a player needs. The full menu (install, backup,
+ * restore, flash dumps, other boot targets) is in the USB installer, which
+ * the web installer loads into RAM when something must be fixed. */
+#define ESSENTIAL_MENU
+static const struct menuitem recovery_items[] = {
+    {MENUITEM_HEADING,  "Osmium Pod",               NULL},
+    {MENUITEM_ACTION,       "Start Rockbox",        &boot_rockbox},
+    {MENUITEM_ACTION,       "USB: card",            &usb_mode},
+    {MENUITEM_ACTION,       "USB: internal storage", &usb_mode_internal},
+    {MENUITEM_ACTION,       "Restart",              &reboot},
+    {MENUITEM_ACTION,       "Power off",            &shutdown},
+};
+#else
 static void to_debug_menu(void);
 
 /* Defines the recovery menu contents */
@@ -55,6 +70,9 @@ static const struct menuitem recovery_items[] = {
     {MENUITEM_ACTION,       "Linux",                &boot_linux},
     {MENUITEM_HEADING,  "System",                   NULL},
     {MENUITEM_ACTION,       "USB mode",             &usb_mode},
+#if (CONFIG_STORAGE & STORAGE_NAND)
+    {MENUITEM_ACTION,       "USB mode (internal)",  &usb_mode_internal},
+#endif
     {MENUITEM_ACTION,       "Shutdown",             &shutdown},
     {MENUITEM_ACTION,       "Reboot",               &reboot},
     {MENUITEM_HEADING,  "Bootloader",               NULL},
@@ -88,6 +106,7 @@ static const struct menuitem debug_menu_items[] = {
     {MENUITEM_ACTION,       "Dump entire flash",    &dump_entire_flash},
     {MENUITEM_ACTION,       "Main menu",            &to_main_menu},
 };
+#endif
 
 static const struct menuitem* current_menu = NULL;
 static struct bl_list recmenu_list;
@@ -99,12 +118,14 @@ static void to_main_menu(void)
     recmenu_list.selected_item = 1;
 }
 
+#ifndef ESSENTIAL_MENU
 static void to_debug_menu(void)
 {
     current_menu = debug_menu_items;
     recmenu_list.num_items = ARRAYLEN(debug_menu_items);
     recmenu_list.selected_item = 1;
 }
+#endif
 
 static void recmenu_draw_item(const struct bl_listitem* item)
 {

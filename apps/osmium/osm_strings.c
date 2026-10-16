@@ -229,6 +229,8 @@ static const char *const strings[OSM_LANG_COUNT][S_COUNT_] = {
         "Not available",
         "Not in use",
         "Insert the card first",
+        "On the computer",
+        "Vol+ at power on → USB",
     },
     [OSM_LANG_ITALIAN] = {
         "Analisi del disco…",
@@ -455,6 +457,8 @@ static const char *const strings[OSM_LANG_COUNT][S_COUNT_] = {
         "Non disponibile",
         "Non usata",
         "Inserisci prima la scheda",
+        "Sul computer",
+        "Vol+ all'accensione → USB",
     },
 };
 
