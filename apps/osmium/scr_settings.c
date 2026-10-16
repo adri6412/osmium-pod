@@ -598,11 +598,15 @@ static void choice_cb(int sel, void *data)
 
 static void sleep_picker(void);
 
-/* Select, Left, Right on an item; true if handled */
+/* Select, Left, Right on an item; true if handled. On the items Left and
+ * Right change (choices, numbers, switches) they are taken whole: the
+ * value moves on the press, and the release must not go on to mean
+ * "back" to the page. */
 static bool item_key(const struct item *it, int key, int ev)
 {
     bool sel = key == K_SELECT && ev == EV_SHORT;
-    bool adj = (key == K_LEFT || key == K_RIGHT) && (ev == EV_PRESS || ev == EV_REPEAT);
+    bool lr = key == K_LEFT || key == K_RIGHT;
+    bool adj = lr && (ev == EV_PRESS || ev == EV_REPEAT);
     int dir = key == K_RIGHT ? 1 : -1;
     switch (it->type)
     {
@@ -619,7 +623,7 @@ static bool item_key(const struct item *it, int key, int ev)
             else if (adj)
                 set_choice(it, choice_index(it) + dir);
             else
-                return false;
+                return lr;
             osm_dirty();
             return true;
         case T_INT:
@@ -632,7 +636,7 @@ static bool item_key(const struct item *it, int key, int ev)
                 osm_dirty();
                 return true;
             }
-            return sel;
+            return sel || lr;
         case T_BOOL:
             if (sel || (adj && ev == EV_PRESS))
             {
@@ -643,7 +647,7 @@ static bool item_key(const struct item *it, int key, int ev)
                 osm_dirty();
                 return true;
             }
-            return false;
+            return lr;
         case T_ACTION:
             if (sel)
             {
